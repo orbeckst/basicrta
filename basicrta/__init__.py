@@ -1,7 +1,7 @@
 """Bayesian single-cutoff residence time analysis"""
 
 # Add imports here
-from .basicrta import *
+from .functions import *
 
 # Handle versioneer
 from ._version import get_versions

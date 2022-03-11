@@ -1,4 +1,8 @@
 # istarmap.py for Python 3.8+
+# copyright 2019, 2020 Darkonaut
+# https://stackoverflow.com/a/57364423
+# Used under CC BY-SA 4.0
+
 import multiprocessing.pool as mpp
 
 

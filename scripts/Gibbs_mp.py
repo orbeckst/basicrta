@@ -1,6 +1,6 @@
-from functions import *
+from basicrta import *
 from multiprocessing import Pool, Lock
-import istarmap
+from basicrta import istarmap
 
 
 if __name__ == "__main__":
