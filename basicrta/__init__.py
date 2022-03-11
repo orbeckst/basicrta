@@ -1,0 +1,11 @@
+"""Bayesian single-cutoff residence time analysis"""
+
+# Add imports here
+from .basicrta import *
+
+# Handle versioneer
+from ._version import get_versions
+versions = get_versions()
+__version__ = versions['version']
+__git_revision__ = versions['full-revisionid']
+del get_versions, versions
