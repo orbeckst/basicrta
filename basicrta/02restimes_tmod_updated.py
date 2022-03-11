@@ -28,9 +28,9 @@ def lipswap(protlen, cutoff, lip, memarr, ts):
     lipmemarr = memarr[memarr[:,2]==lip] 
     for res in tqdm(range(protlen), desc=f'lipID {lip}', position=proc, leave=False):
         stimes = np.round(lipmemarr[:,-1][lipmemarr[:,1]==res], dec)
-        stimes = np.concatenate([np.array([-1]), stimes, np.array([stimes[-1]+1])])
         if len(stimes)==0:
             continue
+        stimes = np.concatenate([np.array([-1]), stimes, np.array([stimes[-1]+1])])
         diff = np.round(stimes[1:]-stimes[:-1], dec)
         singles = stimes[np.where((diff[1:]>ts)&(diff[:-1]>ts))[0]+1]
         diff[diff>ts]=0
@@ -42,7 +42,7 @@ def lipswap(protlen, cutoff, lip, memarr, ts):
         strt_times = stimes[inds[minds]+1]
         #strt_times = stimes[inds[:-1]][np.where(diff[inds[:-1]+1]!=0)[0]]  
 
-        [dset.append([res, lip, time, clen]) for time, clen in zip(singles, 0.1)]
+        [dset.append([res, lip, time, 0.1]) for time in singles]
         [dset.append([res, lip, time, clen]) for time, clen in zip(strt_times, clens)]
     dset = np.array(dset, dtype='float64')
     np.save('lip_{0:0>4}'.format(lip),dset)
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     params = [tuple([protlen, cutoff, i, memmap[memmap[:,2]==i], ts]) for i in range(liplen)]
     pool = Pool(nproc,initializer=tqdm.set_lock, initargs=(Lock(),))
     try:
-        result = pool.starmap(contact_types[args.contact_type], params)
+        result = pool.starmap(lipswap, params)
     except KeyboardInterrupt:
         pool.terminate()
     pool.close()
