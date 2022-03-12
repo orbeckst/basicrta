@@ -26,7 +26,7 @@ def lipswap(protlen, cutoff, lip, memarr, ts):
     dset = []
     dec = get_dec(ts)
     lipmemarr = memarr[memarr[:,2]==lip] 
-    for res in tqdm(range(protlen), desc=f'lipID {lip}', position=proc, leave=False):
+    for res in tqdm(range(protlen), desc=f'lipID {lip} dec-{dec} ts-{ts}', position=proc, leave=False):
         stimes = np.round(lipmemarr[:,-1][lipmemarr[:,1]==res], dec)
         if len(stimes)==0:
             continue
@@ -42,7 +42,7 @@ def lipswap(protlen, cutoff, lip, memarr, ts):
         strt_times = stimes[inds[minds]+1]
         #strt_times = stimes[inds[:-1]][np.where(diff[inds[:-1]+1]!=0)[0]]  
 
-        [dset.append([res, lip, time, 0.1]) for time in singles]
+        [dset.append([res, lip, time, ts]) for time in singles]
         [dset.append([res, lip, time, clen]) for time, clen in zip(strt_times, clens)]
     dset = np.array(dset, dtype='float64')
     np.save('lip_{0:0>4}'.format(lip),dset)
