@@ -15,6 +15,14 @@ import MDAnalysis as mda
 mpl.rcParams['pdf.fonttype'] = 42
 rng = default_rng()
 
+__all__ = ['gibbs', 'unique_rates', 'get_s', 'plot_results', 'plot_post',
+           'plot_trace', 'collect_results', 'save_results', 
+           'make_residue_plots', 'plot_protein', 'run', 'run_residue', 
+           'check_results', 'get_dec', 'get_start_stop_frames',
+           'write_trajs', 'plot_hists', 'get_remaining_residue_inds',
+           'make_surv', 'norm_exp'
+           ]
+
 class gibbs(object):
     def __init__(self, times, residue, loc, niter=10000):
         self.times, self.residue = times, residue
