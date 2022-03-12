@@ -6,12 +6,12 @@ from basicrta import istarmap
 if __name__ == "__main__":
     # Parts of code taken from Shep (Centrifuge3.py, SuperMCMC.py)
 
-    # import argparse
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('--contacts')
-    # args = parser.parse_args()
-    # a = np.load(args.contacts)
-    a = np.load('lipswap_contacts_7.0.npy')
+     import argparse
+     parser = argparse.ArgumentParser()
+     parser.add_argument('--contacts')
+     args = parser.parse_args()
+     a = np.load(args.contacts)
+#    a = np.load('lipswap_contacts_7.0.npy')
 
     nproc = 8
     u = mda.Universe('step7_fixed.pdb', 'fixrot_dimer.xtc')
