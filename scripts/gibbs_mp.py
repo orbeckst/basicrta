@@ -1,28 +1,32 @@
 from basicrta import *
 from multiprocessing import Pool, Lock
 from basicrta import istarmap
-
+import numpy as np
+import MDAnalysis as mda
+import os 
+from tqdm import tqdm
 
 if __name__ == "__main__":
     # Parts of code taken from Shep (Centrifuge3.py, SuperMCMC.py)
 
-     import argparse
-     parser = argparse.ArgumentParser()
-     parser.add_argument('--contacts')
-     args = parser.parse_args()
-     a = np.load(args.contacts)
-#    a = np.load('lipswap_contacts_7.0.npy')
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--contacts')
+    args = parser.parse_args()
+    a = np.load(args.contacts)
 
     nproc = 8
-    u = mda.Universe('step7_fixed.pdb', 'fixrot_dimer.xtc')
+    u = mda.Universe('../../step7_fixed.pdb')
+    # u = mda.Universe('step7_fixed.pdb', 'fixrot_dimer.xtc')
     # u = mda.Universe('../step7_fixed.pdb', '../fixrot_dimer.xtc')
     ids = u.select_atoms('protein').residues.resids
     names = u.select_atoms('protein').residues.resnames
     names = np.array([mda.lib.util.convert_aa_code(name) for name in names])
-    resids, resnames = ids[np.unique(a[:, 0]).astype(int)], names[np.unique(a[:, 0]).astype(int)]
-    residues = np.array([f'{resnames[i]}{resids[i]}' for i in range(len(resids))])
-    times = np.array([a[a[:, 0] == i][:, 3] for i in range(len(residues))], dtype=object)
-    trajtimes = np.array([a[a[:, 0] == i][:, 2] for i in range(len(residues))], dtype=object)
+    uniqs = np.unique(a[:, 0]).astype(int)
+    resids, resnames = ids[uniqs], names[uniqs]
+    residues = np.array([f'{name}{resid}' for name, resid in zip(resnames, resids)])
+    times = np.array([a[a[:, 0] == i][:, 3] for i in uniqs], dtype=object)
+    trajtimes = np.array([a[a[:, 0] == i][:, 2] for i in uniqs], dtype=object)
 
     if not os.path.exists('BaSiC-RTA'):
         os.mkdir('BaSiC-RTA')
