@@ -12,13 +12,13 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--contacts')
+    parser.add_argument('--top')
+    parser.add_argument('--ncore')
     args = parser.parse_args()
     a = np.load(args.contacts)
 
-    nproc = 8
-    u = mda.Universe('../../step7_fixed.pdb')
-    # u = mda.Universe('step7_fixed.pdb', 'fixrot_dimer.xtc')
-    # u = mda.Universe('../step7_fixed.pdb', '../fixrot_dimer.xtc')
+    nproc = args.ncore
+    u = mda.Universe(args.top)
     ids = u.select_atoms('protein').residues.resids
     names = u.select_atoms('protein').residues.resnames
     names = np.array([mda.lib.util.convert_aa_code(name) for name in names])

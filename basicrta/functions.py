@@ -34,7 +34,7 @@ class gibbs(object):
     #     return f'Gibbs sampler with N_comp={self.ncomp}'
 
     def run(self):
-        x, residue = self.times, self.residue
+        x, residue, niter_init = self.times, self.residue, 2500
         t, s = get_s(x)
         for ncomp in range(2, 8):
             inrates = 10**(np.linspace(-3, 1, ncomp))
@@ -46,7 +46,7 @@ class gibbs(object):
             # indicator = np.memmap('indicator', dtype=float, mode='w+', shape=(ncomp, x.shape[0]))
             indicator = np.zeros((ncomp, x.shape[0]), dtype=float)
             # indicator = np.zeros((x.shape[0], ncomp), dtype=int)
-            for i in tqdm(range(5000), desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
+            for i in tqdm(range(niter_init), desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
                 tmp = mcweights[i]*norm_exp(x, mcrates[i]).T
                 z = tmp.T / tmp.sum(axis=1)
                 indicator += z
@@ -54,12 +54,12 @@ class gibbs(object):
                 mcweights[i + 1] = rng.dirichlet(whypers + Ns)
                 mcrates[i + 1] = rng.gamma(rhypers[:, 0] + Ns, 1 / (rhypers[:, 1] + np.dot(z, x)))
 
-            uniq_rts = unique_rates(ncomp, mcrates, first_check=True)
+            uniq_rts = unique_rates(ncomp, mcrates, niter_init, first_check=True)
             if uniq_rts != ncomp:
                 break
             else:
-                for i in tqdm(range(5000, self.niter), initial=5000, total=self.niter, desc=f'{residue}-K{ncomp}',
-                              position=self.loc, leave=False):
+                for i in tqdm(range(niter_init, self.niter), initial=niter_init, total=self.niter,
+                              desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
                     tmp = mcweights[i]*norm_exp(x, mcrates[i]).T
                     z = tmp.T / tmp.sum(axis=1)
                     indicator += z
@@ -67,7 +67,7 @@ class gibbs(object):
                     mcweights[i + 1] = rng.dirichlet(whypers + Ns)
                     mcrates[i + 1] = rng.gamma(rhypers[:, 0] + Ns, 1 / (rhypers[:, 1] + np.dot(z, x)))
 
-                uniq_rts = unique_rates(ncomp, mcrates)
+                uniq_rts = unique_rates(ncomp, mcrates, niter_init)
                 if uniq_rts == ncomp:
                     for i in range(ncomp):
                         start = 25
@@ -86,10 +86,10 @@ class gibbs(object):
             plt.close('all')
 
 
-def unique_rates(ncomp, mcrates, first_check=False):
+def unique_rates(ncomp, mcrates, niter_init, first_check=False):
     if first_check:
-        means = mcrates[:5001].mean(axis=0)
-        stds = mcrates[:5001].std(axis=0)
+        means = mcrates[:niter_init].mean(axis=0)
+        stds = mcrates[:niter_init].std(axis=0)
     else:
         means = mcrates.mean(axis=0)
         stds = mcrates.std(axis=0)
