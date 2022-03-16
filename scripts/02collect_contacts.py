@@ -13,7 +13,7 @@ import multiprocessing
 from multiprocessing import Pool, Lock
 import time
 from collections import Counter
-from .functions import get_dec
+#from functions import get_dec
 #from pympler.tracker import SummaryTracker
 
 

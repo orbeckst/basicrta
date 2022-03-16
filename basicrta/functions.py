@@ -20,7 +20,7 @@ __all__ = ['gibbs', 'unique_rates', 'get_s', 'plot_results', 'plot_post',
            'make_residue_plots', 'plot_protein', 'run', 'run_residue', 
            'check_results', 'get_dec', 'get_start_stop_frames',
            'write_trajs', 'plot_hists', 'get_remaining_residue_inds',
-           'make_surv', 'norm_exp'
+           'make_surv', 'norm_exp', 'get_dec'
            ]
 
 class gibbs(object):
