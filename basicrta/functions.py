@@ -35,7 +35,7 @@ class gibbs(object):
 
     def run(self):
         x, residue, niter_init = self.times, self.residue, 2500
-        t, s = get_s(x)
+        t, s = get_s(x, ts)
         for ncomp in range(2, 8):
             inrates = 10**(np.linspace(-3, 1, ncomp))
             mcweights = np.zeros((self.niter + 1, ncomp))
@@ -103,8 +103,7 @@ def unique_rates(ncomp, mcrates, niter_init, first_check=False):
     return ncomp-len(deg_rts)
 
 
-def get_s(x):
-    ts = x.min()
+def get_s(x, ts):
     Bins = get_bins(x, ts)
     Hist = plt.hist(x, bins=Bins[:-1], log=True)
     t, s = make_surv(Hist)
@@ -327,7 +326,7 @@ def check_results(residues, times):
             kmax = glob(f'{residue}/K*_results.pkl')[-1].split('/')[-1][1]
             os.popen(f'cp {residue}/figs/k{kmax}-mean_results.png result_check/{residue}-k{kmax}-results.png')
         else:
-            t, s = get_s(np.array(time))
+            t, s = get_s(np.array(time), ts)
             plt.scatter(t, s, label='data')
             plt.ylabel('s')
             plt.xlabel('t (ns)')

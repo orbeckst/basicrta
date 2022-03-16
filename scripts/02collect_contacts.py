@@ -13,11 +13,10 @@ import multiprocessing
 from multiprocessing import Pool, Lock
 import time
 from collections import Counter
-from .functions import get_dec
-#from pympler.tracker import SummaryTracker
+from functions import get_dec
 
 
-def lipswap(protlen, cutoff, lip, memarr, ts):
+def lipswap(protlen, lip, memarr, ts):
     try:
         proc = int(multiprocessing.current_process().name[-1])
     except ValueError:
@@ -74,32 +73,28 @@ if __name__ == "__main__":
     cutoff = float(args.cutoff)
     nproc = int(args.ncores)
 
-#    os.chdir('..')
-    with open('contacts.metadata','r') as data:
+    with open('contacts.metadata', 'r') as data:
         line = data.readlines()[1].split(',')                              
-        trajlen,protlen,liplen,sel,ts = int(line[0]),int(line[1]),int(line[2]),line[3],float(line[4])
+        trajlen, protlen, liplen, sel, ts = int(line[0]), int(line[1]), int(line[2]), line[3], float(line[4])
     
-    
-    #tracker = SummaryTracker()
-    start = time.time()
     if os.path.exists('contacts.mmap'):
-        with open('contacts.metadata','r') as meta:
+        with open('contacts.metadata', 'r') as meta:
             memlen = int(meta.readlines()[-1].split('=')[1])
         print('loading memmap')
-        memmap = np.memmap('contacts.mmap', mode='r', shape=(memlen,5), dtype=np.float64)
+        memmap = np.memmap('contacts.mmap', mode='r', shape=(memlen, 5), dtype=np.float64)
+
+        print('applying cutoff')
+        Time = np.unique(memmap[:, 4])
+        memmap = memmap[memmap[:, -2] <= cutoff]
+
+        params = [tuple([protlen, i, memmap[memmap[:, 2] == i], ts]) for i in range(liplen)]
+        pool = Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),))
+        try:
+            result = pool.starmap(lipswap, params)
+        except KeyboardInterrupt:
+            pool.terminate()
+        pool.close()
+        print('concatenating')
+        cat_lipids(cutoff, 'lipswap')
     else:
         print('contacts.mmap not found')
-    print('applying cutoff')
-    Time = np.unique(memmap[:,4])
-    memmap = memmap[memmap[:,-2]<=cutoff]
- #   os.chdir('script_test')
-
-    params = [tuple([protlen, cutoff, i, memmap[memmap[:,2]==i], ts]) for i in range(liplen)]
-    pool = Pool(nproc,initializer=tqdm.set_lock, initargs=(Lock(),))
-    try:
-        result = pool.starmap(lipswap, params)
-    except KeyboardInterrupt:
-        pool.terminate()
-    pool.close()
-    print('concatenating')
-    cat_lipids(cutoff, 'lipswap')
