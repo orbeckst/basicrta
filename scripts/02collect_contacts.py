@@ -1,18 +1,13 @@
 #!/usr/bin/env python
 
-from __future__ import division
+import basicrta
 import os
-import sys
-os.environ['MKL_NUM_THREADS'] = '1' 
-from pmdautil import make_balanced_slices
+os.environ['MKL_NUM_THREADS'] = '1'
 from tqdm import tqdm
 import numpy as np
-import pandas as pd
 from glob import glob
 import multiprocessing
 from multiprocessing import Pool, Lock
-import time
-from collections import Counter
 
 
 def lipswap(protlen, lip, memarr, ts):
