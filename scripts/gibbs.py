@@ -17,6 +17,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     a = np.load(args.contacts)
 
+    with open('contacts.metadata', 'r') as data:
+        line = data.readlines()[1].split(',')
+        trajlen, protlen, liplen, sel, ts = int(line[0]), int(line[1]), int(line[2]), line[3], float(line[4])
+
     nproc = args.ncore
     u = mda.Universe(args.top)
     ids = u.select_atoms('protein').residues.resids
