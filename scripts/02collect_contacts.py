@@ -23,27 +23,26 @@ def lipswap(protlen, lip, memarr, ts):
     
     dset = []
     dec = get_dec(ts)
-    lipmemarr = memarr[memarr[:,2]==lip] 
+    lipmemarr = memarr[memarr[:, 2] == lip]
     for res in tqdm(range(protlen), desc=f'lipID {lip} dec-{dec} ts-{ts}', position=proc, leave=False):
-        stimes = np.round(lipmemarr[:,-1][lipmemarr[:,1]==res], dec)
-        if len(stimes)==0:
+        stimes = np.round(lipmemarr[:, -1][lipmemarr[:, 1] == res], dec)
+        if len(stimes) == 0:
             continue
         stimes = np.concatenate([np.array([-1]), stimes, np.array([stimes[-1]+1])])
         diff = np.round(stimes[1:]-stimes[:-1], dec)
-        singles = stimes[np.where((diff[1:]>ts)&(diff[:-1]>ts))[0]+1]
-        diff[diff>ts]=0
-        inds = np.where(diff==0)[0]
+        singles = stimes[np.where((diff[1:] > ts) & (diff[:-1] > ts))[0]+1]
+        diff[diff > ts] = 0
+        inds = np.where(diff == 0)[0]
         sums = [sum(diff[inds[i]:inds[i+1]]) for i in range(len(inds)-1)]
         clens = np.round(np.array(sums), dec)
-        minds = np.where(clens!=0)[0]
+        minds = np.where(clens != 0)[0]
         clens = clens[minds]+ts
         strt_times = stimes[inds[minds]+1]
-        #strt_times = stimes[inds[:-1]][np.where(diff[inds[:-1]+1]!=0)[0]]  
 
         [dset.append([res, lip, time, ts]) for time in singles]
         [dset.append([res, lip, time, clen]) for time, clen in zip(strt_times, clens)]
     dset = np.array(dset, dtype='float64')
-    np.save('lip_{0:0>4}'.format(lip),dset)
+    np.save('lip_{0:0>4}'.format(lip), dset)
 
 
 def cat_lipids(cutoff, ctype):
@@ -57,7 +56,7 @@ def cat_lipids(cutoff, ctype):
     tot = np.array(tot, dtype=object)
     contacts = np.concatenate([*tot])
     [os.system('rm {0}'.format(afile)) for afile in lip_files]
-    np.save('{0}_contacts_{1}'.format(ctype,cutoff), contacts)
+    np.save('{0}_contacts_{1}'.format(ctype, cutoff), contacts)
 
 
 contact_types = {'lipswap':lipswap}
