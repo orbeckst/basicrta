@@ -76,8 +76,7 @@ class gibbs(object):
                         weights.append(mcweights[wburnin:, i][pmts.subsampleCorrelatedData(mcweights[wburnin:, i])])
                         rates.append(mcrates[rburnin:, i][pmts.subsampleCorrelatedData(mcrates[rburnin:, i])])
                     plt.close('all')
-                    attrs = ['weights', 'rates', 'mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name',
-                             'indicator']
+                    attrs = ['weights', 'rates', 'mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name', 'indicator']
                     values = [weights, rates, mcweights, mcrates, ncomp, self.niter, s, t, residue, indicator]
                     r = save_results(attrs, values)
                     make_residue_plots(r)
@@ -376,16 +375,13 @@ def get_start_stop_frames(simtime, timelen):
     return frame, frame+framec
 
 
-# def write_trajs(u, times, trajtimes, indicators, residues):
-def write_trajs(u, time, trajtime, indicator, residue):
+def write_trajs(u, time, trajtime, indicator, residue, lipinds):
     try:
         proc = int(multiprocessing.current_process().name[-1])
     except ValueError:
         proc = 1
 
-    prot_chol = u.select_atoms('protein or resname CHOL')
-    # for time, trajtime, indicator, residue in tqdm(zip(times, trajtimes, indicators, residues), total=len(times),
-    #                                                desc='writing trajectories', position=0):
+    prot, chol = u.select_atoms('protein'), u.select_atoms('resname CHOL')
     inds = np.array([np.where(indicator.argmax(axis=0) == i)[0] for i in range(8)], dtype=object)
     lens = np.array([len(ind) for ind in inds])
     ncomps = len(np.where(lens != 0)[0])
@@ -395,11 +391,12 @@ def write_trajs(u, time, trajtime, indicator, residue):
         bframes.sort()
         eframes = eframes[sortinds]
         tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]
-        write_frames = np.concatenate([*tmp])
+        tmpL = [np.ones_like(np.arange(b, e))*l for b, e, l in zip(bframes, eframes, lipinds[inds[comp]])]
+        write_frames, write_Linds = np.concatenate([*tmp]), np.concatenate([*tmpL])
         with mda.Writer(f"{residue}/comp{comp}_traj.xtc", len(prot_chol.atoms)) as W:
-            for ts in tqdm(u.trajectory[write_frames], desc=f"{residue}-comp{comp}", position=proc, leave=False,
-                           total=len(write_frames)):
-                W.write(prot_chol)
+            for i, ts in tqdm(enumerate(u.trajectory[write_frames]), desc=f"{residue}-comp{comp}", position=proc,
+                              leave=False, total=len(write_frames)):
+                W.write(prot+chol.residues[write_Linds[i]].atoms)
 
 
 def plot_hists(timelens, indicators, residues):
