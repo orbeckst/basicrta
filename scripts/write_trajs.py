@@ -37,7 +37,7 @@ if __name__ == "__main__":
     times, trajtimes, lipinds = times[rem_inds], trajtimes[rem_inds], lipinds[rem_inds]
     residues, t_slow, sd, indicators = collect_results()
 
-    input_list = np.array([[u, times[i], trajtimes[i], indicators[i], residues[i]] for i in range(len(residues))],
+    input_list = np.array([[u, times[i], trajtimes[i], indicators[i], residues[i], lipinds[i]] for i in range(len(residues))],
                           dtype=object)
     with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
         for _ in tqdm(p.istarmap(write_trajs, input_list), total=len(input_list), position=0, desc='overall progress'):
