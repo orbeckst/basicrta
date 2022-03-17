@@ -8,7 +8,7 @@ import numpy as np
 from glob import glob
 import multiprocessing
 from multiprocessing import Pool, Lock
-
+from basicrta import get_dec
 
 def lipswap(protlen, lip, memarr, ts):
     try:
@@ -19,13 +19,13 @@ def lipswap(protlen, lip, memarr, ts):
     dset = []
     dec = get_dec(ts)
     lipmemarr = memarr[memarr[:, 2] == lip]
-    for res in tqdm(range(protlen), desc=f'lipID {lip} dec-{dec} ts-{ts}', position=proc, leave=False):
+    for res in tqdm(range(protlen), desc=f'lipID {lip}', position=proc, leave=False):
         stimes = np.round(lipmemarr[:, -1][lipmemarr[:, 1] == res], dec)
         if len(stimes) == 0:
             continue
         stimes = np.concatenate([np.array([-1]), stimes, np.array([stimes[-1]+1])])
         diff = np.round(stimes[1:]-stimes[:-1], dec)
-        singles = stimes[np.where((diff[1:] > ts) & (diff[:-1] > ts))[0]+1]
+        #singles = stimes[np.where((diff[1:] > ts) & (diff[:-1] > ts))[0]+1]
         diff[diff > ts] = 0
         inds = np.where(diff == 0)[0]
         sums = [sum(diff[inds[i]:inds[i+1]]) for i in range(len(inds)-1)]
@@ -34,7 +34,7 @@ def lipswap(protlen, lip, memarr, ts):
         clens = clens[minds]+ts
         strt_times = stimes[inds[minds]+1]
 
-        [dset.append([res, lip, time, ts]) for time in singles]
+        #[dset.append([res, lip, time, ts]) for time in singles]
         [dset.append([res, lip, time, clen]) for time, clen in zip(strt_times, clens)]
     dset = np.array(dset, dtype='float64')
     np.save('lip_{0:0>4}'.format(lip), dset)
@@ -87,7 +87,6 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             pool.terminate()
         pool.close()
-        print('concatenating')
         cat_lipids(cutoff, 'lipswap')
     else:
         print('contacts.mmap not found')

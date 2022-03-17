@@ -21,7 +21,7 @@ if __name__ == "__main__":
         line = data.readlines()[1].split(',')
         trajlen, protlen, liplen, sel, ts = int(line[0]), int(line[1]), int(line[2]), line[3], float(line[4])
 
-    nproc = args.ncore
+    nproc = int(args.ncore)
     u = mda.Universe(args.top)
     ids = u.select_atoms('protein').residues.resids
     names = u.select_atoms('protein').residues.resnames
@@ -36,7 +36,7 @@ if __name__ == "__main__":
         os.mkdir('BaSiC-RTA')
     os.chdir('BaSiC-RTA')
 
-    input_list = np.array([[residues[i], times[i]] for i in range(len(residues))], dtype=object)
+    input_list = np.array([[residues[i], times[i], ts] for i in range(len(residues))], dtype=object)
     with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
         for _ in tqdm(p.istarmap(run_residue, input_list), total=len(residues), position=0, desc='overall progress'):
             pass
@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     residues, t_slow, sd, indicators = collect_results()
     plot_protein(residues, t_slow, sd)
-    check_results(residues, times)
+    check_results(residues, times, ts)
     plot_hists(times, indicators, residues)
 
     # print(residues[0])

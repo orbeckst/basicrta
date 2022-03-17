@@ -24,9 +24,9 @@ __all__ = ['gibbs', 'unique_rates', 'get_s', 'plot_results', 'plot_post',
            ]
 
 class gibbs(object):
-    def __init__(self, times, residue, loc, niter=10000):
+    def __init__(self, times, residue, loc, ts, niter=10000):
         self.times, self.residue = times, residue
-        self.niter, self.loc = niter, loc
+        self.niter, self.loc, self.ts = niter, loc, ts
     # def __repr__(self):
     #     return f'Gibbs sampler with N_comp={self.ncomp}'
 
@@ -35,7 +35,7 @@ class gibbs(object):
 
     def run(self):
         x, residue, niter_init = self.times, self.residue, 2500
-        t, s = get_s(x, ts)
+        t, s = get_s(x, self.ts)
         for ncomp in range(2, 8):
             inrates = 10**(np.linspace(-3, 1, ncomp))
             mcweights = np.zeros((self.niter + 1, ncomp))
@@ -307,18 +307,18 @@ def run(gib):
     gib.run()
 
 
-def run_residue(residue, time):
+def run_residue(residue, time, ts):
     x = np.array(time)
     if len(x)!=0:
         try:
             proc = int(multiprocessing.current_process().name[-1])
         except ValueError:
             proc = 1
-        gib = gibbs(x, residue, proc, niter=10000)
+        gib = gibbs(x, residue, proc, ts, niter=10000)
         run(gib)
 
 
-def check_results(residues, times):
+def check_results(residues, times, ts):
     if not os.path.exists('result_check'):
         os.mkdir('result_check')
     for time, residue in zip(times, residues):
