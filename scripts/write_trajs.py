@@ -11,6 +11,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--contacts')
     parser.add_argument('--top')
+    parser.add_argument('--traj')
     parser.add_argument('--ncore')
     args = parser.parse_args()
     a = np.load(args.contacts)
@@ -20,7 +21,7 @@ if __name__ == "__main__":
         trajlen, protlen, liplen, sel, ts = int(line[0]), int(line[1]), int(line[2]), line[3], float(line[4])
 
     nproc = int(args.ncore)
-    u = mda.Universe(args.top)
+    u = mda.Universe(args.top, args.traj)
     ids = u.select_atoms('protein').residues.resids
     names = u.select_atoms('protein').residues.resnames
     names = np.array([mda.lib.util.convert_aa_code(name) for name in names])
