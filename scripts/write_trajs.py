@@ -1,4 +1,5 @@
 from basicrta import *
+import multiprocessing
 from multiprocessing import Pool, Lock
 from basicrta import istarmap
 import numpy as np
@@ -43,4 +44,4 @@ if __name__ == "__main__":
     with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
         for _ in tqdm(p.istarmap(write_trajs, input_list), total=len(input_list), position=0, desc='overall progress'):
             pass
-
+    pool.close()
