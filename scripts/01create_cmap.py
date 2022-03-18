@@ -11,7 +11,6 @@ import time
 from pmdautil import make_balanced_slices
 from multiprocessing import Pool, Lock
 from glob import glob
-from pympler.tracker import SummaryTracker
 
 def run_contacts(top,traj,i,aslice,sel,bsn,nproc,Nbs):
     u = mda.Universe(top,traj)
@@ -112,28 +111,19 @@ if __name__ == "__main__":
         meta.write('trajlen,protlen,liplen,sel \n')    
         meta.write('{0},{1},{2},{3},{4}'.format(trajlen,protlen,liplen,args.sel,ts))
 
-    tracker = SummaryTracker()
 
-    Nbs = len(uu.trajectory[trajslice])//50000
+    Nbs = len(uu.trajectory[trajslice])//100000
     big_slices = make_balanced_slices(len(uu.trajectory[trajslice]), Nbs, start=b, stop=z, step=s) 
     
-    start=time.time()
     for bsn,big_slice in enumerate(big_slices):
         slices = make_balanced_slices(len(uu.trajectory[big_slice]), nproc, start=big_slice.start, stop=big_slice.stop, step=big_slice.step)
         slices[-1] = slice(slices[-1].start,big_slice.stop,1)
         inputlist = np.array([[top, traj, i, slices[i], args.sel, bsn, nproc, Nbs] for i in range(nproc)])
         Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)).starmap(run_contacts, inputlist)
-    stop = time.time()
-    
-    tracker.print_diff()
-#    with open('memtracker.txt', 'w') as F:
-#        F.write(tracker.print_diff())
 
-    with open('analysis_time1.txt','w+') as w:
-        w.write('prot_analysis time {0}'.format((stop-start)/3600))
+#    slices = make_balanced_slices(len(uu.trajectory), nproc)
+#    inputlist = np.array([[top, traj, i, slices[i], args.sel, bsn, nproc, Nbs] for i in range(nproc)])
+#    Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)).starmap(run_contacts, inputlist)
+
     mmap = make_memmap()
-    Times = np.unique(mmap[:,4])
-    np.save('Time_arr',Times)
-    print('elapsed time {0} hr'.format((stop-start)/3600))
-
     

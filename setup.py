@@ -37,6 +37,7 @@ setup(
     packages=find_packages(),
     scripts=['scripts/gibbs.py',
              'scripts/01create_cmap.py',
+             'scripts/write_trajs.py',
              'scripts/02collect_contacts.py'],
     # Optional include package data to ship with your package
     # Customize MANIFEST.in if the general case does not suit your needs

@@ -375,11 +375,12 @@ def get_start_stop_frames(simtime, timelen):
     return frame, frame+framec
 
 
-def write_trajs(u, time, trajtime, indicator, residue, lipind):
-    try:
-        proc = int(multiprocessing.current_process().name[-1])
-    except ValueError:
-        proc = 1
+def write_trajs(u, time, trajtime, indicator, residue, lipind, i):
+#    try:
+#        proc = int(multiprocessing.current_process().name[-1])
+#    except ValueError:
+#        proc = 1
+    proc = i
 
     prot, chol = u.select_atoms('protein'), u.select_atoms('resname CHOL')
     inds = np.array([np.where(indicator.argmax(axis=0) == i)[0] for i in range(8)], dtype=object)
