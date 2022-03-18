@@ -39,7 +39,7 @@ if __name__ == "__main__":
     times, trajtimes, lipinds = times[rem_inds], trajtimes[rem_inds], lipinds[rem_inds]
     residues, t_slow, sd, indicators = collect_results()
 
-    input_list = np.array([[u, times[i], trajtimes[i], indicators[i], residues[i], lipinds[i]] for i in range(len(residues))],
+    input_list = np.array([[u, times[i], trajtimes[i], indicators[i], residues[i], lipinds[i], i] for i in range(len(residues))],
                           dtype=object)
     try:
         with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
@@ -47,4 +47,4 @@ if __name__ == "__main__":
                 pass
     except:
         print('error')
-        pool.close()
+    pool.close()
