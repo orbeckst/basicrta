@@ -7,42 +7,33 @@ from MDAnalysis.lib import distances
 import numpy as np
 from tqdm import tqdm
 import collections
-import time
 from pmdautil import make_balanced_slices
 from multiprocessing import Pool, Lock
 from glob import glob
 
-def run_contacts(top,traj,i,aslice,sel,bsn,nproc,Nbs):
+def run_contacts(top, traj, i, aslice, sel, bsn, nproc, Nbs):
     u = mda.Universe(top, traj)
-    uprot = u.select_atoms('protein')
-    prot = u.select_atoms('protein').residues
-    ulip = u.select_atoms(sel)
+    prot = u.select_atoms('protein')
+    lip = u.select_atoms(sel)
     
-    xp = np.arange(1,len(uprot.residues)+1)
-    uprot.residues.resnums = xp 
-    xlip = np.arange(1,len(ulip.residues)+1)
-    ulip.residues.resnums = xlip
+    prot.residues.resids = np.arange(len(prot.residues))
+    lip.residues.resids = np.arange(len(lip.residues))
     
-    protresnums = uprot.resnums
-    lipresnums = ulip.resnums
-    prots = np.unique(uprot.resnums)
-    ulip = u.select_atoms(sel + ' and around {0} protein'.format(cutoff),updating=True)
+    ulip = u.select_atoms(sel + ' and around {0} protein'.format(cutoff), updating=True)
 
     dset = []
-    text = 'big-slice {0}/{1} proc {2} {3}'.format(bsn+1,Nbs,i,aslice)
-    entry = 0
-    for k,ts in enumerate(tqdm(u.trajectory[aslice], desc=text, position=i, total=len(u.trajectory[aslice]),leave=False)):
-        b = distances.capped_distance(uprot.positions,ulip.positions,max_cutoff=cutoff)
-        lipress = ulip.resnums
-        pairlist = [(protresnums[b[0][i,0]],lipress[b[0][i,1]]) for i in range(len(b[0]))]
+    text = 'big-slice {0}/{1} proc {2} {3}'.format(bsn+1, Nbs, i, aslice)
+    for ts in tqdm(u.trajectory[aslice], desc=text, position=i, total=len(u.trajectory[aslice]), leave=False):
+        b = distances.capped_distance(prot.positions, ulip.positions, max_cutoff=cutoff)
+        pairlist = [(prot.resids[b[0][i, 0]], ulip.resids[b[0][i, 1]]) for i in range(len(b[0]))]
         pairdir = collections.Counter(a for a in pairlist)
         lsum = 0
         for j in pairdir:
             temp = pairdir[j]
-            dset.append([u.trajectory.frame,j[0]-1,j[1]-1,min(b[1][lsum:lsum+temp]),u.trajectory.time/1000])#convert to ns
-            lsum += pairdir[j]
+            dset.append([u.trajectory.frame, j[0], j[1], min(b[1][lsum:lsum+temp]), u.trajectory.time/1000])#convert to ns
+            lsum += temp
     dset = np.asarray(dset)
-    np.save('contacts_{0:0>4}.npy'.format(bsn*nproc+i),dset)
+    np.save('contacts_{0:0>4}.npy'.format(bsn*nproc+i), dset)
 
 def make_memmap():
     files = glob('contacts_*.npy')
