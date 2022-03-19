@@ -14,8 +14,13 @@ if __name__ == "__main__":
     parser.add_argument('--top')
     parser.add_argument('--traj')
     parser.add_argument('--ncore')
+    parser.add_argument('--step', nargs='?')
     args = parser.parse_args()
     a = np.load(args.contacts)
+
+    if not args.step:
+        step = 1
+    else: step = int(args.step)
 
     with open('contacts.metadata', 'r') as data:
         line = data.readlines()[1].split(',')
@@ -39,12 +44,8 @@ if __name__ == "__main__":
     times, trajtimes, lipinds = times[rem_inds], trajtimes[rem_inds], lipinds[rem_inds]
     residues, t_slow, sd, indicators = collect_results()
 
-    input_list = np.array([[u, times[i], trajtimes[i], indicators[i], residues[i], lipinds[i]] for i in range(len(residues))],
+    input_list = np.array([[u, times[i], trajtimes[i], indicators[i], residues[i], lipinds[i], step] for i in range(len(residues))],
                           dtype=object)
-    try:
-        with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
-            for _ in tqdm(p.istarmap(write_trajs, input_list), total=len(input_list), position=0, desc='overall progress'):
-                pass
-    except:
-        print('error')
-    pool.close()
+    with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
+        for _ in tqdm(p.istarmap(write_trajs, input_list), total=len(input_list), position=0, desc='overall progress'):
+            pass

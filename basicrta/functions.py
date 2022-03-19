@@ -375,7 +375,7 @@ def get_start_stop_frames(simtime, timelen):
     return frame, frame+framec
 
 
-def write_trajs(u, time, trajtime, indicator, residue, lipind):
+def write_trajs(u, time, trajtime, indicator, residue, lipind, step):
     try:
         proc = int(multiprocessing.current_process().name[-1])
     except ValueError:
@@ -384,8 +384,7 @@ def write_trajs(u, time, trajtime, indicator, residue, lipind):
     prot, chol = u.select_atoms('protein'), u.select_atoms('resname CHOL')
     inds = np.array([np.where(indicator.argmax(axis=0) == i)[0] for i in range(8)], dtype=object)
     lens = np.array([len(ind) for ind in inds])
-    ncomps = len(np.where(lens != 0)[0])
-    for comp in range(ncomps):
+    for comp in np.where(lens != 0)[0]:
         bframes, eframes = get_start_stop_frames(trajtime[inds[comp]], time[inds[comp]])
         sortinds = bframes.argsort()
         bframes.sort()
@@ -393,10 +392,15 @@ def write_trajs(u, time, trajtime, indicator, residue, lipind):
         tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]
         tmpL = [np.ones_like(np.arange(b, e))*l for b, e, l in zip(bframes, eframes, lipind[inds[comp]])]
         write_frames, write_Linds = np.concatenate([*tmp]), np.concatenate([*tmpL]).astype(int)
+        print(write_Linds)
+        if len(write_frames) > step:
+            write_frames, write_Linds = write_frames[::step], write_Linds[::step]
         with mda.Writer(f"{residue}/comp{comp}_traj.xtc", len((prot+chol.residues[0].atoms).atoms)) as W:
             for i, ts in tqdm(enumerate(u.trajectory[write_frames]), desc=f"{residue}-comp{comp}", position=proc,
                               leave=False, total=len(write_frames)):
-                W.write(prot+chol.residues[write_Linds[i]].atoms)
+                ag = prot+chol.residues[write_Linds[i]].atoms
+                W.write()
+
 
 
 def plot_hists(timelens, indicators, residues):
