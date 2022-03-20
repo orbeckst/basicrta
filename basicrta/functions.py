@@ -399,7 +399,7 @@ def write_trajs(u, time, trajtime, indicator, residue, lipind, step):
             for i, ts in tqdm(enumerate(u.trajectory[write_frames]), desc=f"{residue}-comp{comp}", position=proc,
                               leave=False, total=len(write_frames)):
                 ag = prot+chol.residues[write_Linds[i]].atoms
-                W.write()
+                W.write(ag)
 
 
 
