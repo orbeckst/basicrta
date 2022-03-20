@@ -392,7 +392,6 @@ def write_trajs(u, time, trajtime, indicator, residue, lipind, step):
         tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]
         tmpL = [np.ones_like(np.arange(b, e))*l for b, e, l in zip(bframes, eframes, lipind[inds[comp]])]
         write_frames, write_Linds = np.concatenate([*tmp]), np.concatenate([*tmpL]).astype(int)
-        print(write_Linds)
         if len(write_frames) > step:
             write_frames, write_Linds = write_frames[::step], write_Linds[::step]
         with mda.Writer(f"{residue}/comp{comp}_traj.xtc", len((prot+chol.residues[0].atoms).atoms)) as W:
