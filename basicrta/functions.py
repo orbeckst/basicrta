@@ -369,9 +369,10 @@ def get_dec(ts):
     return dec
 
 
-def get_start_stop_frames(simtime, timelen):
-    framec = (np.round(timelen, 1) * 10).astype(int)
-    frame = (np.round(simtime, 1) * 10).astype(int)
+def get_start_stop_frames(simtime, timelen, ts):
+    dec = get_dec(ts)
+    framec = np.round(timelen, dec).astype(int)/ts
+    frame = np.round(simtime, dec).astype(int)/ts
     return frame, frame+framec
 
 
@@ -382,10 +383,11 @@ def write_trajs(u, time, trajtime, indicator, residue, lipind, step):
         proc = 1
 
     prot, chol = u.select_atoms('protein'), u.select_atoms('resname CHOL')
+    dt = u.trajectory.ts.dt
     inds = np.array([np.where(indicator.argmax(axis=0) == i)[0] for i in range(8)], dtype=object)
     lens = np.array([len(ind) for ind in inds])
     for comp in np.where(lens != 0)[0]:
-        bframes, eframes = get_start_stop_frames(trajtime[inds[comp]], time[inds[comp]])
+        bframes, eframes = get_start_stop_frames(trajtime[inds[comp]], time[inds[comp]], dt)
         sortinds = bframes.argsort()
         bframes.sort()
         eframes = eframes[sortinds]

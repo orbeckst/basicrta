@@ -30,7 +30,7 @@ def run_contacts(top, traj, i, aslice, sel, bsn, nproc, Nbs):
         lsum = 0
         for j in pairdir:
             temp = pairdir[j]
-            dset.append([u.trajectory.frame, j[0], j[1], min(b[1][lsum:lsum+temp]), u.trajectory.time/1000])#convert to ns
+            dset.append([u.trajectory.frame, j[0], j[1], min(b[1][lsum:lsum+temp]), ts.time/1000])#convert to ns
             lsum += temp
     dset = np.asarray(dset)
     np.save('contacts_{0:0>4}.npy'.format(bsn*nproc+i), dset)
