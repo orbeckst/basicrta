@@ -383,16 +383,16 @@ def write_trajs(u, time, trajtime, indicator, residue, lipind, step):
         proc = 1
 
     prot, chol = u.select_atoms('protein'), u.select_atoms('resname CHOL')
-    dt = u.trajectory.ts.dt
+    dt = u.trajectory.ts.dt/1000 #nanoseconds
     inds = np.array([np.where(indicator.argmax(axis=0) == i)[0] for i in range(8)], dtype=object)
     lens = np.array([len(ind) for ind in inds])
     for comp in np.where(lens != 0)[0]:
         bframes, eframes = get_start_stop_frames(trajtime[inds[comp]], time[inds[comp]], dt)
         sortinds = bframes.argsort()
         bframes.sort()
-        eframes = eframes[sortinds]
+        eframes, lind = eframes[sortinds], lipind[inds[comp]][sortinds]
         tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]
-        tmpL = [np.ones_like(np.arange(b, e))*l for b, e, l in zip(bframes, eframes, lipind[inds[comp]])]
+        tmpL = [np.ones_like(np.arange(b, e))*l for b, e, l in zip(bframes, eframes, lind)]
         write_frames, write_Linds = np.concatenate([*tmp]), np.concatenate([*tmpL]).astype(int)
         if len(write_frames) > step:
             write_frames, write_Linds = write_frames[::step], write_Linds[::step]
