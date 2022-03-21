@@ -371,8 +371,8 @@ def get_dec(ts):
 
 def get_start_stop_frames(simtime, timelen, ts):
     dec = get_dec(ts)
-    framec = np.round(timelen, dec).astype(int)/ts
-    frame = np.round(simtime, dec).astype(int)/ts
+    framec = (np.round(timelen, dec)/ts).astype(int)
+    frame = (np.round(simtime, dec)/ts).astype(int)
     return frame, frame+framec
 
 
