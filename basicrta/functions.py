@@ -275,7 +275,7 @@ def save_results(attr_names, values):
     return r
 
 
-def make_residue_plots(results, comps, show=False):
+def make_residue_plots(results, comps=None, show=False):
     r = results
 
     if not os.path.exists(f'{r.name}/figs'):
