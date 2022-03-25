@@ -14,6 +14,7 @@ if __name__ == "__main__":
     parser.add_argument('--contacts')
     parser.add_argument('--top')
     parser.add_argument('--ncore')
+    parser.add_argument('--resids', nargs='?')
     args = parser.parse_args()
     a = np.load(args.contacts)
 
@@ -31,6 +32,10 @@ if __name__ == "__main__":
     residues = np.array([f'{name}{resid}' for name, resid in zip(resnames, resids)])
     times = np.array([a[a[:, 0] == i][:, 3] for i in uniqs], dtype=object)
     trajtimes = np.array([a[a[:, 0] == i][:, 2] for i in uniqs], dtype=object)
+
+    if args.resids:
+        idinds = np.array([np.where(resids == resid)[0] for resid in resids])
+        residues, times, trajtimes = residues[idinds], times[idinds], trajtimes[idinds]
 
     if not os.path.exists('BaSiC-RTA'):
         os.mkdir('BaSiC-RTA')

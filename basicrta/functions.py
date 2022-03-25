@@ -241,6 +241,30 @@ def collect_results():
     return residues, t_slow, sd, indicators
 
 
+def collect_n_plot(resids, comps):
+    dirs = np.array(glob('?[0-9]*'))
+    tmpresids = np.array([int(adir[1:]) for adir in dirs])
+    sorted_inds = tmpresids.argsort()
+    tmpresids.sort()
+    dirs = dirs[sorted_inds]
+    idinds = np.array([np.where(tmpresids == resid)[0] for resid in resids])
+    dirs = dirs[idinds]
+
+    for i, adir in enumerate(tqdm(dirs, desc='Collecting results')):
+        residues[i] = adir
+        try:
+            results = glob(f'{adir}/*results.pkl')
+            results.sort()
+            max_comp_res = results[-1]
+        except IndexError:
+            t_slow[i]=0
+            continue
+        with open(max_comp_res, 'rb') as W:
+            tmp_res = pickle.load(W)
+
+    make_residue_plots(tmp_res, comps)
+
+
 def save_results(attr_names, values):
     r = Results()
 
@@ -256,7 +280,7 @@ def save_results(attr_names, values):
     return r
 
 
-def make_residue_plots(results, show=False):
+def make_residue_plots(results, comps, show=False):
     r = results
 
     if not os.path.exists(f'{r.name}/figs'):
@@ -264,10 +288,10 @@ def make_residue_plots(results, show=False):
 
     plot_results(r, cond='mean', save=True, show=show)
     plot_results(r, cond='ml', save=True, show=show)
-    plot_post(r, 'weights', save=True, show=show)
-    plot_post(r, 'rates', save=True, show=show)
-    plot_trace(r, 'weights', save=True, show=show)
-    plot_trace(r, 'rates', save=True, show=show)
+    plot_post(r, comp=comps, 'weights', save=True, show=show)
+    plot_post(r, comp=comps, 'rates', save=True, show=show)
+    plot_trace(r, comp=comps, 'weights', save=True, show=show)
+    plot_trace(r, comp=comps, 'rates', save=True, show=show)
 
 
 def plot_protein(residues, t_slow, sd):
