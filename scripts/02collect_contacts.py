@@ -25,7 +25,7 @@ def lipswap(protlen, lip, memarr, ts):
             continue
         stimes = np.concatenate([np.array([-1]), stimes, np.array([stimes[-1]+1])])
         diff = np.round(stimes[1:]-stimes[:-1], dec)
-        #singles = stimes[np.where((diff[1:] > ts) & (diff[:-1] > ts))[0]+1]
+        singles = stimes[np.where((diff[1:] > ts) & (diff[:-1] > ts))[0]+1]
         diff[diff > ts] = 0
         inds = np.where(diff == 0)[0]
         sums = [sum(diff[inds[i]:inds[i+1]]) for i in range(len(inds)-1)]
@@ -34,7 +34,7 @@ def lipswap(protlen, lip, memarr, ts):
         clens = clens[minds]+ts
         strt_times = stimes[inds[minds]+1]
 
-        #[dset.append([res, lip, time, ts]) for time in singles]
+        [dset.append([res, lip, time, ts]) for time in singles]
         [dset.append([res, lip, time, clen]) for time, clen in zip(strt_times, clens)]
     dset = np.array(dset, dtype='float64')
     np.save('lip_{0:0>4}'.format(lip), dset)
