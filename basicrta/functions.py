@@ -249,6 +249,7 @@ def collect_n_plot(resids, comps):
     dirs = dirs[sorted_inds]
     print(dirs)
     idinds = np.array([np.where(tmpresids == resid)[0] for resid in resids])
+    print(idinds)
     dirs = dirs[idinds]
 
     print(dirs)
