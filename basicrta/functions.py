@@ -250,6 +250,7 @@ def collect_n_plot(resids, comps):
     idinds = np.array([np.where(tmpresids == resid)[0] for resid in resids])
     dirs = dirs[idinds]
 
+    print(dirs)
     for i, adir in enumerate(tqdm(dirs, desc='Collecting results')):
         results = glob(f'{adir}/*results.pkl')
         results.sort()
