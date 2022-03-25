@@ -1,3 +1,6 @@
+#!/usr/env/bin python
+from basicrta.functions import collect_n_plot
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
