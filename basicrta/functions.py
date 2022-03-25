@@ -251,17 +251,13 @@ def collect_n_plot(resids, comps):
     dirs = dirs[idinds]
 
     for i, adir in enumerate(tqdm(dirs, desc='Collecting results')):
-        try:
-            results = glob(f'{adir}/*results.pkl')
-            results.sort()
-            max_comp_res = results[-1]
-        except IndexError:
-            t_slow[i]=0
-            continue
+        results = glob(f'{adir}/*results.pkl')
+        results.sort()
+        max_comp_res = results[-1]
         with open(max_comp_res, 'rb') as W:
             tmp_res = pickle.load(W)
 
-    make_residue_plots(tmp_res, comps)
+        make_residue_plots(tmp_res, comps)
 
 
 def save_results(attr_names, values):
