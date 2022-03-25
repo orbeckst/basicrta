@@ -288,10 +288,10 @@ def make_residue_plots(results, comps, show=False):
 
     plot_results(r, cond='mean', save=True, show=show)
     plot_results(r, cond='ml', save=True, show=show)
-    plot_post(r, comp=comps, 'weights', save=True, show=show)
-    plot_post(r, comp=comps, 'rates', save=True, show=show)
-    plot_trace(r, comp=comps, 'weights', save=True, show=show)
-    plot_trace(r, comp=comps, 'rates', save=True, show=show)
+    plot_post(r, 'weights', comp=comps, save=True, show=show)
+    plot_post(r, 'rates', comp=comps, save=True, show=show)
+    plot_trace(r, 'weights', comp=comps, save=True, show=show)
+    plot_trace(r, 'rates', comp=comps, save=True, show=show)
 
 
 def plot_protein(residues, t_slow, sd):
