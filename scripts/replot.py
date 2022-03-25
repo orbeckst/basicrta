@@ -8,6 +8,4 @@ if __name__ == "__main__":
     parser.add_argument('--comps', nargs='*', type=int)
     args = parser.parse_args()
     resids, comps = args.resids, args.comps
-    print(resids, comps)
-    print(type(resids), type(comps))
     collect_n_plot(resids, comps)

@@ -154,7 +154,7 @@ def plot_post(results, attr, comp=None, save=False, show=False):
     outdir = results.name
     Attr = getattr(results, attr)
     if comp:
-        plt.hist(Attr[comp], density=True, bins=50, label=f'comp. {i}')
+        [plt.hist(Attr[i], density=True, bins=50, label=f'comp. {i}') for i in comp]
         plt.legend()
         if save:
             plt.savefig(f'{outdir}/figs/k{results.ncomp}-posterior_{attr}_comps-{"-".join([str(i) for i in comp])}.png')
@@ -247,12 +247,9 @@ def collect_n_plot(resids, comps):
     sorted_inds = tmpresids.argsort()
     tmpresids.sort()
     dirs = dirs[sorted_inds]
-    print(dirs)
     idinds = np.array([np.where(tmpresids == resid)[0][0] for resid in resids])
-    print(idinds)
     dirs = dirs[idinds]
 
-    print(dirs)
     for i, adir in enumerate(tqdm(dirs, desc='Collecting results')):
         results = glob(f'{adir}/*results.pkl')
         results.sort()
