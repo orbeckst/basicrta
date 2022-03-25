@@ -251,7 +251,6 @@ def collect_n_plot(resids, comps):
     dirs = dirs[idinds]
 
     for i, adir in enumerate(tqdm(dirs, desc='Collecting results')):
-        residues[i] = adir
         try:
             results = glob(f'{adir}/*results.pkl')
             results.sort()
