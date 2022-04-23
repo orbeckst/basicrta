@@ -447,12 +447,12 @@ def plot_hists(timelens, indicators, residues):
         plt.savefig(f'result_check/{residue}_hists.pdf')
 
 
-def get_remaining_residue_inds(residues):
+def get_remaining_residue_inds(residues, invert=True):
     dirs = np.array(glob('?[0-9]*'))
     resids = np.array([int(res[1:]) for res in residues])
     rem_residues = np.setdiff1d(residues, dirs)
     rem_resids = np.array([int(res[1:]) for res in rem_residues])
-    rem_inds = np.in1d(resids, rem_resids, invert=True)
+    rem_inds = np.in1d(resids, rem_resids, invert=invert)
     return rem_inds
 
 

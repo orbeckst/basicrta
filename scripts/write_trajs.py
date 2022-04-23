@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     os.chdir('BaSiC-RTA')
 
-    rem_inds = get_remaining_residue_inds(residues)
+    rem_inds = get_remaining_residue_inds(residues, invert=False)
     times, trajtimes, lipinds = times[rem_inds], trajtimes[rem_inds], lipinds[rem_inds]
     residues, t_slow, sd, indicators = collect_results()
 
