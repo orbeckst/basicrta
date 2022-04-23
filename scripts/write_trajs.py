@@ -33,16 +33,20 @@ if __name__ == "__main__":
     names = np.array([mda.lib.util.convert_aa_code(name) for name in names])
     uniqs = np.unique(a[:, 0]).astype(int)
     resids, resnames = ids[uniqs], names[uniqs]
-    residues = np.array([f'{name}{resid}' for name, resid in zip(resnames, resids)])
+    tmpresidues = np.array([f'{name}{resid}' for name, resid in zip(resnames, resids)])
     times = np.array([a[a[:, 0] == i][:, 3] for i in uniqs], dtype=object)
     trajtimes = np.array([a[a[:, 0] == i][:, 2] for i in uniqs], dtype=object)
     lipinds = np.array([a[a[:, 0] == i][:, 1] for i in uniqs], dtype=object)
 
     os.chdir('BaSiC-RTA')
 
-    rem_inds = get_remaining_residue_inds(residues, invert=False)
-    times, trajtimes, lipinds = times[rem_inds], trajtimes[rem_inds], lipinds[rem_inds]
+    #rem_inds = get_remaining_residue_inds(residues)
+    #times, trajtimes, lipinds = times[rem_inds], trajtimes[rem_inds], lipinds[rem_inds]
     residues, t_slow, sd, indicators = collect_results()
+    rem_inds = np.array([np.where(tmpresidues==residue)[0][0] for residue in residues])
+    times, trajtimes, lipinds = times[rem_inds], trajtimes[rem_inds], lipinds[rem_inds]
+    # resids = np.array([int(res[1:]) for res in residues])
+    # mat_inds = np.array([np.where(ids==resid)[0][0] for resid in resids])
 
     print(len(times), len(trajtimes), len(indicators), len(residues), len(lipinds))
     input_list = np.array([[u, times[i], trajtimes[i], indicators[i], residues[i], lipinds[i], step] for i in range(len(residues))],
