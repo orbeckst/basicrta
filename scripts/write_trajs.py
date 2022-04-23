@@ -44,7 +44,7 @@ if __name__ == "__main__":
     times, trajtimes, lipinds = times[rem_inds], trajtimes[rem_inds], lipinds[rem_inds]
     residues, t_slow, sd, indicators = collect_results()
 
-    print(times.shape, trajtimes.shape, indicators.shape, residues.shape, lipinds.shape)
+    print(len(times), len(trajtimes), len(indicators), len(residues), len(lipinds))
     input_list = np.array([[u, times[i], trajtimes[i], indicators[i], residues[i], lipinds[i], step] for i in range(len(residues))],
                           dtype=object)
     with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
