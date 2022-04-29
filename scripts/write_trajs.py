@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     if args.resid:
         resids = np.array([int(res[1:]) for res in residues])
-        ind = np.where(resids==int(args.resid))[0][0]
+        ind = np.array([np.where(resids==int(res))[0][0] for res in args.resid])
         times, trajtimes, lipinds = times[ind], trajtimes[ind], lipinds[ind]
         residues, t_slow, sd, indicators = residues[ind], t_slow[ind], sd[ind], indicators[ind]
 
