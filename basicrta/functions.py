@@ -261,7 +261,7 @@ def plot_trace(results, attr, comp=None, xrange=None, yrange=None, save=False, s
     plt.close('all')
 
 
-def collect_results():
+def collect_results(ncomp):
     dirs = np.array(glob('?[0-9]*'))
     sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
     dirs = dirs[sorted_inds]
@@ -274,7 +274,10 @@ def collect_results():
         try:
             results = glob(f'{adir}/*results.pkl')
             results.sort()
-            max_comp_res = results[-1]
+            if ncomp:
+                max_comp_res = results[ncomp-2]
+            else:
+                max_comp_res = results[-1]
         except IndexError:
             t_slow[i]=0
             continue

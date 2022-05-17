@@ -16,6 +16,7 @@ if __name__ == "__main__":
     parser.add_argument('--ncore')
     parser.add_argument('--step', nargs='?')
     parser.add_argument('--resid', nargs='?', type=list)
+    parser.add_argument('--ncomp', nargs='?', type=int)
     args = parser.parse_args()
     a = np.load(args.contacts)
 
@@ -41,10 +42,9 @@ if __name__ == "__main__":
 
     os.chdir('BaSiC-RTA')
 
-
     #rem_inds = get_remaining_residue_inds(residues)
     #times, trajtimes, lipinds = times[rem_inds], trajtimes[rem_inds], lipinds[rem_inds]
-    residues, t_slow, sd, indicators = collect_results()
+    residues, t_slow, sd, indicators = collect_results(args.ncomp)
     rem_inds = np.array([np.where(tmpresidues==residue)[0][0] for residue in residues])
     times, trajtimes, lipinds = times[rem_inds], trajtimes[rem_inds], lipinds[rem_inds]
 
