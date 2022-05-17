@@ -13,9 +13,9 @@ if __name__ == "__main__":
     parser.add_argument('--contacts')
     parser.add_argument('--top')
     parser.add_argument('--traj')
-    parser.add_argument('--ncore')
+    parser.add_argument('--ncore', nargs='?', default=1)
     parser.add_argument('--step', nargs='?')
-    parser.add_argument('--resid', nargs='?', type=list)
+    parser.add_argument('--resid', nargs='?')
     args = parser.parse_args()
     a = np.load(args.contacts)
 
@@ -49,13 +49,16 @@ if __name__ == "__main__":
     times, trajtimes, lipinds = times[rem_inds], trajtimes[rem_inds], lipinds[rem_inds]
 
     if args.resid:
+        res_list = args.resid.strip('[]').split(',')
+        res_list = np.array(res_list, dtype=int)
         resids = np.array([int(res[1:]) for res in residues])
-        ind = np.array([np.where(resids==int(res))[0][0] for res in args.resid])
-        times, trajtimes, lipinds = times[ind], trajtimes[ind], lipinds[ind]
-        residues, t_slow, sd, indicators = residues[ind], t_slow[ind], sd[ind], indicators[ind]
+        inds = np.array([np.where(resids==res)[0][0] for res in res_list])
+        times, trajtimes, lipinds = times[inds], trajtimes[inds], lipinds[inds]
+        residues, t_slow, sd = residues[inds], t_slow[inds], sd[inds]
+        indicators = [indicators[ind] for ind in inds]
 
         input_list = np.array(
-            [[u, times[i], trajtimes[i], indicators[i], residues[i], lipinds[i], step] for i in range(len(args.resid))],
+            [[u, times[i], trajtimes[i], indicators[i], residues[i], lipinds[i], step] for i in range(len(res_list))],
             dtype=object)
     # resids = np.array([int(res[1:]) for res in residues])
     # mat_inds = np.array([np.where(ids==resid)[0][0] for resid in resids])
