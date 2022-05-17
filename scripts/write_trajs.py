@@ -59,10 +59,10 @@ if __name__ == "__main__":
             dtype=object)
     # resids = np.array([int(res[1:]) for res in residues])
     # mat_inds = np.array([np.where(ids==resid)[0][0] for resid in resids])
-
-    print(len(times), len(trajtimes), len(indicators), len(residues), len(lipinds))
-    input_list = np.array([[u, times[i], trajtimes[i], indicators[i], residues[i], lipinds[i], step] for i in range(len(residues))],
-                          dtype=object)
-    with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
-        for _ in tqdm(p.istarmap(write_trajs, input_list), total=len(input_list), position=0, desc='overall progress'):
-            pass
+    else:
+        print(len(times), len(trajtimes), len(indicators), len(residues), len(lipinds))
+        input_list = np.array([[u, times[i], trajtimes[i], indicators[i], residues[i], lipinds[i], step] for i in range(len(residues))],
+                              dtype=object)
+        with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
+            for _ in tqdm(p.istarmap(write_trajs, input_list), total=len(input_list), position=0, desc='overall progress'):
+                pass

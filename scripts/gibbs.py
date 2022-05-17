@@ -15,6 +15,7 @@ if __name__ == "__main__":
     parser.add_argument('--top')
     parser.add_argument('--ncore')
     parser.add_argument('--resids', nargs='?')
+    parser.add_argument('--ncomp', nargs='?', default=None)
     args = parser.parse_args()
     a = np.load(args.contacts)
 
@@ -41,7 +42,7 @@ if __name__ == "__main__":
         os.mkdir('BaSiC-RTA')
     os.chdir('BaSiC-RTA')
 
-    input_list = np.array([[residues[i], times[i], ts] for i in range(len(residues))], dtype=object)
+    input_list = np.array([[residues[i], times[i], ts, ncomp] for i in range(len(residues))], dtype=object)
     with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
         for _ in tqdm(p.istarmap(run_residue, input_list), total=len(residues), position=0, desc='overall progress'):
             pass
