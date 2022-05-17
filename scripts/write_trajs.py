@@ -16,6 +16,7 @@ if __name__ == "__main__":
     parser.add_argument('--ncore', nargs='?', default=1)
     parser.add_argument('--step', nargs='?')
     parser.add_argument('--resid', nargs='?')
+    parser.add_argument('--ncomp', nargs='?', type=int)
     args = parser.parse_args()
     a = np.load(args.contacts)
 
@@ -41,10 +42,9 @@ if __name__ == "__main__":
 
     os.chdir('BaSiC-RTA')
 
-
     #rem_inds = get_remaining_residue_inds(residues)
     #times, trajtimes, lipinds = times[rem_inds], trajtimes[rem_inds], lipinds[rem_inds]
-    residues, t_slow, sd, indicators = collect_results()
+    residues, t_slow, sd, indicators = collect_results(args.ncomp)
     rem_inds = np.array([np.where(tmpresidues==residue)[0][0] for residue in residues])
     times, trajtimes, lipinds = times[rem_inds], trajtimes[rem_inds], lipinds[rem_inds]
 
@@ -62,10 +62,10 @@ if __name__ == "__main__":
             dtype=object)
     # resids = np.array([int(res[1:]) for res in residues])
     # mat_inds = np.array([np.where(ids==resid)[0][0] for resid in resids])
-
-    print(len(times), len(trajtimes), len(indicators), len(residues), len(lipinds))
-    input_list = np.array([[u, times[i], trajtimes[i], indicators[i], residues[i], lipinds[i], step] for i in range(len(residues))],
-                          dtype=object)
-    with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
-        for _ in tqdm(p.istarmap(write_trajs, input_list), total=len(input_list), position=0, desc='overall progress'):
-            pass
+    else:
+        print(len(times), len(trajtimes), len(indicators), len(residues), len(lipinds))
+        input_list = np.array([[u, times[i], trajtimes[i], indicators[i], residues[i], lipinds[i], step] for i in range(len(residues))],
+                              dtype=object)
+        with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
+            for _ in tqdm(p.istarmap(write_trajs, input_list), total=len(input_list), position=0, desc='overall progress'):
+                pass

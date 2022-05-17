@@ -24,9 +24,9 @@ __all__ = ['gibbs', 'unique_rates', 'get_s', 'plot_results', 'plot_post',
            ]
 
 class gibbs(object):
-    def __init__(self, times, residue, loc, ts, niter=10000):
+    def __init__(self, times, residue, loc, ts, ncomp, niter=10000):
         self.times, self.residue = times, residue
-        self.niter, self.loc, self.ts = niter, loc, ts
+        self.niter, self.loc, self.ts, self.ncomp = niter, loc, ts, ncomp
     # def __repr__(self):
     #     return f'Gibbs sampler with N_comp={self.ncomp}'
 
@@ -36,18 +36,19 @@ class gibbs(object):
     def run(self):
         x, residue, niter_init = self.times, self.residue, 2500
         t, s = get_s(x, self.ts)
-        for ncomp in range(2, 8):
-            inrates = 10**(np.linspace(-3, 1, ncomp))
+        if self.ncomp:
+            ncomp = self.ncomp
+            inrates = 10 ** (np.linspace(-3, 1, ncomp))
             mcweights = np.zeros((self.niter + 1, ncomp))
             mcrates = np.zeros((self.niter + 1, ncomp))
-            mcweights[0], mcrates[0] = inrates/sum(inrates), inrates
+            mcweights[0], mcrates[0] = inrates / sum(inrates), inrates
             whypers, rhypers = np.ones(ncomp) * [2], np.ones((ncomp, 2)) * [2, 1]  # guess hyperparameters
             weights, rates = [], []
             # indicator = np.memmap('indicator', dtype=float, mode='w+', shape=(ncomp, x.shape[0]))
             indicator = np.zeros((ncomp, x.shape[0]), dtype=float)
             # indicator = np.zeros((x.shape[0], ncomp), dtype=int)
             for i in tqdm(range(niter_init), desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
-                tmp = mcweights[i]*norm_exp(x, mcrates[i]).T
+                tmp = mcweights[i] * norm_exp(x, mcrates[i]).T
                 z = tmp.T / tmp.sum(axis=1)
                 indicator += z
                 Ns = z.sum(axis=1)
@@ -60,7 +61,7 @@ class gibbs(object):
             else:
                 for i in tqdm(range(niter_init, self.niter), initial=niter_init, total=self.niter,
                               desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
-                    tmp = mcweights[i]*norm_exp(x, mcrates[i]).T
+                    tmp = mcweights[i] * norm_exp(x, mcrates[i]).T
                     z = tmp.T / tmp.sum(axis=1)
                     indicator += z
                     Ns = z.sum(axis=1)
@@ -71,18 +72,67 @@ class gibbs(object):
                 if uniq_rts == ncomp:
                     for i in range(ncomp):
                         start = 25
-                        wburnin = pmts.detectEquilibration(mcweights[start:, i])[0]+start
-                        rburnin = pmts.detectEquilibration(mcrates[start:, i])[0]+start
+                        wburnin = pmts.detectEquilibration(mcweights[start:, i])[0] + start
+                        rburnin = pmts.detectEquilibration(mcrates[start:, i])[0] + start
                         weights.append(mcweights[wburnin:, i][pmts.subsampleCorrelatedData(mcweights[wburnin:, i])])
                         rates.append(mcrates[rburnin:, i][pmts.subsampleCorrelatedData(mcrates[rburnin:, i])])
                     plt.close('all')
-                    attrs = ['weights', 'rates', 'mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name', 'indicator']
+                    attrs = ['weights', 'rates', 'mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name',
+                             'indicator']
                     values = [weights, rates, mcweights, mcrates, ncomp, self.niter, s, t, residue, indicator]
                     r = save_results(attrs, values)
                     make_residue_plots(r)
                 else:
                     break
             plt.close('all')
+        else:
+            for ncomp in range(2, 8):
+                inrates = 10**(np.linspace(-3, 1, ncomp))
+                mcweights = np.zeros((self.niter + 1, ncomp))
+                mcrates = np.zeros((self.niter + 1, ncomp))
+                mcweights[0], mcrates[0] = inrates/sum(inrates), inrates
+                whypers, rhypers = np.ones(ncomp) * [2], np.ones((ncomp, 2)) * [2, 1]  # guess hyperparameters
+                weights, rates = [], []
+                # indicator = np.memmap('indicator', dtype=float, mode='w+', shape=(ncomp, x.shape[0]))
+                indicator = np.zeros((ncomp, x.shape[0]), dtype=float)
+                # indicator = np.zeros((x.shape[0], ncomp), dtype=int)
+                for i in tqdm(range(niter_init), desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
+                    tmp = mcweights[i]*norm_exp(x, mcrates[i]).T
+                    z = tmp.T / tmp.sum(axis=1)
+                    indicator += z
+                    Ns = z.sum(axis=1)
+                    mcweights[i + 1] = rng.dirichlet(whypers + Ns)
+                    mcrates[i + 1] = rng.gamma(rhypers[:, 0] + Ns, 1 / (rhypers[:, 1] + np.dot(z, x)))
+
+                uniq_rts = unique_rates(ncomp, mcrates, niter_init, first_check=True)
+                if uniq_rts != ncomp:
+                    break
+                else:
+                    for i in tqdm(range(niter_init, self.niter), initial=niter_init, total=self.niter,
+                                  desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
+                        tmp = mcweights[i]*norm_exp(x, mcrates[i]).T
+                        z = tmp.T / tmp.sum(axis=1)
+                        indicator += z
+                        Ns = z.sum(axis=1)
+                        mcweights[i + 1] = rng.dirichlet(whypers + Ns)
+                        mcrates[i + 1] = rng.gamma(rhypers[:, 0] + Ns, 1 / (rhypers[:, 1] + np.dot(z, x)))
+
+                    uniq_rts = unique_rates(ncomp, mcrates, niter_init)
+                    if uniq_rts == ncomp:
+                        for i in range(ncomp):
+                            start = 25
+                            wburnin = pmts.detectEquilibration(mcweights[start:, i])[0]+start
+                            rburnin = pmts.detectEquilibration(mcrates[start:, i])[0]+start
+                            weights.append(mcweights[wburnin:, i][pmts.subsampleCorrelatedData(mcweights[wburnin:, i])])
+                            rates.append(mcrates[rburnin:, i][pmts.subsampleCorrelatedData(mcrates[rburnin:, i])])
+                        plt.close('all')
+                        attrs = ['weights', 'rates', 'mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name', 'indicator']
+                        values = [weights, rates, mcweights, mcrates, ncomp, self.niter, s, t, residue, indicator]
+                        r = save_results(attrs, values)
+                        make_residue_plots(r)
+                    else:
+                        break
+                plt.close('all')
 
 
 def unique_rates(ncomp, mcrates, niter_init, first_check=False):
@@ -211,7 +261,7 @@ def plot_trace(results, attr, comp=None, xrange=None, yrange=None, save=False, s
     plt.close('all')
 
 
-def collect_results():
+def collect_results(ncomp):
     dirs = np.array(glob('?[0-9]*'))
     sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
     dirs = dirs[sorted_inds]
@@ -224,7 +274,10 @@ def collect_results():
         try:
             results = glob(f'{adir}/*results.pkl')
             results.sort()
-            max_comp_res = results[-1]
+            if ncomp:
+                max_comp_res = results[ncomp-2]
+            else:
+                max_comp_res = results[-1]
         except IndexError:
             t_slow[i]=0
             continue
@@ -325,14 +378,14 @@ def run(gib):
     gib.run()
 
 
-def run_residue(residue, time, ts):
+def run_residue(residue, time, ts, ncomp):
     x = np.array(time)
     if len(x)!=0:
         try:
             proc = int(multiprocessing.current_process().name[-1])
         except ValueError:
             proc = 1
-        gib = gibbs(x, residue, proc, ts, niter=10000)
+        gib = gibbs(x, residue, proc, ts, ncomp, niter=10000)
         run(gib)
 
 
