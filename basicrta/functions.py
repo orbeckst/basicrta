@@ -57,7 +57,7 @@ class gibbs(object):
 
             uniq_rts = unique_rates(ncomp, mcrates, niter_init, first_check=True)
             if uniq_rts != ncomp:
-                break
+                pass
             else:
                 for i in tqdm(range(niter_init, self.niter), initial=niter_init, total=self.niter,
                               desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
@@ -83,7 +83,7 @@ class gibbs(object):
                     r = save_results(attrs, values)
                     make_residue_plots(r)
                 else:
-                    break
+                    pass
             plt.close('all')
         else:
             for ncomp in range(2, 8):
@@ -261,7 +261,7 @@ def plot_trace(results, attr, comp=None, xrange=None, yrange=None, save=False, s
     plt.close('all')
 
 
-def collect_results(ncomp):
+def collect_results(ncomp=None):
     dirs = np.array(glob('?[0-9]*'))
     sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
     dirs = dirs[sorted_inds]
@@ -274,7 +274,7 @@ def collect_results(ncomp):
         try:
             results = glob(f'{adir}/*results.pkl')
             results.sort()
-            if ncomp:
+            if ncomp and ncomp-1<=len(results):
                 max_comp_res = results[ncomp-2]
             else:
                 max_comp_res = results[-1]
