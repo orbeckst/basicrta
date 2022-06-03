@@ -450,6 +450,8 @@ def get_start_stop_frames(simtime, timelen, ts):
 
 def get_write_frames(u, time, trajtime, lipind, comp):
     dt, comp = u.trajectory.ts.dt/1000, comp-2 #nanoseconds
+    inds = np.array([np.where(indicator.argmax(axis=0) == i)[0] for i in range(8)], dtype=object)
+    lens = np.array([len(ind) for ind in inds])
     bframes, eframes = get_start_stop_frames(trajtime[inds[comp]], time[inds[comp]], dt)
     sortinds = bframes.argsort()
     bframes.sort()
