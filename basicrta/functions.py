@@ -450,12 +450,10 @@ def get_start_stop_frames(simtime, timelen, ts):
 
 def get_write_frames(u, time, trajtime, lipind, comp):
     dt, comp = u.trajectory.ts.dt/1000, comp-2 #nanoseconds
-    inds = np.array([np.where(indicator.argmax(axis=0) == i)[0] for i in range(8)], dtype=object)
-    lens = np.array([len(ind) for ind in inds])
-    bframes, eframes = get_start_stop_frames(trajtime[inds[comp]], time[inds[comp]], dt)
+    bframes, eframes = get_start_stop_frames(trajtime, time, dt)
     sortinds = bframes.argsort()
     bframes.sort()
-    eframes, lind = eframes[sortinds], lipind[inds[comp]][sortinds]
+    eframes, lind = eframes[sortinds], lipind[sortinds]
     tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]
     tmpL = [np.ones_like(np.arange(b, e))*l for b, e, l in zip(bframes, eframes, lind)]
     write_frames, write_Linds = np.concatenate([*tmp]), np.concatenate([*tmpL]).astype(int)
