@@ -22,7 +22,8 @@ if __name__ == "__main__":
 
     if not args.step:
         step = 1
-    else: step = int(args.step)
+    else:
+        step = int(args.step)
 
     with open('contacts.metadata', 'r') as data:
         line = data.readlines()[1].split(',')
