@@ -28,7 +28,7 @@ if __name__ == "__main__":
     rem_inds = np.array([np.where(tmpresidues==residue)[0][0] for residue in residues])
     times, trajtimes, lipinds = times[rem_inds], trajtimes[rem_inds], lipinds[rem_inds]
 
-    comp = 5
+    comp, resid = 5, 313
     dt, comp = u.trajectory.ts.dt/1000, comp-2 #nanoseconds
     bframes, eframes = get_start_stop_frames(trajtimes[179], times[179], dt)
     sortinds = bframes.argsort()
