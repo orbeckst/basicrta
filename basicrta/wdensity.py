@@ -1,24 +1,9 @@
 import numpy as np
-import sys
-import os
-import os.path
-import errno
 import warnings
-
 from gridData import Grid
-
-import MDAnalysis
-from MDAnalysis.core import groups
 from MDAnalysis.lib.util import (fixedwidth_bins, iterable, asiterable,
-                                 deprecate,)
-from MDAnalysis.lib import NeighborSearch as NS
-from MDAnalysis import NoDataError, MissingDataWarning
-from .. import units
-from ..lib import distances
-from MDAnalysis.lib.log import ProgressBar
-
-from .base import AnalysisBase
-
+from MDAnalysis. import units
+from MDAnalysis.base import AnalysisBase
 import logging
 
 logger = logging.getLogger("MDAnalysis.analysis.density")
