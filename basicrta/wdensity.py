@@ -3,7 +3,7 @@ import warnings
 from gridData import Grid
 from MDAnalysis.lib.util import fixedwidth_bins
 from MDAnalysis import units
-from MDAnalysis.base import AnalysisBase
+from MDAnalysis.analysis.base import AnalysisBase
 import logging
 
 logger = logging.getLogger("MDAnalysis.analysis.density")
