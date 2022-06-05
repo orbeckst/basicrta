@@ -2,7 +2,7 @@ import numpy as np
 import warnings
 from gridData import Grid
 from MDAnalysis.lib.util import (fixedwidth_bins, iterable, asiterable,
-from MDAnalysis. import units
+from MDAnalysis import units
 from MDAnalysis.base import AnalysisBase
 import logging
 
