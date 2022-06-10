@@ -60,4 +60,4 @@ if __name__ == "__main__":
 
     D = WDensityAnalysis(chol_red, write_Indics, gridcenter=u.select_atoms(f'protein and resid {resid}').center_of_geometry(), xdim=30, ydim=30, zdim=30)
     D.run(verbose=True)
-    [d.export(f'comp{i}.dx') for i, d in enumerate(D.results.densities)]
+    [d.export(f'wcomp{i}.dx') for i, d in enumerate(D.results.densities)]
