@@ -3,9 +3,10 @@ from basicrta import *
 import numpy as np
 import MDAnalysis as mda
 import os
-
+from tqdm import tqdm
 
 if __name__ == "__main__":
+    ncomp, resid = 5, 216
     a = np.load('lipswap_contacts_7.0.npy')
     with open('contacts.metadata', 'r') as data:
         line = data.readlines()[1].split(',')
@@ -24,22 +25,39 @@ if __name__ == "__main__":
 
     os.chdir('BaSiC-RTA')
 
-    residues, t_slow, sd, indicators = collect_results(5)
+    residues, t_slow, sd, indicators = collect_results(ncomp)
     rem_inds = np.array([np.where(tmpresidues==residue)[0][0] for residue in residues])
     times, trajtimes, lipinds = times[rem_inds], trajtimes[rem_inds], lipinds[rem_inds]
 
-    comp, resid = 5, 313
-    dt, comp = u.trajectory.ts.dt/1000, comp-2 #nanoseconds
-    bframes, eframes = get_start_stop_frames(trajtimes[179], times[179], dt)
+    resids = np.array([int(res[1:]) for res in residues])
+    index = np.where(resids==resid)[0][0]
+    print(residues[index], index)
+    dt = u.trajectory.ts.dt/1000 #nanoseconds
+
+    bframes, eframes = get_start_stop_frames(trajtimes[index], times[index], dt)
     sortinds = bframes.argsort()
     bframes.sort()
-    eframes, lind = eframes[sortinds], lipinds[179][sortinds]
+    eframes, lind = eframes[sortinds], lipinds[index][sortinds]
+    single_inds, multi_inds = np.where(times[index]==dt), np.where(times[index]!=dt)
+    single_frames = bframes[single_inds]
+   
+    bframes, eframes = bframes[multi_inds], eframes[multi_inds]
     tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]
-    tmpL = [np.ones_like(np.arange(b, e))*l for b, e, l in zip(bframes, eframes, lipinds[179])]
-    tmpI = [indic*np.ones((len(np.arange(b, e)), 5)) for b, e, indic in zip(bframes, eframes, indicators[179].T)]
-    write_frames, write_Linds, write_Indics = np.concatenate([*tmp]), np.concatenate([*tmpL]).astype(int), np.concatenate([*tmpI])
+    tmpL = [np.ones_like(np.arange(b, e))*l for b, e, l in zip(bframes, eframes, lind[multi_inds])]
+    tmpI = [indic*np.ones((len(np.arange(b, e)), ncomp)) for b, e, indic in zip(bframes, eframes, indicators[index].T[sortinds][multi_inds])]
+    
+    write_frames, write_Linds, write_Indics = np.concatenate([single_frames, *tmp]), np.concatenate([lind[single_inds], *tmpL]).astype(int), np.concatenate([indicators[index].T[sortinds][single_inds], *tmpI])
+    
+    protein = u.select_atoms('protein')
     chol = u.select_atoms('resname CHOL')
+    write_sel = protein+chol.residues[0].atoms
+    with mda.Writer("chol_traj.xtc", len(write_sel.atoms)) as W:
+        for i, ts in tqdm(enumerate(u.trajectory[write_frames]), total=len(write_frames)):
+            W.write(protein+chol.residues[write_Linds[i]].atoms)
+        
+    u_red = mda.Universe('prot_chol.pdb', 'chol_traj.xtc')
+    chol_red = u_red.select_atoms('resname CHOL')
 
-    Ds = [WDensityAnalysis(chol, write_Indics, gridcenter=u.select_atoms(f'protein and resid {resid} and name BB').center_of_geometry(), xdim=30, ydim=30, zdim=30) for i in range(5)]
-    [D.run(verbose=True) for D in Ds]
-    [D.results.density.export(f"comp{i}.dx") for i,D in enumerate(Ds)]
+    D = WDensityAnalysis(chol_red, write_Indics, gridcenter=u.select_atoms(f'protein and resid {resid}').center_of_geometry(), xdim=30, ydim=30, zdim=30)
+    D.run(verbose=True)
+    [d.export(f'comp{i}.dx') for i, d in enumerate(D.results.densities)]

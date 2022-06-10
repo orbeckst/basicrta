@@ -185,7 +185,7 @@ class WDensityAnalysis(AnalysisBase):
                  gridcenter=None,
                  xdim=None, ydim=None, zdim=None):
         u = atomgroup.universe
-        super(DensityAnalysis, self).__init__(u.trajectory)
+        super(WDensityAnalysis, self).__init__(u.trajectory)
         self._atomgroup = atomgroup
         self._weights = weights
         self._delta = delta
@@ -252,7 +252,7 @@ class WDensityAnalysis(AnalysisBase):
         self._edges = edges
         self._arange = arange
         self._bins = bins
-        self._grids = np.array([grid.copy() for _ in range(self.weights.shape[1])])
+        self._grids = np.array([grid.copy() for _ in range(self._weights.shape[1])])
 
     def _single_frame(self):
         h, _ = np.histogramdd(self._atomgroup.positions,
@@ -262,16 +262,16 @@ class WDensityAnalysis(AnalysisBase):
         # return self._reduce(self._grid, h)
         #
         # serial code can simply do
-        self._grids += self.weights[self._ts.frame]*h
+        self._grids += np.array([w*h for w in self._weights[self._frame_index]])
 
     def _conclude(self):
         # average:
-        self._grid /= float(self.n_frames)
-        density = Density(grid=self._grid, edges=self._edges,
+        self._grids /= float(self.n_frames)
+        densities = [Density(grid=grid, edges=self._edges,
                           units={'length': "Angstrom"},
-                          parameters={'isDensity': False})
-        density.make_density()
-        self.results.density = density
+                          parameters={'isDensity': False}) for grid in self._grids]
+        [d.make_density() for d in densities]
+        self.results.densities = densities
 
     @property
     def density(self):
