@@ -1,5 +1,5 @@
 #!/nfs/homes4/rsexton/miniconda3/envs/basicrta/bin/python
-from basicrta.functions import collect_results, plot_protein
+from basicrta.functions import collect_results, plot_protein, tm
 
 if __name__ == "__main__":
     import argparse

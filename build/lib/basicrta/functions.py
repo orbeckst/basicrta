@@ -1,3 +1,5 @@
+from matplotlib.patches import Rectangle
+from matplotlib.collections import PatchCollection
 import ast
 import multiprocessing
 import numpy as np
@@ -23,6 +25,10 @@ __all__ = ['gibbs', 'unique_rates', 'get_s', 'plot_results', 'plot_post',
            'write_trajs', 'plot_hists', 'get_remaining_residue_inds',
            'make_surv', 'norm_exp', 'get_dec'
            ]
+
+def tm(Prot,i):
+        dif = Prot['tm{0}'.format(i)][1]-Prot['tm{0}'.format(i)][0]
+        return [Prot['tm{0}'.format(i)],dif]
 
 class gibbs(object):
     def __init__(self, times, residue, loc, ts, ncomp, niter=10000):

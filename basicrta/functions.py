@@ -26,6 +26,10 @@ __all__ = ['gibbs', 'unique_rates', 'get_s', 'plot_results', 'plot_post',
            'make_surv', 'norm_exp', 'get_dec'
            ]
 
+def tm(Prot,i):
+        dif = Prot['tm{0}'.format(i)][1]-Prot['tm{0}'.format(i)][0]
+        return [Prot['tm{0}'.format(i)],dif]
+
 class gibbs(object):
     def __init__(self, times, residue, loc, ts, ncomp, niter=10000):
         self.times, self.residue = times, residue
@@ -353,16 +357,18 @@ def plot_protein(residues, t_slow, sd, prot):
     if not os.path.exists('figs'):
         os.mkdir('figs')
 
+    fig, axs = plt.subplots(2,1,figsize=(5,2.5),sharex=True)
     p =[Rectangle((tm(prots[prot]['helices'],i+1)[0][0],0),tm(prots[prot]['helices'],i+1)[1],1,fill=True,color='black') for i in range(7)]
     patches = PatchCollection(p)
     patches.set_color('black')
     resids = np.array([int(res[1:]) for res in residues])
     max_inds = np.where(t_slow > 3 * t_slow.mean())
-    plt.scatter(resids, t_slow)
-    plt.errorbar(resids, t_slow, yerr=sd, fmt='o')
-    [plt.text(resids[ind], t_slow[ind], residues[ind]) for ind in max_inds[0]]
-    plt.ylabel(r'$\tau_{slow}$').set_rotation(0)
-    plt.xlabel(r'residue')
+    axs[0].scatter(resids, t_slow)
+    axs[0].errorbar(resids, t_slow, yerr=sd, fmt='o')
+    [axs[0].text(resids[ind], t_slow[ind], residues[ind]) for ind in max_inds[0]]
+    axs[1].add_collection(patches)
+    axs[0].ylabel(r'$\tau_{slow}$').set_rotation(0)
+    axs[1].xlabel(r'residue')
     sns.despine(offset=10)
     plt.tight_layout()
     plt.savefig('figs/t_slow.png')
