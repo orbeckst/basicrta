@@ -1,5 +1,5 @@
 #!/usr/env/bin python
-from basicrta.functions import collect_n_plot
+from basicrta.functions import collect_results, plot_protein
 
 if __name__ == "__main__":
     import argparse
