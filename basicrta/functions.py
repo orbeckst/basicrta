@@ -215,7 +215,7 @@ def plot_post(results, attr, comp=None, save=False, show=False):
         plt.close('all')
     else:
         for i in range(results.ncomp):
-            plt.hist(Attr[i], density=True, bins=50, label=f'comp. {i}')
+            plt.hist(Attr[i], density=True, label=f'comp. {i}')
             plt.legend()
             if save:
                 plt.savefig(f'{outdir}/figs/k{results.ncomp}-posterior_{attr}_comp-{i}.png')
