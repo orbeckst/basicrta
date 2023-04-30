@@ -1,3 +1,4 @@
+import ast
 import multiprocessing
 import numpy as np
 import matplotlib as mpl
@@ -342,10 +343,17 @@ def make_residue_plots(results, comps=None, show=False):
     plot_trace(r, 'rates', comp=comps, save=True, show=show)
 
 
-def plot_protein(residues, t_slow, sd):
+def plot_protein(residues, t_slow, sd, prot):
+    with open('tm_dict.txt', 'r') as f:
+        contents = f.read()
+        prots = ast.literal_eval(contents)
+
     if not os.path.exists('figs'):
         os.mkdir('figs')
 
+    p =[Rectangle((tm(prots[prot]['helices'],i+1)[0][0],0),tm(prots[prot]['helices'],i+1)[1],1,fill=True,color='black') for i in range(7)]
+    patches = PatchCollection(p)
+    patches.set_color('black')
     resids = np.array([int(res[1:]) for res in residues])
     max_inds = np.where(t_slow > 3 * t_slow.mean())
     plt.scatter(resids, t_slow)

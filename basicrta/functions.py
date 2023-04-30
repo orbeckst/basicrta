@@ -1,3 +1,5 @@
+from matplotlib.patches import Rectangle
+from matplotlib.collections import PatchCollection
 import ast
 import multiprocessing
 import numpy as np
