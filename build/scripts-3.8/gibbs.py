@@ -14,7 +14,6 @@ if __name__ == "__main__":
     parser.add_argument('--contacts')
     parser.add_argument('--top')
     parser.add_argument('--ncore')
-    parser.add_argument('--protname')
     parser.add_argument('--resids', nargs='?')
     parser.add_argument('--ncomp', nargs='?', default=None)
     args = parser.parse_args()
@@ -24,7 +23,7 @@ if __name__ == "__main__":
         line = data.readlines()[1].split(',')
         trajlen, protlen, liplen, sel, ts = int(line[0]), int(line[1]), int(line[2]), line[3], float(line[4])
 
-    nproc, ncomp, prot = int(args.ncore), args.ncomp, args.protname
+    nproc, ncomp = int(args.ncore), args.ncomp
     u = mda.Universe(args.top)
     ids = u.select_atoms('protein').residues.resids
     names = u.select_atoms('protein').residues.resnames
@@ -52,7 +51,7 @@ if __name__ == "__main__":
     times, trajtimes = times[rem_inds], trajtimes[rem_inds]
 
     residues, t_slow, sd, indicators = collect_results()
-    plot_protein(residues, t_slow, sd, prot)
+    plot_protein(residues, t_slow, sd)
     check_results(residues, times, ts)
     plot_hists(times, indicators, residues)
 
