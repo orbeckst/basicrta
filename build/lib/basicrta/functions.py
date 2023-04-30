@@ -1,3 +1,6 @@
+from matplotlib.patches import Rectangle
+from matplotlib.collections import PatchCollection
+import ast
 import multiprocessing
 import numpy as np
 import matplotlib as mpl
@@ -22,6 +25,10 @@ __all__ = ['gibbs', 'unique_rates', 'get_s', 'plot_results', 'plot_post',
            'write_trajs', 'plot_hists', 'get_remaining_residue_inds',
            'make_surv', 'norm_exp', 'get_dec'
            ]
+
+def tm(Prot,i):
+        dif = Prot['tm{0}'.format(i)][1]-Prot['tm{0}'.format(i)][0]
+        return [Prot['tm{0}'.format(i)],dif]
 
 class gibbs(object):
     def __init__(self, times, residue, loc, ts, ncomp, niter=10000):
@@ -342,10 +349,17 @@ def make_residue_plots(results, comps=None, show=False):
     plot_trace(r, 'rates', comp=comps, save=True, show=show)
 
 
-def plot_protein(residues, t_slow, sd):
+def plot_protein(residues, t_slow, sd, prot):
+    with open('tm_dict.txt', 'r') as f:
+        contents = f.read()
+        prots = ast.literal_eval(contents)
+
     if not os.path.exists('figs'):
         os.mkdir('figs')
 
+    p =[Rectangle((tm(prots[prot]['helices'],i+1)[0][0],0),tm(prots[prot]['helices'],i+1)[1],1,fill=True,color='black') for i in range(7)]
+    patches = PatchCollection(p)
+    patches.set_color('black')
     resids = np.array([int(res[1:]) for res in residues])
     max_inds = np.where(t_slow > 3 * t_slow.mean())
     plt.scatter(resids, t_slow)
