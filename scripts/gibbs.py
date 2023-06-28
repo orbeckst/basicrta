@@ -36,7 +36,8 @@ if __name__ == "__main__":
     trajtimes = np.array([a[a[:, 0] == i][:, 2] for i in uniqs], dtype=object)
 
     if args.resids:
-        idinds = np.array([np.where(resids == resid)[0] for resid in resids])
+        tmpresids = np.array(args.resids.strip('[]').split(',')).astype(int)
+        idinds = np.array([np.where(resids == resid)[0][0] for resid in tmpresids])
         residues, times, trajtimes = residues[idinds], times[idinds], trajtimes[idinds]
 
     if not os.path.exists('BaSiC-RTA'):
@@ -52,6 +53,12 @@ if __name__ == "__main__":
     times, trajtimes = times[rem_inds], trajtimes[rem_inds]
 
     residues, t_slow, sd, indicators = collect_results()
+    if args.resids:
+        tmpresids = np.array(args.resids.strip('[]').split(',')).astype(int)
+        resids = np.array([residue[1:] for residue in residues]).astype(int)
+        idinds = np.array([np.where(resids == resid)[0][0] for resid in tmpresids])
+        residues, times, trajtimes = residues[idinds], times[idinds], trajtimes[idinds]
+        t_slow, sd, indicators =  t_slow[idinds], sd[idinds], np.array(indicators)[idinds]
     plot_protein(residues, t_slow, sd, prot)
     check_results(residues, times, ts)
     plot_hists(times, indicators, residues)

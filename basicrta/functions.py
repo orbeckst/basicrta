@@ -41,10 +41,10 @@ class gibbs(object):
     #     return f'Gibbs sampler with N_comp={self.ncomp}'
 
     def run(self):
-        x, residue, niter_init = self.times, self.residue, 2500
+        x, residue, niter_init = self.times, self.residue, 10000
         t, s = get_s(x, self.ts)
         if self.ncomp:
-            ncomp = self.ncomp
+            ncomp = int(self.ncomp)
             inrates = 10 ** (np.linspace(-3, 1, ncomp))
             mcweights = np.zeros((self.niter + 1, ncomp))
             mcrates = np.zeros((self.niter + 1, ncomp))
@@ -62,36 +62,22 @@ class gibbs(object):
                 mcweights[i + 1] = rng.dirichlet(whypers + Ns)
                 mcrates[i + 1] = rng.gamma(rhypers[:, 0] + Ns, 1 / (rhypers[:, 1] + np.dot(z, x)))
 
-            uniq_rts = unique_rates(ncomp, mcrates, niter_init, first_check=True)
-            if uniq_rts != ncomp:
-                pass
-            else:
-                for i in tqdm(range(niter_init, self.niter), initial=niter_init, total=self.niter,
-                              desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
-                    tmp = mcweights[i] * norm_exp(x, mcrates[i]).T
-                    z = tmp.T / tmp.sum(axis=1)
-                    indicator += z
-                    Ns = z.sum(axis=1)
-                    mcweights[i + 1] = rng.dirichlet(whypers + Ns)
-                    mcrates[i + 1] = rng.gamma(rhypers[:, 0] + Ns, 1 / (rhypers[:, 1] + np.dot(z, x)))
-
-                uniq_rts = unique_rates(ncomp, mcrates, niter_init)
-                if uniq_rts == ncomp:
-                    for i in range(ncomp):
-                        start = 25
-                        wburnin = pmts.detect_equilibration(mcweights[start:, i])[0] + start
-                        rburnin = pmts.detect_equilibration(mcrates[start:, i])[0] + start
-                        weights.append(mcweights[wburnin:, i][pmts.subsample_correlated_data(mcweights[wburnin:, i])])
-                        rates.append(mcrates[rburnin:, i][pmts.subsample_correlated_data(mcrates[rburnin:, i])])
-                    plt.close('all')
-                    attrs = ['weights', 'rates', 'mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name',
-                             'indicator']
-                    values = [weights, rates, mcweights, mcrates, ncomp, self.niter, s, t, residue, indicator]
-                    r = save_results(attrs, values)
-                    make_residue_plots(r)
-                else:
-                    pass
+            for i in range(ncomp):
+                start = 25
+                wburnin = pmts.detect_equilibration(mcweights[start:, i])[0] + start
+                rburnin = pmts.detect_equilibration(mcrates[start:, i])[0] + start
+                weights.append(mcweights[wburnin:, i][pmts.subsample_correlated_data(mcweights[wburnin:, i])])
+                rates.append(mcrates[rburnin:, i][pmts.subsample_correlated_data(mcrates[rburnin:, i])])
             plt.close('all')
+            attrs = ['weights', 'rates', 'mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name',
+                     'indicator']
+            values = [weights, rates, mcweights, mcrates, ncomp, self.niter, s, t, residue, indicator]
+            r = save_results(attrs, values)
+            make_residue_plots(r)
+            plt.close('all')
+            all_post_hist(r, save=True)
+            plt.close('all')
+            plot_r_vs_w(r)
         else:
             for ncomp in range(2, 8):
                 inrates = 10**(np.linspace(-3, 1, ncomp))
@@ -137,6 +123,7 @@ class gibbs(object):
                         values = [weights, rates, mcweights, mcrates, ncomp, self.niter, s, t, residue, indicator]
                         r = save_results(attrs, values)
                         make_residue_plots(r)
+                        all_post_hist(r, save=True)
                     else:
                         break
                 plt.close('all')
@@ -165,6 +152,20 @@ def get_s(x, ts):
     t, s = make_surv(Hist)
     plt.close('all')
     return t, s
+
+def plot_r_vs_w(r):
+    plt.close()                                                               
+    for k in range(r.ncomp):                                                 
+        plt.plot(r.mcrates[5000:, k], r.mcweights[5000:, k], label=f'{k}')    
+    plt.yscale('log')                                                         
+    plt.xscale('log')                                                         
+    plt.xlim(1e-4, 1)                                                         
+    plt.ylim(1e-3, 1)                                                         
+    plt.ylabel('weight')                                                        
+    plt.xlabel('rate')                                                      
+    plt.legend()                                                              
+    plt.savefig(f'{r.name}/figs/k{r.ncomp}_r_vs_w.png')                                              
+    plt.savefig(f'{r.name}/figs/k{r.ncomp}_r_vs_w.pdf')                                              
 
 
 def plot_results(results, cond='mean', save=False, show=False):
@@ -206,6 +207,22 @@ def plot_results(results, cond='mean', save=False, show=False):
         plt.show()
     plt.close('all')
 
+
+def all_post_hist(results, save=False, show=False):
+    outdir = results.name
+    for attr in ['rates', 'weights']:
+        Attr = getattr(results, attr)
+        for i in range(results.ncomp):
+            plt.hist(Attr[i], density=True, bins=25, label=f'comp. {i}', alpha=0.5)
+        plt.legend()
+        plt.xlabel(f'{attr}'), plt.ylabel('p')
+        plt.yscale('log'), plt.xscale('log')
+        if save:
+            plt.savefig(f'{outdir}/figs/k{results.ncomp}-posterior_{attr}_comp-all.png')
+            plt.savefig(f'{outdir}/figs/k{results.ncomp}-posterior_{attr}_comp-all.pdf')
+        if show:
+            plt.show()
+        plt.close('all')
 
 def plot_post(results, attr, comp=None, save=False, show=False):
     outdir = results.name
@@ -346,7 +363,7 @@ def make_residue_plots(results, comps=None, show=False):
     plot_post(r, 'weights', comp=comps, save=True, show=show)
     plot_post(r, 'rates', comp=comps, save=True, show=show)
     plot_trace(r, 'weights', comp=comps, save=True, show=show)
-    plot_trace(r, 'rates', comp=comps, save=True, show=show)
+    plot_trace(r, 'rates', comp=comps, save=True, show=show, yrange=[-0.1,1])
 
 
 def plot_protein(residues, t_slow, sd, prot):
@@ -420,7 +437,7 @@ def check_results(residues, times, ts):
         os.mkdir('result_check')
     for time, residue in zip(times, residues):
         if os.path.exists(residue):
-            kmax = glob(f'{residue}/K*_results.pkl')[-1].split('/')[-1][1]
+            kmax = glob(f'{residue}/K*_results.pkl')[-1].split('/')[-1].split('/')[-1].split('_')[0][1:]
             os.popen(f'cp {residue}/figs/k{kmax}-mean_results.png result_check/{residue}-k{kmax}-results.png')
         else:
             t, s = get_s(np.array(time), ts)
@@ -517,24 +534,26 @@ def plot_hists(timelens, indicators, residues):
     for timelen, indicator, residue in tqdm(zip(timelens, indicators, residues), total=len(timelens),
                                             desc='ploting hists'):
         # framec = (np.round(timelen, 1) * 10).astype(int)
-        inds = np.array([np.where(indicator.argmax(axis=0) == i)[0] for i in range(8)], dtype=object)
-        lens = np.array([len(ind) for ind in inds])
-        ncomps = len(np.where(lens != 0)[0])
+        #inds = np.array([np.where(indicator.argmax(axis=0) == i)[0] for i in range(8)], dtype=object)
+        #lens = np.array([len(ind) for ind in inds])
+        #ncomps = len(np.where(lens != 0)[0])
+        ncomps = indicator[:,0].shape[0]
 
         plt.close()
         for i in range(ncomps):
             # h, edges = np.histogram(framec, density=True, bins=50, weights=indicator[i])
             h, edges = np.histogram(timelen, density=True, bins=50, weights=indicator[i])
             m = 0.5*(edges[1:]+edges[:-1])
-            plt.plot(m,h, label=i, alpha=0.5)
+            plt.plot(m, h, '.', label=i, alpha=0.5)
         plt.ylabel('p')
         plt.xlabel('time (ns)')
+        plt.xscale('log')
         plt.yscale('log')
         plt.ylim(1e-6, 1)
         sns.despine(offset=5)
         plt.legend()
-        plt.savefig(f'result_check/{residue}_hists.png')
-        plt.savefig(f'result_check/{residue}_hists.pdf')
+        plt.savefig(f'result_check/{residue}_hists_{ncomps}.png')
+        plt.savefig(f'result_check/{residue}_hists_{ncomps}.pdf')
 
 
 def get_remaining_residue_inds(residues, invert=True):
