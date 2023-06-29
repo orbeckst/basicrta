@@ -367,7 +367,7 @@ def make_residue_plots(results, comps=None, show=False):
 
 
 def plot_protein(residues, t_slow, sd, prot):
-    with open('../../../../tm_dict.txt', 'r') as f:
+    with open('tm_dict.txt', 'r') as f:
         contents = f.read()
         prots = ast.literal_eval(contents)
 
