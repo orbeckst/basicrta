@@ -41,7 +41,7 @@ class gibbs(object):
     #     return f'Gibbs sampler with N_comp={self.ncomp}'
 
     def run(self):
-        x, residue, niter_init = self.times, self.residue, 10000
+        x, residue, niter_init = self.times, self.residue, 2500
         t, s = get_s(x, self.ts)
         if self.ncomp:
             ncomp = int(self.ncomp)
@@ -367,7 +367,7 @@ def make_residue_plots(results, comps=None, show=False):
 
 
 def plot_protein(residues, t_slow, sd, prot):
-    with open('tm_dict.txt', 'r') as f:
+    with open('../../../../tm_dict.txt', 'r') as f:
         contents = f.read()
         prots = ast.literal_eval(contents)
 
