@@ -2,8 +2,8 @@ from basicrta.functions import norm_exp
 from tqdm import tqdm
 import numpy as np
 
-def cygibbs(x, loc, residue):
-    ncomp, niter = 100, 10000
+def cygibbs(x, loc, residue, niter=100000):
+    ncomp = 100
     inrates = 10 ** (np.linspace(-3, 1, ncomp))
     mcweights = np.zeros((niter + 1, ncomp))
     mcrates = np.zeros((niter + 1, ncomp))
