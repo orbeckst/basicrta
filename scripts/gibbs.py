@@ -24,6 +24,7 @@ if __name__ == "__main__":
         line = data.readlines()[1].split(',')
         trajlen, protlen, liplen, sel, ts = int(line[0]), int(line[1]), int(line[2]), line[3], float(line[4])
 
+    cutoff = float(args.contacts.split('.npy')[0].split('_')[-1])
     nproc, ncomp, prot = int(args.ncore), args.ncomp, args.protname
     u = mda.Universe(args.top)
     ids = u.select_atoms('protein').residues.resids
@@ -40,9 +41,9 @@ if __name__ == "__main__":
         idinds = np.array([np.where(resids == resid)[0][0] for resid in tmpresids])
         residues, times, trajtimes = residues[idinds], times[idinds], trajtimes[idinds]
 
-    if not os.path.exists('BaSiC-RTA'):
-        os.mkdir('BaSiC-RTA')
-    os.chdir('BaSiC-RTA')
+    if not os.path.exists(f'BaSiC-RTA-{cutoff}'):
+        os.mkdir(f'BaSiC-RTA-{cutoff}')
+    os.chdir(f'BaSiC-RTA-{cutoff}')
 
     input_list = np.array([[residues[i], times[i], ts, ncomp] for i in range(len(residues))], dtype=object)
     with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
@@ -58,7 +59,7 @@ if __name__ == "__main__":
         resids = np.array([residue[1:] for residue in residues]).astype(int)
         idinds = np.array([np.where(resids == resid)[0][0] for resid in tmpresids])
         residues, times, trajtimes = residues[idinds], times[idinds], trajtimes[idinds]
-        t_slow, sd, indicators =  t_slow[idinds], sd[idinds], np.array(indicators)[idinds]
+        t_slow, sd, indicators =  t_slow[idinds], sd[idinds], np.array(indicators, dtype=object)[idinds]
     plot_protein(residues, t_slow, sd, prot)
     check_results(residues, times, ts)
     plot_hists(times, indicators, residues)

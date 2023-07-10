@@ -245,8 +245,7 @@ class WDensityAnalysis(AnalysisBase):
         arange = np.transpose(np.vstack((BINS['min'], BINS['max'])))
         bins = BINS['Nbins']
         # create empty grid with the right dimensions (and get the edges)
-        grid, edges = np.histogramdd(np.zeros((1, 3)), bins=bins,
-                                     range=arange, normed=False)
+        grid, edges = np.histogramdd(np.zeros((1, 3)), bins=bins, range=arange)
         grid *= 0.0
         self._grid = grid
         self._edges = edges
@@ -256,8 +255,7 @@ class WDensityAnalysis(AnalysisBase):
 
     def _single_frame(self):
         h, _ = np.histogramdd(self._atomgroup.positions,
-                              bins=self._bins, range=self._arange,
-                              normed=False)
+                              bins=self._bins, range=self._arange)
         # reduce (proposed change #2542 to match the parallel version in pmda.density)
         # return self._reduce(self._grid, h)
         #
