@@ -36,7 +36,7 @@ if __name__ == "__main__":
     trajtimes = np.array([a[a[:, 0] == i][:, 2] for i in uniqs], dtype=object)
 
     if args.resids:
-        tmpresids = np.array([res[1:] for res in args.resids.strip('[]').split(',')]).astype(int)
+        tmpresids = np.array([res for res in args.resids.strip('[]').split(',')]).astype(int)
         idinds = np.array([np.where(resids == resid)[0][0] for resid in tmpresids])
         residues, times, trajtimes = residues[idinds], times[idinds], trajtimes[idinds]
 
@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
     residues, t_slow, sd, indicators = collect_results()
     if args.resids:
-        tmpresids = np.array([res[1:] for res in args.resids.strip('[]').split(',')]).astype(int)
+        tmpresids = np.array([res for res in args.resids.strip('[]').split(',')]).astype(int)
         resids = np.array([residue[1:] for residue in residues]).astype(int)
         idinds = np.array([np.where(resids == resid)[0][0] for resid in tmpresids])
         residues, times, trajtimes = residues[idinds], times[idinds], trajtimes[idinds]
