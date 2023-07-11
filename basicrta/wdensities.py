@@ -6,8 +6,8 @@ import os
 from tqdm import tqdm
 
 if __name__ == "__main__":
-    ncomp, resid = 5, 216
-    a = np.load('lipswap_contacts_7.0.npy')
+    ncomp, resid, cutoff = 5, 313, 7.0
+    a = np.load(f'lipswap_contacts_{cutoff}.npy')
     with open('contacts.metadata', 'r') as data:
         line = data.readlines()[1].split(',')
         trajlen, protlen, liplen, sel, ts = int(line[0]), int(line[1]), int(line[2]), line[3], float(line[4])
@@ -23,7 +23,7 @@ if __name__ == "__main__":
     trajtimes = np.array([a[a[:, 0] == i][:, 2] for i in uniqs], dtype=object)
     lipinds = np.array([a[a[:, 0] == i][:, 1] for i in uniqs], dtype=object)
 
-    os.chdir('BaSiC-RTA')
+    os.chdir(:'BaSiC-RTA-{cutoff}')
 
     residues, t_slow, sd, indicators = collect_results(ncomp)
     rem_inds = np.array([np.where(tmpresidues==residue)[0][0] for residue in residues])
@@ -46,7 +46,9 @@ if __name__ == "__main__":
     tmpL = [np.ones_like(np.arange(b, e))*l for b, e, l in zip(bframes, eframes, lind[multi_inds])]
     tmpI = [indic*np.ones((len(np.arange(b, e)), ncomp)) for b, e, indic in zip(bframes, eframes, indicators[index].T[sortinds][multi_inds])]
     
-    write_frames, write_Linds, write_Indics = np.concatenate([single_frames, *tmp]), np.concatenate([lind[single_inds], *tmpL]).astype(int), np.concatenate([indicators[index].T[sortinds][single_inds], *tmpI])
+    write_frames = np.concatenate([single_frames, *tmp])
+    write_Linds = np.concatenate([lind[single_inds], *tmpL]).astype(int)
+    write_Indics = np.concatenate([indicators[index].T[sortinds][single_inds], *tmpI])
     
     protein = u.select_atoms('protein')
     chol = u.select_atoms('resname CHOL')
