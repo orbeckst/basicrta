@@ -4,7 +4,6 @@ import numpy as np
 cimport numpy as cnp
 import gc
 import cython
-gc.enable
 
 cnp.import_array()
 DTI = np.int64
@@ -18,9 +17,8 @@ cdef norm_exp(cnp.ndarray x, cnp.ndarray rates):
     return np.array([rate*np.exp(-rate*x) for rate in rates])
 
 
-def cygibbs(cnp.ndarray[DTF_t, ndim=1] times, int loc, str residue, niter=100000):
+def cygibbs_o(cnp.ndarray[DTF_t, ndim=1] times, int ncomp, int loc, str residue, niter=100000):
     #cdef cnp.ndarray[np.float64, ndim=1] times
-    ncomp = 100 
     #DEF timelen = times.shape[0]
     cdef cnp.ndarray[DTF_t, ndim=1] x = np.zeros(times.shape[0], dtype=DTF)
     cdef cnp.ndarray[DTF_t, ndim=2] mcweights = np.zeros((niter + 1, ncomp),dtype=DTF)
@@ -29,19 +27,13 @@ def cygibbs(cnp.ndarray[DTF_t, ndim=1] times, int loc, str residue, niter=100000
     cdef cnp.ndarray[DTI_t, ndim=2] rh = np.ones((ncomp, 2), dtype=DTI)*[2, 1] 
     cdef cnp.ndarray[DTI_t, ndim=2] Ns = np.zeros((niter, ncomp), dtype=DTI)
 
-    cdef cnp.ndarray[DTF_t, ndim=1] temp  
     cdef cnp.ndarray[DTF_t, ndim=2] tmp  
     cdef cnp.ndarray[DTF_t, ndim=2] z
-    cdef cnp.ndarray[DTF_t, ndim=2] c
-    cdef cnp.ndarray[DTF_t, ndim=2] uu
-    cdef cnp.ndarray[DTF_t, ndim=1] s
-    cdef cnp.ndarray[DTF_t, ndim=1] Ts
     cdef list inds
 
     x[:] = times
     inrates = 10 ** (np.linspace(-3, 1, ncomp))
-    temp = np.exp(-20*np.linspace(0,10, ncomp))
-    mcweights[0], mcrates[0] = temp/sum(temp), inrates
+    mcweights[0], mcrates[0] = inrates / sum(inrates), inrates
     #weights, rates = [], []
     # indicator = np.memmap('indicator', dtype=float, mode='w+', shape=(ncomp, x.shape[0]))
     #indicator = np.zeros((ncomp, x.shape[0]), dtype=float)
@@ -49,28 +41,19 @@ def cygibbs(cnp.ndarray[DTF_t, ndim=1] times, int loc, str residue, niter=100000
 
     for j in tqdm(range(niter), desc=f'{residue}-K{ncomp}', position=loc, leave=False):
         tmp = mcweights[j]*norm_exp(x, mcrates[j]).T
-        z = (tmp.T/tmp.sum(axis=1)).T
-        c = z.cumsum(axis=1)
-        uu = np.random.rand(len(c), 1)
-        s = np.array((uu < c).argmax(axis=1), dtype=DTF)
-        Ns[j][:] = np.array([len(s[s==i]) for i in range(ncomp)])
-        inds = [np.where(s==i)[0] for i in range(ncomp)]
-        Ts = np.array([x[inds[i]].sum() for i in range(ncomp)])
+        z = tmp.T/tmp.sum(axis=1)
+        Ns[j] = z.sum(axis=1)
+        #c = z.cumsum(axis=1)
+        #uu = np.random.rand(len(c), 1)
+        #s = np.array((uu < c).argmax(axis=1), dtype=DTF)
+        #Ns[j][:] = np.array([len(s[s==i]) for i in range(ncomp)])
+        #inds = [np.where(s==i)[0] for i in range(ncomp)]
+        #Ts = np.array([x[inds[i]].sum() for i in range(ncomp)])
         #wtmp, rtmp = np.random.dirichlet(wh + Ns[j]), np.random.gamma(rh[:,0]+Ns[j], 1/(rh[:,1]+Ts))
         #winds = wtmp.argsort()
         #mcweights[j+1], mcrates[j+1] = wtmp[winds], rtmp[winds]
-        mcweights[j+1], mcrates[j+1] = np.random.dirichlet(wh + Ns[j]), np.random.gamma(rh[:,0]+Ns[j], 1/(rh[:,1]+Ts))
+        mcweights[j+1] = np.random.dirichlet(wh + Ns[j])
+        mcrates[j+1] = np.random.gamma(rh[:,0]+Ns[j], 1/(rh[:,1]+np.dot(z, x)))
         gc.collect()
-#    j=0    
-#    tmp = mcweights[j]*norm_exp(x, mcrates[j]).T
-#    z = (tmp.T/tmp.sum(axis=1)).T
-#    c = z.cumsum(axis=1)
-#    uu = np.random.rand(len(c), 1)
-#    s = np.array((uu < c).argmax(axis=1), dtype=DTF)
-#    Ns[j][:] = np.array([len(s[s==i]) for i in range(ncomp)])
-#    inds = [np.where(s==i)[0] for i in range(ncomp)]
-#    Ts = np.array([x[inds[i]].sum() for i in range(ncomp)])
-#    mcweights[j+1], mcrates[j+1] = np.random.dirichlet(wh + Ns[j]), np.random.gamma(rh[:,0]+Ns[j], 1/(rh[:,1]+Ts))
-#    gc.collect()
     return mcweights, mcrates, Ns
 

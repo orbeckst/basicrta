@@ -17,6 +17,7 @@ from tqdm import tqdm
 import MDAnalysis as mda
 mpl.rcParams['pdf.fonttype'] = 42
 rng = default_rng()
+import gc
 
 __all__ = ['gibbs', 'unique_rates', 'get_s', 'plot_results', 'plot_post',
            'plot_trace', 'collect_results', 'save_results', 
@@ -31,7 +32,7 @@ def tm(Prot,i):
         return [Prot['tm{0}'.format(i)],dif]
 
 class gibbs(object):
-    def __init__(self, times, residue, loc, ts, niter=10000):
+    def __init__(self, times, ncomp, residue, loc, ts, niter=10000):
         self.times, self.residue = times, residue
         self.niter, self.loc, self.ts, self.ncomp = niter, loc, ts, ncomp
     # def __repr__(self):
@@ -41,27 +42,35 @@ class gibbs(object):
     #     return f'Gibbs sampler with N_comp={self.ncomp}'
 
     def run(self):
-        x, residue, niter_init = self.times, self.residue, 2500
+        x, residue = self.times, self.residue
         t, s = get_s(x, self.ts)
-        ncomp = 100
-        inrates = 10 ** (np.linspace(-3, 1, ncomp))
-        mcweights = np.zeros((self.niter + 1, ncomp))
-        mcrates = np.zeros((self.niter + 1, ncomp))
+        inrates = 10 ** (np.linspace(-3, 1, self.ncomp))
+        mcweights = np.zeros((self.niter + 1, self.ncomp))
+        mcrates = np.zeros((self.niter + 1, self.ncomp))
         mcweights[0], mcrates[0] = inrates / sum(inrates), inrates
-        whypers, rhypers = np.ones(ncomp) * [2], np.ones((ncomp, 2)) * [2, 1]  # guess hyperparameters
+        whypers, rhypers = np.ones(self.ncomp)/[self.ncomp], np.ones((self.ncomp, 2)) * [2, 1]  # guess hyperparameters
         weights, rates = [], []
+        Ns = np.zeros((self.niter, self.ncomp))
         # indicator = np.memmap('indicator', dtype=float, mode='w+', shape=(ncomp, x.shape[0]))
-        indicator = np.zeros((ncomp, x.shape[0]), dtype=float)
+        indicator = np.zeros((self.ncomp, x.shape[0]), dtype=float)
         # indicator = np.zeros((x.shape[0], ncomp), dtype=int)
-        for i in tqdm(range(self.niter), desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
-            tmp = mcweights[i] * norm_exp(x, mcrates[i]).T
-            z = tmp.T / tmp.sum(axis=1)
-            indicator += z
-            Ns = z.sum(axis=1)
-            mcweights[i + 1] = rng.dirichlet(whypers + Ns)
-            mcrates[i + 1] = rng.gamma(rhypers[:, 0] + Ns, 1 / (rhypers[:, 1] + np.dot(z, x)))
+        for j in tqdm(range(self.niter), desc=f'{residue}-K{self.ncomp}', position=self.loc, leave=False):
+            tmp = mcweights[j]*norm_exp(x, mcrates[j]).T
+            z = (tmp.T/tmp.sum(axis=1)).T
+            c = z.cumsum(axis=1)
+            uu = np.random.rand(len(c), 1)
+            s = np.array((uu < c).argmax(axis=1))
+            Ns[j][:] = np.array([len(s[s==i]) for i in range(self.ncomp)])
+            inds = [np.where(s==i)[0] for i in range(self.ncomp)]
+            Ts = np.array([x[inds[i]].sum() for i in range(self.ncomp)])
+            #wtmp, rtmp = np.random.dirichlet(wh + Ns[j]), np.random.gamma(rh[:,0]+Ns[j], 1/(rh[:,1]+Ts))
+            #winds = wtmp.argsort()
+            #mcweights[j+1], mcrates[j+1] = wtmp[winds], rtmp[winds]
+            mcweights[j+1] = np.random.dirichlet(whypers + Ns[j])
+            mcrates[j+1] = np.random.gamma(rhypers[:,0]+Ns[j], 1/(rhypers[:,1]+Ts))
+            gc.collect()
 
-        for i in range(ncomp):
+        for i in range(self.ncomp):
             start = 25
             wburnin = pmts.detect_equilibration(mcweights[start:, i])[0] + start
             rburnin = pmts.detect_equilibration(mcrates[start:, i])[0] + start
@@ -70,7 +79,7 @@ class gibbs(object):
         plt.close('all')
         attrs = ['weights', 'rates', 'mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name',
                  'indicator']
-        values = [weights, rates, mcweights, mcrates, ncomp, self.niter, s, t, residue, indicator]
+        values = [weights, rates, mcweights, mcrates, self.ncomp, self.niter, s, t, residue, indicator]
         r = save_results(attrs, values)
         make_residue_plots(r)
         plt.close('all')
