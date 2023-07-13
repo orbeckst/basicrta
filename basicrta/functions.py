@@ -49,7 +49,7 @@ class gibbs(object):
             mcweights = np.zeros((self.niter + 1, ncomp))
             mcrates = np.zeros((self.niter + 1, ncomp))
             Ns = np.zeros((self.niter, ncomp))
-            tmp = np.exp(-20*np.linspace(0,10, ncomp))
+            tmp = np.exp(-50*np.linspace(0,10, ncomp))
             mcweights[0], mcrates[0] = tmp/tmp.sum(), inrates
             #whypers, rhypers = np.ones(ncomp) * [2], np.ones((ncomp, 2)) * [2, 1]  # guess hyperparameters
             whypers, rhypers = np.ones(ncomp)/[ncomp], np.ones((ncomp, 2))*[2, 1]  # guess hyperparameters
