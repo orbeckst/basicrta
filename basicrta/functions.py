@@ -15,6 +15,8 @@ import math
 from numpy.random import default_rng
 from tqdm import tqdm
 import MDAnalysis as mda
+import gc
+gc.enable()
 mpl.rcParams['pdf.fonttype'] = 42
 rng = default_rng()
 
@@ -29,6 +31,32 @@ __all__ = ['gibbs', 'unique_rates', 'get_s', 'plot_results', 'plot_post',
 def tm(Prot,i):
         dif = Prot['tm{0}'.format(i)][1]-Prot['tm{0}'.format(i)][0]
         return [Prot['tm{0}'.format(i)],dif]
+
+
+def gibbs_sorted(x, niter, residue):
+    ncomp = 100
+    inrates = 10 ** (np.linspace(-3, 1, ncomp))
+    mcweights = np.zeros((niter + 1, ncomp))
+    mcrates = np.zeros((niter + 1, ncomp))
+    Ns = np.zeros((niter, ncomp))
+    tmp = np.exp(-50*np.linspace(0,10, ncomp))
+    mcweights[0], mcrates[0] = tmp/tmp.sum(), inrates
+    whypers, rhypers = np.ones(ncomp)/[ncomp], np.ones((ncomp, 2))*[2, 1]  # guess hyperparameters
+    for j in tqdm(range(niter), desc=f'{residue}-K{ncomp}', position=1, leave=False):
+        tmp = mcweights[j]*mcrates[j]*np.exp(np.outer(-mcrates[j], x)).T
+        z = (tmp.T/tmp.sum(axis=1)).T
+        c = z.cumsum(axis=1)
+        uu = np.random.rand(len(c), 1)
+        s = np.array((uu < c).argmax(axis=1))
+        Ns[j][:] = np.array([len(s[s==i]) for i in range(ncomp)])
+        inds = [np.where(s==i)[0] for i in range(ncomp)]
+        Ts = np.array([x[inds[i]].sum() for i in range(ncomp)])
+        wtmp, rtmp = np.random.dirichlet(whypers+Ns[j]), np.random.gamma(rhypers[:,0]+Ns[j], 1/(rhypers[:,1]+Ts))
+        winds = wtmp.argsort()[::-1]
+        mcweights[j+1], mcrates[j+1] = wtmp[winds], rtmp[winds]
+        gc.collect()
+    return mcweights, mcrates, Ns
+
 
 class gibbs(object):
     def __init__(self, times, residue, loc, ts, ncomp, niter=10000):
