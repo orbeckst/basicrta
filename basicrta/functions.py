@@ -59,8 +59,69 @@ def gibbs_sorted(x, niter, residue):
     return mcweights, mcrates, Ns
 
 
+class newgibbs(object):
+    def __init__(self, times, residue, loc, ts, ncomp=50, niter=10000):
+        self.times, self.residue = times, residue
+        self.niter, self.loc, self.ts, self.ncomp = niter, loc, ts, ncomp
+    # def __repr__(self):
+    #     return f'Gibbs sampler with N_comp={self.ncomp}'
+
+    # def __str__(self):
+    #     return f'Gibbs sampler with N_comp={self.ncomp}'
+
+    def run(self):
+        x, residue = self.times, self.residue
+        t, s = get_s(x, self.ts)
+        ncomp = int(self.ncomp)
+        inrates = 0.5*10**np.arange(-ncomp+2, 2, dtype=float)                  
+        mcweights = np.zeros((self.niter + 1, ncomp))
+        mcrates = np.zeros((self.niter + 1, ncomp))
+        Ns = np.zeros((self.niter, ncomp))
+        lnl = np.zeros(self.niter)                                                  
+        tmp = 9*10**(-np.arange(1, ncomp+1, dtype=float))                      
+        mcweights[0], mcrates[0] = tmp/tmp.sum(), inrates[::-1]
+        whypers, rhypers = np.ones(ncomp)/[ncomp], np.ones((ncomp, 2))*[2, 1]  # guess hyperparameters
+        weights, rates = [], []
+        indicator = np.zeros((ncomp, x.shape[0]), dtype=float)
+
+        for j in tqdm(range(self.niter), desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
+            tmp = mcweights[j]*mcrates[j]*np.exp(np.outer(-mcrates[j],x)).T
+            z = (tmp.T/tmp.sum(axis=1)).T
+            
+            c = z.cumsum(axis=1)                 
+            uu = np.random.rand(len(c), 1)       
+            s = np.array((uu < c).argmax(axis=1))
+            
+            inds = [np.where(s==i)[0] for i in range(ncomp)]
+            lnl[j] = np.log(tmp.take(s)).sum()                       
+            Ns[j][:] = np.array([len(s[s==i]) for i in range(ncomp)])
+            Ts = np.array([x[inds[i]].sum() for i in range(ncomp)])  
+            
+            mcweights[j+1] = np.random.dirichlet(whypers+Ns[j]) 
+            mcrates[j+1] = np.random.gamma(rhypers[:,0]+Ns[j], 1/(rhypers[:,1]+Ts))
+
+        for i in range(ncomp):
+            start = 100
+            #burnin = pmts.detect_equilibration(lnl[start:])[0] + start
+            #si = pmts.subsample_correlated_data(lnl[burnin:, i])
+            wburnin = pmts.detect_equilibration(mcweights[start:, i])[0] + start
+            rburnin = pmts.detect_equilibration(mcrates[start:, i])[0] + start
+            weights.append(mcweights[burnin:, i][pmts.subsample_correlated_data(mcweights[burnin:, i])])
+            rates.append(mcrates[burnin:, i][pmts.subsample_correlated_data(mcrates[burnin:, i])])
+        plt.close('all')
+        attrs = ['weights', 'rates', 'mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name',
+                 'indicator', 'Ns']
+        values = [weights, rates, mcweights, mcrates, ncomp, self.niter, s, t, residue, indicator, Ns]
+        r = save_results(attrs, values)
+        make_residue_plots(r)
+        plt.close('all')
+        all_post_hist(r, save=True)
+        plt.close('all')
+        plot_r_vs_w(r)
+
+
 class gibbs(object):
-    def __init__(self, times, residue, loc, ts, ncomp, niter=10000):
+    def __init__(self, times, residue, loc, ts, ncomp=50, niter=10000):
         self.times, self.residue = times, residue
         self.niter, self.loc, self.ts, self.ncomp = niter, loc, ts, ncomp
     # def __repr__(self):
@@ -504,10 +565,10 @@ def run_residue(residue, time, ts, ncomp, niter):
         except ValueError:
             proc = 1
         if niter:
-            gib = gibbs(x, residue, proc, ts, ncomp, niter)
+            gib = newgibbs(x, residue, proc, ts, ncomp=ncomp, niter=niter)
         else:
-            gib = gibbs(x, residue, proc, ts, ncomp)
-
+            gib = newgibbs(x, residue, proc, ts, ncomp=ncomp, niter=10000)
+        
         run(gib)
 
 

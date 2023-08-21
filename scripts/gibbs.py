@@ -16,15 +16,12 @@ if __name__ == "__main__":
     parser.add_argument('--protname')
     parser.add_argument('--ncore', nargs='?', default=1)
     parser.add_argument('--resids', nargs='?')
-    parser.add_argument('--ncomp', nargs='?', default=None)
     parser.add_argument('--niter', nargs='?', default=None)
+    parser.add_argument('--ncomp', nargs='?', default=50)
     args = parser.parse_args()
     a = np.load(args.contacts)
 
-    with open('contacts.metadata', 'r') as data:
-        line = data.readlines()[1].split(',')
-        trajlen, protlen, liplen, sel, ts = int(line[0]), int(line[1]), int(line[2]), line[3], float(line[4])
-
+    ts = 0.1
     cutoff = float(args.contacts.split('.npy')[0].split('_')[-1])
     nproc, prot = int(args.ncore), args.protname
     if args.ncomp:
