@@ -13,16 +13,27 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--contacts')
     parser.add_argument('--top')
-    parser.add_argument('--ncore')
     parser.add_argument('--protname')
+    parser.add_argument('--ncore', nargs='?', default=1)
     parser.add_argument('--resids', nargs='?')
+    parser.add_argument('--niter', nargs='?', default=None)
     parser.add_argument('--ncomp', nargs='?', default=50)
     args = parser.parse_args()
     a = np.load(args.contacts)
 
     ts = 0.1
     cutoff = float(args.contacts.split('.npy')[0].split('_')[-1])
-    nproc, ncomp, prot = int(args.ncore), args.ncomp, args.protname
+    nproc, prot = int(args.ncore), args.protname
+    if args.ncomp:
+        ncomp = int(args.ncomp)
+    else: 
+        ncomp = None
+
+    if args.niter:
+        niter = int(args.niter)
+    else: 
+        niter = None
+
     u = mda.Universe(args.top)
     ids = u.select_atoms('protein').residues.resids
     names = u.select_atoms('protein').residues.resnames
@@ -30,42 +41,23 @@ if __name__ == "__main__":
     uniqs = np.unique(a[:, 0]).astype(int)
     resids, resnames = ids[uniqs], names[uniqs]
     residues = np.array([f'{name}{resid}' for name, resid in zip(resnames, resids)])
-    times = np.array([a[a[:, 0] == i][:, 3] for i in uniqs], dtype=object)
-    trajtimes = np.array([a[a[:, 0] == i][:, 2] for i in uniqs], dtype=object)
 
     if args.resids:
         tmpresids = np.array([res for res in args.resids.strip('[]').split(',')]).astype(int)
         idinds = np.array([np.where(resids == resid)[0][0] for resid in tmpresids])
-        residues, times, trajtimes = residues[idinds], times[idinds], trajtimes[idinds]
+        residues = residues[idinds] 
+        times = [a[a[:, 0] == i][:, 3] for i in uniqs[idinds]]
+        trajtimes = [a[a[:, 0] == i][:, 2] for i in uniqs[idinds]]
+    else:
+        times = [a[a[:, 0] == i][:, 3] for i in uniqs]
+        trajtimes = [a[a[:, 0] == i][:, 2] for i in uniqs]
 
     if not os.path.exists(f'BaSiC-RTA-{cutoff}'):
         os.mkdir(f'BaSiC-RTA-{cutoff}')
     os.chdir(f'BaSiC-RTA-{cutoff}')
 
-    input_list = np.array([[residues[i], times[i], ts, ncomp] for i in range(len(residues))], dtype=object)
+    input_list = np.array([[residues[i], times[i], ts, ncomp, niter] for i in range(len(residues))], dtype=object)
     with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
         for _ in tqdm(p.istarmap(run_residue, input_list), total=len(residues), position=0, desc='overall progress'):
             pass
 
-    rem_inds = get_remaining_residue_inds(residues)
-    times, trajtimes = times[rem_inds], trajtimes[rem_inds]
-
-    residues, t_slow, sd, indicators = collect_results()
-    if args.resids:
-        tmpresids = np.array([res for res in args.resids.strip('[]').split(',')]).astype(int)
-        resids = np.array([residue[1:] for residue in residues]).astype(int)
-        idinds = np.array([np.where(resids == resid)[0][0] for resid in tmpresids])
-        residues, times, trajtimes = residues[idinds], times[idinds], trajtimes[idinds]
-        t_slow, sd, indicators =  t_slow[idinds], sd[idinds], np.array(indicators, dtype=object)[idinds]
-    plot_protein(residues, t_slow, sd, prot)
-    check_results(residues, times, ts)
-    plot_hists(times, indicators, residues)
-
-    # print(residues[0])
-    # input_list = np.array([[u, times[i], trajtimes[i], indicators[i], residues[i]] for i in range(len(residues))],
-    #                       dtype=object)
-    # input_list = np.array([[u, times[i], trajtimes[i], indicators[i], residues[i]] for i in range(1)],
-    #                       dtype=object)
-    # Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)).starmap(write_trajs, input_list)
-
-    # write_trajs(u, times, trajtimes, indicators, residues)
