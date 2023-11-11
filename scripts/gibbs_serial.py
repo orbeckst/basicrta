@@ -20,7 +20,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     a = np.load(args.contacts)
 
-    ts, ncomp = 0.1, 50
+    ts, ncomp = 0.1, 10
     cutoff = float(args.contacts.split('.npy')[0].split('_')[-1])
     nproc, prot = 1, args.protname
     if args.niter:

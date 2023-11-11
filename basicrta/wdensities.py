@@ -23,7 +23,7 @@ if __name__ == "__main__":
     trajtimes = np.array([a[a[:, 0] == i][:, 2] for i in uniqs], dtype=object)
     lipinds = np.array([a[a[:, 0] == i][:, 1] for i in uniqs], dtype=object)
 
-    os.chdir(:'BaSiC-RTA-{cutoff}')
+    os.chdir('BaSiC-RTA-{cutoff}')
 
     residues, t_slow, sd, indicators = collect_results(ncomp)
     rem_inds = np.array([np.where(tmpresidues==residue)[0][0] for residue in residues])

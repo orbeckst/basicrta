@@ -61,7 +61,7 @@ def gibbs_sorted(x, niter, residue):
 
 
 class newgibbs(object):
-    def __init__(self, times, residue, loc, ts, ncomp=50, niter=10000):
+    def __init__(self, times, residue, loc, ts, ncomp=20, niter=10000):
         self.times, self.residue = times, residue
         self.niter, self.loc, self.ts, self.ncomp = niter, loc, ts, ncomp
     # def __repr__(self):
@@ -71,7 +71,7 @@ class newgibbs(object):
     #     return f'Gibbs sampler with N_comp={self.ncomp}'
 
     def run(self):
-        x, residue, ncomp = self.times, self.residue, 50
+        x, residue, ncomp = self.times, self.residue, self.ncomp
         t, _s = get_s(x, self.ts)
         if not os.path.exists(f'{residue}'):
             os.mkdir(f'{residue}')
@@ -89,7 +89,7 @@ class newgibbs(object):
         lnp = np.zeros(self.niter)                                                  
         tmpw = 9*10**(-np.arange(1, ncomp+1, dtype=float))                      
         mcweights[0], mcrates[0] = tmpw/tmpw.sum(), inrates[::-1]
-        whypers, rhypers = np.ones(ncomp)/[ncomp], np.ones((ncomp, 2))*[2, 1]  # guess hyperparameters
+        whypers, rhypers = np.ones(ncomp)/[ncomp], np.ones((ncomp, 2))*[1, 2]  # guess hyperparameters
         weights, rates = [], []
         g, burnin = 0, 0
 
@@ -501,7 +501,7 @@ def collect_results(ncomp=None):
         ind = np.where(means == means.min())[0][0]
         t_slow[i] = 1/means[ind]
         sd[i] = tmp_res.rates[ind].std()/means[ind]**2
-        indicators.append(tmp_res.indicator / tmp_res.indicator.sum(axis=0))
+        indicators.append((tmp_res.indicator.T/tmp_res.indicator.sum(axis=1)).T)
     return residues, t_slow, sd, indicators
 
 
