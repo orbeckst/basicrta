@@ -99,12 +99,14 @@ if __name__ == "__main__":
     liplen = len(uu.select_atoms(args.sel).residues)
 
     with open('contacts.metadata','w') as meta:              
-        meta.write('trajlen,protlen,liplen,sel \n')    
+        meta.write('trajlen,protlen,liplen,sel,ts \n')    
         meta.write('{0},{1},{2},{3},{4}'.format(trajlen,protlen,liplen,args.sel,ts))
 
-
     Nbs = len(uu.trajectory[trajslice])//100000
-    big_slices = make_balanced_slices(len(uu.trajectory[trajslice]), Nbs, start=b, stop=z, step=s) 
+    if Nbs>0:
+        big_slices = make_balanced_slices(len(uu.trajectory[trajslice]), Nbs, start=b, stop=z, step=s) 
+    else:
+        big_slices = [trajslice]
     
     for bsn,big_slice in enumerate(big_slices):
         slices = make_balanced_slices(len(uu.trajectory[big_slice]), nproc, start=big_slice.start, stop=big_slice.stop, step=big_slice.step)

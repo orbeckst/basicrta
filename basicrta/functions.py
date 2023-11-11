@@ -80,12 +80,12 @@ class newgibbs(object):
         #mcweights = np.memmap(f'{residue}/.mcweights.npy', shape=(self.niter + 1, ncomp), mode='w+')
         #mcrates = np.memmap(f'{residue}/.mcrates.npy', shape=(self.niter + 1, ncomp), mode='w+')
         #Ns = np.memmap(f'{residue}/.Ns.npy', shape=(self.niter, ncomp), mode='w+')
-        indicator = np.memmap(f'{residue}/.indicator.npy', shape=(self.niter, x.shape[0]),
-                              mode='w+', dtype=np.uint8)
+        #indicator = np.memmap(f'{residue}/.indicator.npy', shape=(self.niter, x.shape[0]),
+        #                      mode='w+', dtype=np.uint8)
         mcweights = np.zeros((self.niter + 1, ncomp))
         mcrates = np.zeros((self.niter + 1, ncomp))
         Ns = np.zeros((self.niter, ncomp))
-        #indicator = np.zeros((ncomp, x.shape[0]))
+        indicator = np.zeros((ncomp, x.shape[0]))
         lnp = np.zeros(self.niter)                                                  
         tmpw = 9*10**(-np.arange(1, ncomp+1, dtype=float))                      
         mcweights[0], mcrates[0] = tmpw/tmpw.sum(), inrates[::-1]
@@ -473,6 +473,8 @@ def plot_trace(results, attr, comp=None, xrange=None, yrange=None, save=False, s
 
 
 def collect_results(ncomp=None):
+    """returns (residues, tslow, stds)
+    """
     dirs = np.array(glob('?[0-9]*'))
     sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
     dirs = dirs[sorted_inds]
@@ -483,24 +485,27 @@ def collect_results(ncomp=None):
     for i, adir in enumerate(tqdm(dirs, desc='Collecting results')):
         residues[i] = adir
         try:
-            results = glob(f'{adir}/*results.pkl')
-            results.sort()
-            if ncomp and ncomp-1<=len(results):
-                max_comp_res = results[ncomp-2]
-            else:
-                max_comp_res = results[-1]
-        except IndexError:
+            with open(f'{adir}/processed_results_10000.pkl', 'rb') as f:
+                tmp_res = pickle.load(f)
+        #    results = glob(f'{adir}/*results.pkl')
+        #    results.sort()
+        #    if ncomp and ncomp-1<=len(results):
+        #        max_comp_res = results[ncomp-2]
+        #    else:
+        #        max_comp_res = results[-1]
+        except FileNotFoundError:
             t_slow[i]=0
             continue
-        with open(max_comp_res, 'rb') as W:
-            tmp_res = pickle.load(W)
+        #with open(max_comp_res, 'rb') as W:
+        #    tmp_res = pickle.load(W)
+        
 
-        means = np.array([post.mean() for post in tmp_res.rates])
+        means = np.array([(1/post).mean() for post in tmp_res.rates.T])
         if len(means) == 0:
             continue
         ind = np.where(means == means.min())[0][0]
         t_slow[i] = 1/means[ind]
-        sd[i] = tmp_res.rates[ind].std()/means[ind]**2
+        sd[i] = (1/tmp_res.rates[:, ind]).std()
         indicators.append((tmp_res.indicator.T/tmp_res.indicator.sum(axis=1)).T)
     return residues, t_slow, sd, indicators
 
@@ -579,10 +584,10 @@ def plot_protein(residues, t_slow, sd, prot):
     axs[0].errorbar(resids, t_slow, yerr=sd, fmt='none', color='C0')
     [axs[0].text(resids[ind], t_slow[ind], residues[ind]) for ind in max_inds[0]]
     axs[1].add_collection(patches)
-    if (prot=='cck1r') or (prot=='cck2r'):
-        axs[0].set_ylim(0, 1300)
-    else:
-        axs[0].set_ylim(0, 500)
+    #if (prot=='cck1r') or (prot=='cck2r'):
+    #    axs[0].set_ylim(0, 1300)
+    #else:
+    #    axs[0].set_ylim(0, 500)
     axs[0].set_ylabel(r'$\tau_{slow}$      ' + '\n (ns)      ',rotation=0)
     axs[1].set_xlabel(r'residue')
     axs[0].get_xaxis().set_visible(False)

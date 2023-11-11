@@ -1,0 +1,92 @@
+from basicrta.wdensity import WDensityAnalysis
+from basicrta import *
+import numpy as np
+import MDAnalysis as mda
+import os
+from tqdm import tqdm
+import pickle
+
+if __name__ == "__main__":
+    ncomp, residue, cutoff = 5, 'V317', 7.0
+    resid = int(residue[1:])
+    trajstart, step = 0, 1
+    wf, wl, wi = [], [], []
+    if not os.path.exists(f'{residue}/den_write_data_step{step}_ncomp{ncomp}.npy'):
+        for adir in ['1', '2', '3']:
+            os.chdir(f'{adir}')
+            a = np.load(f'lipswap_contacts_{cutoff}.npy')
+            with open('contacts.metadata', 'r') as data:
+                line = data.readlines()[1].split(',')
+                trajlen, protlen, liplen, sel, ts = int(line[0]), int(line[1]), int(line[2]), line[3], float(line[4])
+
+            u = mda.Universe(os.path.abspath('step7_production.tpr'), os.path.abspath('fixrot_dimer.xtc'))
+            uf = mda.Universe('step7_fixed.pdb')
+            resids = uf.select_atoms('protein').residues.resids
+            index = np.where(resids==resid)[0][0]
+
+            times = np.array(a[a[:, 0] == index][:, 3])
+            trajtimes = np.array(a[a[:, 0] == index][:, 2])
+            lipinds = np.array(a[a[:, 0] == index][:, 1])
+            dt = u.trajectory.ts.dt/1000 #nanoseconds
+
+            os.chdir(f'BaSiC-RTA-{cutoff}/{residue}')
+            with open(f'K{ncomp}_results.pkl', 'rb') as f:
+                pc = pickle.load(f)
+            sortinds = np.argsort([line.mean() for line in pc.rates])
+            indicators = pc.indicator[sortinds]/pc.indicator.sum(axis=0)
+
+            bframes, eframes = get_start_stop_frames(trajtimes, times, dt)
+            #sortinds = bframes.argsort()
+            #bframes.sort()
+            #eframes, lind = eframes[sortinds], lipinds[sortinds]
+            #single_inds, multi_inds = np.where(times==dt)[0], np.where(times>dt)[0]
+            #single_frames = bframes[single_inds]
+           
+            #bframes, eframes = bframes[multi_inds], eframes[multi_inds]
+            tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]
+            tmpL = [np.ones_like(np.arange(b, e))*l for b, e, l in zip(bframes, eframes, lipinds)]
+            tmpI = [indic*np.ones((len(np.arange(b, e)), ncomp)) for b, e, indic in zip(bframes, eframes, indicators.T)]
+            
+            write_frames = np.concatenate([*tmp]).astype(int) 
+            write_Linds = np.concatenate([*tmpL]).astype(int)
+            write_Indics = np.concatenate([*tmpI])
+
+            protein = u.select_atoms('protein')
+            chol = u.select_atoms('resname CHOL')
+            write_sel = protein+chol.residues[0].atoms
+            with mda.Writer(f"chol_traj.xtc", len(write_sel.atoms)) as W:
+                for i, ts in tqdm(enumerate(u.trajectory[write_frames[::step]]), total=len(write_frames)//step+1):
+                    W.write(protein+chol.residues[write_Linds[::step][i]].atoms)
+                
+            wf.append(write_frames+trajstart), wl.append(write_Linds), wi.append(write_Indics)
+            trajstart+=trajlen
+            os.chdir('../../../')
+        wf, wl, wi = np.concatenate([*wf]), np.concatenate([*wl]), np.concatenate([*wi])
+        darray = np.zeros((len(wf),ncomp+2))
+        darray[:, 0], darray[:,1], darray[:,2:] = wf, wl, wi
+        np.save(f'{residue}/den_write_data_step{step}_ncomp{ncomp}', darray)
+    else:
+        tmp = np.load(f'{residue}/den_write_data_step{step}_ncomp{ncomp}.npy')
+        wf, wl, wi = tmp[:,0], tmp[:,1], tmp[:,2:]
+    
+    u = mda.Universe(os.path.abspath('1/step7_production.tpr'))
+    uf = mda.Universe('step7_fixed.pdb')
+    resids = uf.select_atoms('protein').residues.resids
+    index = np.where(resids==resid)[0][0]
+
+    u_red = mda.Universe('prot_chol.gro')
+    files = [f'{i+1}/BaSiC-RTA-{cutoff}/{residue}/chol_traj.xtc' for i in range(3)]
+    u_red.load_new(files)
+    chol_red = u_red.select_atoms('resname CHOL')
+
+    filter_inds = np.where(wi[::step]>0.90)
+    wf = wf[::step][filter_inds[0]].astype(int)
+    wl =  wl[::step][filter_inds[0]].astype(int)
+    wi = wi[::step][filter_inds[0]]
+    comp_inds = [np.where(filter_inds[1]==i)[0] for i in range(ncomp)]
+    
+
+    for i in range(ncomp):
+        D = WDensityAnalysis(chol_red, wi[comp_inds[i], i], gridcenter=u_red.select_atoms(f'protein and resid {index}').center_of_geometry(), xdim=40, ydim=40, zdim=40)
+        D.run(verbose=True, frames=filter_inds[0][comp_inds[i]])
+        D.results.density.export(f'{residue}/wcomp{i}_step{step}_ncomp{ncomp}.dx')
