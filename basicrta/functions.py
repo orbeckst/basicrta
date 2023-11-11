@@ -17,6 +17,7 @@ from numpy.random import default_rng
 from tqdm import tqdm
 import MDAnalysis as mda
 import gc
+from scipy.optimize import linear_sum_assignment as lsa
 gc.enable()
 mpl.rcParams['pdf.fonttype'] = 42
 rng = default_rng()
@@ -60,7 +61,7 @@ def gibbs_sorted(x, niter, residue):
 
 
 class newgibbs(object):
-    def __init__(self, times, residue, loc, ts, ncomp=50, niter=10000):
+    def __init__(self, times, residue, loc, ts, ncomp=20, niter=10000):
         self.times, self.residue = times, residue
         self.niter, self.loc, self.ts, self.ncomp = niter, loc, ts, ncomp
     # def __repr__(self):
@@ -70,55 +71,108 @@ class newgibbs(object):
     #     return f'Gibbs sampler with N_comp={self.ncomp}'
 
     def run(self):
-        x, residue = self.times, self.residue
+        x, residue, ncomp = self.times, self.residue, self.ncomp
         t, _s = get_s(x, self.ts)
-        ncomp = int(self.ncomp)
+        if not os.path.exists(f'{residue}'):
+            os.mkdir(f'{residue}')
+
         inrates = 0.5*10**np.arange(-ncomp+2, 2, dtype=float)                  
-        '{r.name}/K{r.ncomp}_results.pkl'
-        mcweights = np.memmap(f'{residue}/.mcweights.npy', shape=(self.niter + 1, ncomp), mode='w+')
-        mcrates = np.memmap(f'{residue}/.mcrates.npy', shape=(self.niter + 1, ncomp), mode='w+')
+        #mcweights = np.memmap(f'{residue}/.mcweights.npy', shape=(self.niter + 1, ncomp), mode='w+')
+        #mcrates = np.memmap(f'{residue}/.mcrates.npy', shape=(self.niter + 1, ncomp), mode='w+')
+        #Ns = np.memmap(f'{residue}/.Ns.npy', shape=(self.niter, ncomp), mode='w+')
+        #indicator = np.memmap(f'{residue}/.indicator.npy', shape=(self.niter, x.shape[0]),
+        #                      mode='w+', dtype=np.uint8)
+        mcweights = np.zeros((self.niter + 1, ncomp))
+        mcrates = np.zeros((self.niter + 1, ncomp))
         Ns = np.zeros((self.niter, ncomp))
-        lnl = np.zeros(self.niter)                                                  
-        tmp = 9*10**(-np.arange(1, ncomp+1, dtype=float))                      
-        mcweights[0], mcrates[0] = tmp/tmp.sum(), inrates[::-1]
+        indicator = np.zeros((ncomp, x.shape[0]))
+        lnp = np.zeros(self.niter)                                                  
+        tmpw = 9*10**(-np.arange(1, ncomp+1, dtype=float))                      
+        mcweights[0], mcrates[0] = tmpw/tmpw.sum(), inrates[::-1]
         whypers, rhypers = np.ones(ncomp)/[ncomp], np.ones((ncomp, 2))*[2, 1]  # guess hyperparameters
         weights, rates = [], []
-        indicator = np.zeros((ncomp, x.shape[0]), dtype=float)
+        g, burnin = 0, 0
 
+        attrs = ['mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name',
+                 'Ns', 'lnp', 'g', 'burnin']
+        values = [mcweights, mcrates, ncomp, self.niter, _s, t, residue, Ns,
+                  lnp, int(g), int(burnin)]
         for j in tqdm(range(self.niter), desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
+            if j%1000==0:
+                save_results(attrs, values)
             tmp = mcweights[j]*mcrates[j]*np.exp(np.outer(-mcrates[j],x)).T
             z = (tmp.T/tmp.sum(axis=1)).T
-            
+
             c = z.cumsum(axis=1)                 
             uu = np.random.rand(len(c), 1)       
             s = np.array((uu < c).argmax(axis=1))
+            indicator[j] = s
             
+            uniqs = np.unique(s)
             inds = [np.where(s==i)[0] for i in range(ncomp)]
-            lnl[j] = np.log(tmp.take(s)).sum()                       
+
+            # Compute log posterior           
+            #lnp[j] = np.log(tmp.take(s)).sum()+np.log(z.take(s)).sum()+(Ns[j]*np.log(mcweights[j])).sum()+sum([sum(-mcrates[j,i]*x[inds[i]]*np.log(x[inds[i]])) for i in range(ncomp)])                   
+            lnp[j] = np.log(tmp.take(s)).sum()+np.log(z.take(s)).sum()+np.log(mcweights[j][uniqs]).sum()+np.log(mcrates[j][uniqs]).sum()-mcrates[j][uniqs].sum()
+            
             Ns[j][:] = np.array([len(s[s==i]) for i in range(ncomp)])
             Ts = np.array([x[inds[i]].sum() for i in range(ncomp)])  
             
+            # Sample posteriors
             mcweights[j+1] = np.random.dirichlet(whypers+Ns[j]) 
             mcrates[j+1] = np.random.gamma(rhypers[:,0]+Ns[j], 1/(rhypers[:,1]+Ts))
 
-        for i in range(ncomp):
-            start = 100
-            #burnin = pmts.detect_equilibration(lnl[start:])[0] + start
-            #si = pmts.subsample_correlated_data(lnl[burnin:, i])
-            wburnin = pmts.detect_equilibration(mcweights[start:, i])[0] + start
-            rburnin = pmts.detect_equilibration(mcrates[start:, i])[0] + start
-            weights.append(mcweights[wburnin:, i][pmts.subsample_correlated_data(mcweights[wburnin:, i])])
-            rates.append(mcrates[rburnin:, i][pmts.subsample_correlated_data(mcrates[rburnin:, i])])
+            # Compute cost matrix for occupied states
+            tmpsum = np.ones((len(uniqs),len(uniqs)), dtype=np.float64)
+            for ii,val in enumerate(uniqs):
+                for jj,T in enumerate(Ts[uniqs]):
+                    tmpsum[ii,jj] = mcrates[j][val]*T-Ns[j][uniqs[jj]]*np.log(mcweights[j][val])
+            
+            # Hungarian algorithm for minimum cost 
+            sortinds = lsa(tmpsum)[1]
+
+            # Relabel states
+            mcweights[j+1][uniqs], mcrates[j+1][uniqs] = mcweights[j+1][sortinds], mcrates[j+1][sortinds]
+            gc.collect()
+
+
+        naninds = np.where(lnp!=lnp)[0]
+        lnp, Ns = np.delete(lnp, naninds), np.delete(Ns, naninds)
+        mcrates = np.delete(mcrates, naninds, axis=0)
+        mcweights = np.delete(mcweights, naninds, axis=0)
+        
+        burnin, g, nsample = pmts.detect_equilibration(lnp, fast=False)
+        g = np.ceil(g)
+        
         plt.close('all')
-        attrs = ['weights', 'rates', 'mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name',
-                 'indicator', 'Ns']
-        values = [weights, rates, mcweights, mcrates, ncomp, self.niter, _s, t, residue, indicator, Ns]
+        attrs = ['mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name',
+                 'indicator', 'Ns', 'lnp', 'g', 'burnin']
+        values = [mcweights, mcrates, ncomp, self.niter, _s, t, residue, indicator, Ns,
+                  lnp, int(g), int(burnin)]
         r = save_results(attrs, values)
-        make_residue_plots(r)
-        plt.close('all')
-        all_post_hist(r, save=True)
-        plt.close('all')
-        plot_r_vs_w(r)
+        r = process_gibbs(r)
+        #make_residue_plots(r)
+        #plt.close('all')
+        #all_post_hist(r, save=True)
+        #plt.close('all')
+        #plot_r_vs_w(r)
+
+
+def process_gibbs(results):
+    r = results
+    stds = r.mcrates.std(axis=0)
+    inds = np.where(r.mcrates.std(axis=0)<stds.mean())[0]
+    ncomp = len(inds)
+    weights, rates = r.mcweights[r.burnin::r.g, inds], r.mcrates[r.burnin::r.g, inds]
+    indicator, Ns = r.indicator[r.burnin::r.g], r.Ns[r.burnin::r.g]
+    lnp = r.lnp[r.burnin::r.g]
+
+    attrs = ['weights', 'rates', 'ncomp', 'niter', 's', 't', 'name',
+             'indicator', 'Ns', 'lnp']
+    values = [weights, rates, ncomp, r.niter, r.s, r.t, r.name, indicator, Ns,
+              lnp]
+    r = save_results(attrs, values, processed=True)
+    return r
 
 
 class gibbs(object):
@@ -478,7 +532,7 @@ def collect_n_plot(resids, comps):
             plot_r_vs_w(tmp_res, rrange=[1e-3, 10], wrange=[1e-4, 5])
 
 
-def save_results(attr_names, values):
+def save_results(attr_names, values, processed=False):
     r = Results()
 
     for attr, value in zip(attr_names, values):
@@ -487,8 +541,12 @@ def save_results(attr_names, values):
     if not os.path.exists(r.name):
         os.mkdir(r.name)
 
-    with open(f'{r.name}/K{r.ncomp}_results.pkl', 'wb') as W:
-        pickle.dump(r, W)
+    if processed:
+        with open(f'{r.name}/processed_results_{r.niter}.pkl', 'wb') as W:
+            pickle.dump(r, W)
+    else:
+        with open(f'{r.name}/results_{r.niter}.pkl', 'wb') as W:
+            pickle.dump(r, W)
 
     return r
 
