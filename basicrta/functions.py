@@ -71,11 +71,12 @@ class newgibbs(object):
 
     def run(self):
         x, residue = self.times, self.residue
-        t, s = get_s(x, self.ts)
+        t, _s = get_s(x, self.ts)
         ncomp = int(self.ncomp)
         inrates = 0.5*10**np.arange(-ncomp+2, 2, dtype=float)                  
-        mcweights = np.zeros((self.niter + 1, ncomp))
-        mcrates = np.zeros((self.niter + 1, ncomp))
+        '{r.name}/K{r.ncomp}_results.pkl'
+        mcweights = np.memmap(f'{residue}/.mcweights.npy', shape=(self.niter + 1, ncomp), mode='w+')
+        mcrates = np.memmap(f'{residue}/.mcrates.npy', shape=(self.niter + 1, ncomp), mode='w+')
         Ns = np.zeros((self.niter, ncomp))
         lnl = np.zeros(self.niter)                                                  
         tmp = 9*10**(-np.arange(1, ncomp+1, dtype=float))                      
@@ -106,12 +107,12 @@ class newgibbs(object):
             #si = pmts.subsample_correlated_data(lnl[burnin:, i])
             wburnin = pmts.detect_equilibration(mcweights[start:, i])[0] + start
             rburnin = pmts.detect_equilibration(mcrates[start:, i])[0] + start
-            weights.append(mcweights[burnin:, i][pmts.subsample_correlated_data(mcweights[burnin:, i])])
-            rates.append(mcrates[burnin:, i][pmts.subsample_correlated_data(mcrates[burnin:, i])])
+            weights.append(mcweights[wburnin:, i][pmts.subsample_correlated_data(mcweights[wburnin:, i])])
+            rates.append(mcrates[rburnin:, i][pmts.subsample_correlated_data(mcrates[rburnin:, i])])
         plt.close('all')
         attrs = ['weights', 'rates', 'mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name',
                  'indicator', 'Ns']
-        values = [weights, rates, mcweights, mcrates, ncomp, self.niter, s, t, residue, indicator, Ns]
+        values = [weights, rates, mcweights, mcrates, ncomp, self.niter, _s, t, residue, indicator, Ns]
         r = save_results(attrs, values)
         make_residue_plots(r)
         plt.close('all')
@@ -418,6 +419,8 @@ def plot_trace(results, attr, comp=None, xrange=None, yrange=None, save=False, s
 
 
 def collect_results(ncomp=None):
+    """returns (residues, tslow, stds)
+    """
     dirs = np.array(glob('?[0-9]*'))
     sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
     dirs = dirs[sorted_inds]
@@ -428,26 +431,29 @@ def collect_results(ncomp=None):
     for i, adir in enumerate(tqdm(dirs, desc='Collecting results')):
         residues[i] = adir
         try:
-            results = glob(f'{adir}/*results.pkl')
-            results.sort()
-            if ncomp and ncomp-1<=len(results):
-                max_comp_res = results[ncomp-2]
-            else:
-                max_comp_res = results[-1]
-        except IndexError:
+            with open(f'{adir}/processed_results_10000.pkl', 'rb') as f:
+                tmp_res = pickle.load(f)
+        #    results = glob(f'{adir}/*results.pkl')
+        #    results.sort()
+        #    if ncomp and ncomp-1<=len(results):
+        #        max_comp_res = results[ncomp-2]
+        #    else:
+        #        max_comp_res = results[-1]
+        except FileNotFoundError:
             t_slow[i]=0
             continue
-        with open(max_comp_res, 'rb') as W:
-            tmp_res = pickle.load(W)
+        #with open(max_comp_res, 'rb') as W:
+        #    tmp_res = pickle.load(W)
+        
 
-        means = np.array([post.mean() for post in tmp_res.rates])
+        means = np.array([(1/post).mean() for post in tmp_res.rates.T])
         if len(means) == 0:
             continue
-        ind = np.where(means == means.min())[0][0]
-        t_slow[i] = 1/means[ind]
-        sd[i] = tmp_res.rates[ind].std()/means[ind]**2
-        indicators.append(tmp_res.indicator / tmp_res.indicator.sum(axis=0))
-    return residues, t_slow, sd, indicators
+        ind = np.where(means == means.max())[0][0]
+        t_slow[i] = means[ind]
+        sd[i] = (1/tmp_res.rates[:, ind]).std()
+        #indicators.append(tmp_res.indicator / tmp_res.indicator.sum(axis=0))
+    return residues, t_slow, sd
 
 
 def collect_n_plot(resids, comps):
@@ -520,10 +526,10 @@ def plot_protein(residues, t_slow, sd, prot):
     axs[0].errorbar(resids, t_slow, yerr=sd, fmt='none', color='C0')
     [axs[0].text(resids[ind], t_slow[ind], residues[ind]) for ind in max_inds[0]]
     axs[1].add_collection(patches)
-    if (prot=='cck1r') or (prot=='cck2r'):
-        axs[0].set_ylim(0, 1300)
-    else:
-        axs[0].set_ylim(0, 500)
+    #if (prot=='cck1r') or (prot=='cck2r'):
+    #    axs[0].set_ylim(0, 1300)
+    #else:
+    #    axs[0].set_ylim(0, 500)
     axs[0].set_ylabel(r'$\tau_{slow}$      ' + '\n (ns)      ',rotation=0)
     axs[1].set_xlabel(r'residue')
     axs[0].get_xaxis().set_visible(False)
