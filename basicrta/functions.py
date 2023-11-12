@@ -158,6 +158,13 @@ class newgibbs(object):
         #plot_r_vs_w(r)
 
 
+def get_bars(data):
+    ds = np.sort(data)
+    perc = np.arange(1, len(ds)+1)/(len(ds)-1)
+    lb, ub = ds[np.where(perc<.025)[0][0]], ds[np.where(perc<.975)[0][-1]]
+    return (lb, ub)
+
+
 def process_gibbs(results):
     r = results
     stds = r.mcrates.std(axis=0)
