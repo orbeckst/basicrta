@@ -332,7 +332,6 @@ def plot_results(results, cond='ml', save=False, show=False):
     outdir = results.name
     sortinds = np.argsort([line.mean() for line in results.rates])
     
-
     weight_posts = np.array(getattr(results, 'weights'), dtype=object)[sortinds]
     rate_posts = np.array(getattr(results, 'rates'), dtype=object)[sortinds]
     w_hists = [plt.hist(post, density=True) for post in weight_posts]
@@ -479,7 +478,7 @@ def collect_results(ncomp=None):
     sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
     dirs = dirs[sorted_inds]
     t_slow = np.zeros(len(dirs))
-    sd = np.zeros(len(dirs))
+    sd = np.zeros((len(dirs),2))
     residues = np.empty((len(dirs)), dtype=object)
     indicators = []
     for i, adir in enumerate(tqdm(dirs, desc='Collecting results')):
@@ -505,7 +504,7 @@ def collect_results(ncomp=None):
             continue
         ind = np.where(means == means.min())[0][0]
         t_slow[i] = 1/means[ind]
-        sd[i] = (1/tmp_res.rates[:, ind]).std()
+        sd[i] = get_bars()
         indicators.append((tmp_res.indicator.T/tmp_res.indicator.sum(axis=1)).T)
     return residues, t_slow, sd, indicators
 
@@ -565,7 +564,7 @@ def make_residue_plots(results, comps=None, show=False):
     plot_trace(r, 'rates', comp=comps, save=True, show=show, yrange=[-0.1,6])
 
 
-def plot_protein(residues, t_slow, sd, prot):
+def plot_protein(residues, t_slow, bars, prot):
     with open('../../../../tm_dict.txt', 'r') as f:
         contents = f.read()
         prots = ast.literal_eval(contents)
@@ -581,7 +580,7 @@ def plot_protein(residues, t_slow, sd, prot):
     resids = np.array([int(res[1:]) for res in residues])
     max_inds = np.where(t_slow > 3 * t_slow.mean())
     axs[0].plot(resids, t_slow, '.', color='C0')
-    axs[0].errorbar(resids, t_slow, yerr=sd, fmt='none', color='C0')
+    axs[0].errorbar(resids, t_slow, yerr=bars, fmt='none', color='C0')
     [axs[0].text(resids[ind], t_slow[ind], residues[ind]) for ind in max_inds[0]]
     axs[1].add_collection(patches)
     #if (prot=='cck1r') or (prot=='cck2r'):
