@@ -150,7 +150,7 @@ class newgibbs(object):
         values = [mcweights, mcrates, ncomp, self.niter, _s, t, residue, indicator, Ns,
                   lnp, int(g), int(burnin)]
         r = save_results(attrs, values)
-        r = process_gibbs(r)
+        r, rpinds = process_gibbs(r)
         #make_residue_plots(r)
         #plt.close('all')
         #all_post_hist(r, save=True)
@@ -172,7 +172,7 @@ def process_gibbs(results):
     values = [weights, rates, ncomp, r.niter, r.s, r.t, r.name, indicator, Ns,
               lnp]
     r = save_results(attrs, values, processed=True)
-    return r
+    return r, inds
 
 
 class gibbs(object):

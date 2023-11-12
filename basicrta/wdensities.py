@@ -21,7 +21,7 @@ if __name__ == "__main__":
     resid, step, filterP = int(residue[1:]), int(args.step), float(args.filterP)
     
     r = pickle.load(bz2.BZ2File(f'BaSiC-RTA-{cutoff}/{residue}/results_20000.pkl.bz2', 'rb'))
-    rp = process_gibbs(r)
+    rp, rpinds = process_gibbs(r)
     ncomp = rp.ncomp
     
     files = ['1/fixrot_dimer.xtc', '2/fixrot_dimer.xtc', '3/fixrot_dimer.xtc']
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     write_sel = protein+chol.residues[0].atoms
     resids = uf.select_atoms('protein').residues.resids
     index = np.where(resids==resid)[0][0]
-    if not os.path.exists(f'BaSiC-RTA-{cutoff}/{residue}/den_write_data_step{step}_ncomp{ncomp}.npy'):
+    if not os.path.exists(f'BaSiC-RTA-{cutoff}/{residue}/den_write_data_step{step}.npy'):
         a = np.load(f'lipswap_contacts_combined_{cutoff}.npy')
         
         times = np.array(a[a[:, 0] == index][:, 3])
@@ -42,7 +42,7 @@ if __name__ == "__main__":
         dt = u.trajectory.ts.dt/1000 #nanoseconds
 
         sortinds = np.argsort([line.mean() for line in rp.rates.T])
-        indicators = (r.indicator.T[sortinds]/r.indicator.sum(axis=1)).T
+        indicators = (r.indicator.T/r.indicator.sum(axis=1)).T[inds][sortinds]
 
         bframes, eframes = get_start_stop_frames(trajtimes, times, dt)
         tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]
@@ -56,17 +56,17 @@ if __name__ == "__main__":
         wf, wl, wi = write_frames, write_Linds, write_Indics
         darray = np.zeros((len(wf),ncomp+2))
         darray[:, 0], darray[:,1], darray[:,2:] = wf, wl, wi
-        np.save(f'BaSiC-RTA-{cutoff}/{residue}/den_write_data_step{step}_ncomp{ncomp}', darray)
+        np.save(f'BaSiC-RTA-{cutoff}/{residue}/den_write_data_step{step}', darray)
     else:
-        tmp = np.load(f'BaSiC-RTA-{cutoff}/{residue}/den_write_data_step{step}_ncomp{ncomp}.npy')
+        tmp = np.load(f'BaSiC-RTA-{cutoff}/{residue}/den_write_data_step{step}.npy')
         wf, wl, wi = tmp[:,0], tmp[:,1], tmp[:,2:]
 
-    if not os.path.exists(f"BaSiC-RTA-{cutoff}/{residue}/chol_traj_comp{ncomp}_step{step}.xtc"):
-        with mda.Writer(f"BaSiC-RTA-{cutoff}/{residue}/chol_traj_comp{ncomp}_step{step}.xtc", len(write_sel.atoms)) as W:
+    if not os.path.exists(f"BaSiC-RTA-{cutoff}/{residue}/chol_traj_step{step}.xtc"):
+        with mda.Writer(f"BaSiC-RTA-{cutoff}/{residue}/chol_traj_step{step}.xtc", len(write_sel.atoms)) as W:
             for i, ts in tqdm(enumerate(u.trajectory[wf[::step]]), total=len(wf)//step+1, desc='writing single lipid trajectory'):
                 W.write(protein+chol.residues[wl[::step][i]].atoms)
     
-    u_red = mda.Universe('prot_chol.gro',f'BaSiC-RTA-{cutoff}/{residue}/chol_traj_comp{ncomp}_step{step}.xtc')
+    u_red = mda.Universe('prot_chol.gro',f'BaSiC-RTA-{cutoff}/{residue}/chol_traj_step{step}.xtc')
     chol_red = u_red.select_atoms('resname CHOL')
 
     filter_inds = np.where(wi[::step]>filterP)
@@ -79,4 +79,4 @@ if __name__ == "__main__":
     for i in range(ncomp):
         D = WDensityAnalysis(chol_red, wi[comp_inds[i], i], gridcenter=u_red.select_atoms(f'protein and resid {index}').center_of_geometry(), xdim=40, ydim=40, zdim=40)
         D.run(verbose=True, frames=filter_inds[0][comp_inds[i]])
-        D.results.density.export(f'BaSiC-RTA-{cutoff}/{residue}/wcomp{i}_step{step}_ncomp{ncomp}_p{filterP}.dx')
+        D.results.density.export(f'BaSiC-RTA-{cutoff}/{residue}/wcomp{i}_step{step}_p{filterP}.dx')
