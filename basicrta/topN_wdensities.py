@@ -1,24 +1,28 @@
 from basicrta.wdensity import WDensityAnalysis
 from basicrta import *
+from basicrta.functions import process_gibbs
 import numpy as np
 import MDAnalysis as mda
 import os
 from tqdm import tqdm
-import pickle
+import pickle,bz2
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--residue')
     parser.add_argument('--cutoff')
-    parser.add_argument('--ncomp')
     parser.add_argument('--step', nargs='?', default=1)
     parser.add_argument('--nframes', nargs='?', default=1000)
     args = parser.parse_args()
 
-    ncomp, residue, cutoff = int(args.ncomp), args.residue, float(args.cutoff)
+    residue, cutoff = args.residue, float(args.cutoff)
     resid, step, nframes = int(residue[1:]), int(args.step), int(args.nframes)
     
+    r = pickle.load(bz2.BZ2File(f'BaSiC-RTA-{cutoff}/{residue}/results_20000.pkl.bz2', 'rb'))
+    rp, rpinds = process_gibbs(r)
+    ncomp = rp.ncomp
+
     files = ['1/fixrot_dimer.xtc', '2/fixrot_dimer.xtc', '3/fixrot_dimer.xtc']
     u = mda.Universe(os.path.abspath('step7_production.tpr'), files)
     uf = mda.Universe('step7_fixed.pdb')
@@ -36,10 +40,8 @@ if __name__ == "__main__":
         lipinds = np.array(a[a[:, 0] == index][:, 1])
         dt = u.trajectory.ts.dt/1000 #nanoseconds
 
-        with open(f'BaSiC-RTA-{cutoff}/{residue}/K{ncomp}_results.pkl', 'rb') as f:
-            pc = pickle.load(f)
-        sortinds = np.argsort([line.mean() for line in pc.rates])
-        indicators = pc.indicator[sortinds]/pc.indicator.sum(axis=0)
+        sortinds = np.argsort([line.mean() for line in rp.rates.T])
+        indicators = (r.indicator.T/r.indicator.sum(axis=1))[rpinds][sortinds]
 
         bframes, eframes = get_start_stop_frames(trajtimes, times, dt)
         tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]
