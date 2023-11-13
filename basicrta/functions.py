@@ -189,7 +189,7 @@ def process_gibbs(results):
     r = results
     #stds = r.mcweights.mean(axis=0)
     #inds = np.where(r.mcweights.mean(axis=0)>stds.mean())[0]
-    inds = np.where(r.mcweights.mean(axis=0)>1e-4)[0]
+    inds = np.where((r.mcweights.mean(axis=0)>1e-4)&(r.mcrates.std(axis=0)<0.1))[0]
     ncomp = len(inds)
     if ncomp>len(r.t):
         inds = [0]
