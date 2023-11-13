@@ -42,7 +42,7 @@ if __name__ == "__main__":
         dt = u.trajectory.ts.dt/1000 #nanoseconds
 
         sortinds = np.argsort([line.mean() for line in rp.rates.T])
-        indicators = (r.indicator.T/r.indicator.sum(axis=1)).T[inds][sortinds]
+        indicators = (r.indicator.T/r.indicator.sum(axis=1))[rpinds][sortinds]
 
         bframes, eframes = get_start_stop_frames(trajtimes, times, dt)
         tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]

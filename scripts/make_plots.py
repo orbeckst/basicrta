@@ -15,8 +15,8 @@ if __name__ == "__main__":
     args = parser.parserargs()
     prot, ts = args.prot, 0.1
     
-    residues, t_slow, sd, indicators = collect_results()
-    plot_protein(residues, t_slow, sd, prot)
+    residues, t_slow, bars, indicators = collect_results()
+    plot_protein(residues, t_slow, bars, prot)
     check_results(residues, times, ts)
     plot_hists(times, indicators, residues)
 

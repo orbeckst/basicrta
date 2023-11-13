@@ -18,6 +18,7 @@ from tqdm import tqdm
 import MDAnalysis as mda
 import gc
 from scipy.optimize import linear_sum_assignment as lsa
+import bz2
 gc.enable()
 mpl.rcParams['pdf.fonttype'] = 42
 rng = default_rng()
@@ -160,20 +161,48 @@ class newgibbs(object):
 
 def get_bars(data):
     ds = np.sort(data)
-    perc = np.arange(1, len(ds)+1)/(len(ds)-1)
-    lb, ub = ds[np.where(perc<.025)[0][0]], ds[np.where(perc<.975)[0][-1]]
-    return (lb, ub)
+    perc = np.arange(1, len(ds)+1)/(len(ds))
+    try:
+        l = ds[np.where(perc<=.025)[0][0]]
+    except IndexError:
+        l = ds[0]
+    
+    try:
+        u = ds[np.where(perc<=.975)[0][-1]]
+    except IndexError:
+        u = ds[-1]
+    
+    if u-ds.mean()<0:
+        ub = 0
+    else:
+        ub = u-ds.mean()
+    
+    if ds.mean()-l<0:
+        lb = 0
+    else:
+        lb = ds.mean()-l
+
+    return [lb, ub]
 
 
 def process_gibbs(results):
     r = results
-    stds = r.mcweights.std(axis=0)
-    inds = np.where(r.mcweights.std(axis=0)>stds.mean())[0]
+    #stds = r.mcweights.mean(axis=0)
+    #inds = np.where(r.mcweights.mean(axis=0)>stds.mean())[0]
+    inds = np.where(r.mcweights.mean(axis=0)>1e-4)[0]
     ncomp = len(inds)
-    weights, rates = r.mcweights[r.burnin::r.g, inds], r.mcrates[r.burnin::r.g, inds]
-    indicator, Ns = r.indicator[r.burnin::r.g], r.Ns[r.burnin::r.g]
-    lnp = r.lnp[r.burnin::r.g]
+    if ncomp>len(r.t):
+        inds = [0]
 
+    if r.burnin==0:
+        burnin = 100
+    else: 
+        burnin = r.burnin
+
+    weights, rates = r.mcweights[burnin::r.g, inds], r.mcrates[burnin::r.g, inds]
+    indicator, Ns = r.indicator[burnin::r.g], r.Ns[burnin::r.g]
+    lnp = r.lnp[r.burnin::r.g]
+    
     attrs = ['weights', 'rates', 'ncomp', 'niter', 's', 't', 'name',
              'indicator', 'Ns', 'lnp']
     values = [weights, rates, ncomp, r.niter, r.s, r.t, r.name, indicator, Ns,
@@ -339,7 +368,6 @@ def plot_results(results, cond='ml', save=False, show=False):
     outdir = results.name
     sortinds = np.argsort([line.mean() for line in results.rates])
     
-
     weight_posts = np.array(getattr(results, 'weights'), dtype=object)[sortinds]
     rate_posts = np.array(getattr(results, 'rates'), dtype=object)[sortinds]
     w_hists = [plt.hist(post, density=True) for post in weight_posts]
@@ -486,14 +514,16 @@ def collect_results(ncomp=None):
     sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
     dirs = dirs[sorted_inds]
     t_slow = np.zeros(len(dirs))
-    sd = np.zeros(len(dirs))
+    sd = np.zeros((len(dirs),2))
     residues = np.empty((len(dirs)), dtype=object)
     indicators = []
     for i, adir in enumerate(tqdm(dirs, desc='Collecting results')):
         residues[i] = adir
         try:
-            with open(f'{adir}/processed_results_10000.pkl', 'rb') as f:
-                tmp_res = pickle.load(f)
+            tmp_res = pickle.load(bz2.BZ2File(f'{adir}/results_20000.pkl.bz2', 'rb'))
+            tmp_res, rpinds = process_gibbs(tmp_res)
+        #    with open(f'{adir}/processed_results_10000.pkl', 'rb') as f:
+        #        tmp_res = pickle.load(f)
         #    results = glob(f'{adir}/*results.pkl')
         #    results.sort()
         #    if ncomp and ncomp-1<=len(results):
@@ -510,11 +540,11 @@ def collect_results(ncomp=None):
         means = np.array([(1/post).mean() for post in tmp_res.rates.T])
         if len(means) == 0:
             continue
-        ind = np.where(means == means.min())[0][0]
-        t_slow[i] = 1/means[ind]
-        sd[i] = (1/tmp_res.rates[:, ind]).std()
+        ind = np.where(means == means.max())[0][0]
+        t_slow[i] = means[ind]
+        sd[i] = get_bars(1/tmp_res.rates.T[ind])
         indicators.append((tmp_res.indicator.T/tmp_res.indicator.sum(axis=1)).T)
-    return residues, t_slow, sd, indicators
+    return residues, t_slow, sd.T, indicators
 
 
 def collect_n_plot(resids, comps):
@@ -572,7 +602,7 @@ def make_residue_plots(results, comps=None, show=False):
     plot_trace(r, 'rates', comp=comps, save=True, show=show, yrange=[-0.1,6])
 
 
-def plot_protein(residues, t_slow, sd, prot):
+def plot_protein(residues, t_slow, bars, prot):
     with open('../../../../tm_dict.txt', 'r') as f:
         contents = f.read()
         prots = ast.literal_eval(contents)
@@ -588,7 +618,7 @@ def plot_protein(residues, t_slow, sd, prot):
     resids = np.array([int(res[1:]) for res in residues])
     max_inds = np.where(t_slow > 3 * t_slow.mean())
     axs[0].plot(resids, t_slow, '.', color='C0')
-    axs[0].errorbar(resids, t_slow, yerr=sd, fmt='none', color='C0')
+    axs[0].errorbar(resids, t_slow, yerr=bars, fmt='none', color='C0')
     [axs[0].text(resids[ind], t_slow[ind], residues[ind]) for ind in max_inds[0]]
     axs[1].add_collection(patches)
     #if (prot=='cck1r') or (prot=='cck2r'):
