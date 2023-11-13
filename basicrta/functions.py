@@ -167,8 +167,8 @@ def get_bars(data):
 
 def process_gibbs(results):
     r = results
-    stds = r.mcrates.std(axis=0)
-    inds = np.where(r.mcrates.std(axis=0)<stds.mean())[0]
+    stds = r.mcweights.std(axis=0)
+    inds = np.where(r.mcweights.std(axis=0)>stds.mean())[0]
     ncomp = len(inds)
     weights, rates = r.mcweights[r.burnin::r.g, inds], r.mcrates[r.burnin::r.g, inds]
     indicator, Ns = r.indicator[r.burnin::r.g], r.Ns[r.burnin::r.g]
