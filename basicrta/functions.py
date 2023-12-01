@@ -81,16 +81,16 @@ class newgibbs(object):
         #mcweights = np.memmap(f'{residue}/.mcweights.npy', shape=(self.niter + 1, ncomp), mode='w+')
         #mcrates = np.memmap(f'{residue}/.mcrates.npy', shape=(self.niter + 1, ncomp), mode='w+')
         #Ns = np.memmap(f'{residue}/.Ns.npy', shape=(self.niter, ncomp), mode='w+')
-        #indicator = np.memmap(f'{residue}/.indicator.npy', shape=(self.niter, x.shape[0]),
-        #                      mode='w+', dtype=np.uint8)
+        indicator = np.memmap(f'{residue}/.indicator.npy', shape=(self.niter, x.shape[0]),
+                              mode='w+', dtype=np.uint8)
         mcweights = np.zeros((self.niter + 1, ncomp))
         mcrates = np.zeros((self.niter + 1, ncomp))
         Ns = np.zeros((self.niter, ncomp))
-        indicator = np.zeros((ncomp, x.shape[0]))
+        #indicator = np.zeros((x.shape[0], self.ncomp), dtype=np.uint32)
         lnp = np.zeros(self.niter)                                                  
         tmpw = 9*10**(-np.arange(1, ncomp+1, dtype=float))                      
         mcweights[0], mcrates[0] = tmpw/tmpw.sum(), inrates[::-1]
-        whypers, rhypers = np.ones(ncomp)/[ncomp], np.ones((ncomp, 2))*[1, 2]  # guess hyperparameters
+        whypers, rhypers = np.ones(ncomp)/[ncomp], np.ones((ncomp, 2))*[1.1, 1]  # guess hyperparameters
         weights, rates = [], []
         g, burnin = 0, 0
 
@@ -108,6 +108,7 @@ class newgibbs(object):
             uu = np.random.rand(len(c), 1)       
             s = np.array((uu < c).argmax(axis=1))
             indicator[j] = s
+            #np.put_along_axis(indicator, s[:,None], np.take_along_axis(indicator, s[:,None], axis=1)+1, axis=1)
             
             uniqs = np.unique(s)
             inds = [np.where(s==i)[0] for i in range(ncomp)]
@@ -123,17 +124,17 @@ class newgibbs(object):
             mcweights[j+1] = np.random.dirichlet(whypers+Ns[j]) 
             mcrates[j+1] = np.random.gamma(rhypers[:,0]+Ns[j], 1/(rhypers[:,1]+Ts))
 
-            # Compute cost matrix for occupied states
-            tmpsum = np.ones((len(uniqs),len(uniqs)), dtype=np.float64)
-            for ii,val in enumerate(uniqs):
-                for jj,T in enumerate(Ts[uniqs]):
-                    tmpsum[ii,jj] = mcrates[j][val]*T-Ns[j][uniqs[jj]]*np.log(mcweights[j][val])
-            
-            # Hungarian algorithm for minimum cost 
-            sortinds = lsa(tmpsum)[1]
+            ## Compute cost matrix for occupied states
+            #tmpsum = np.ones((len(uniqs),len(uniqs)), dtype=np.float64)
+            #for ii,val in enumerate(uniqs):
+            #    for jj,T in enumerate(Ts[uniqs]):
+            #        tmpsum[ii,jj] = mcrates[j][val]*T-Ns[j][uniqs[jj]]*np.log(mcweights[j][val])
+            #
+            ## Hungarian algorithm for minimum cost 
+            #sortinds = lsa(tmpsum)[1]
 
-            # Relabel states
-            mcweights[j+1][uniqs], mcrates[j+1][uniqs] = mcweights[j+1][sortinds], mcrates[j+1][sortinds]
+            ## Relabel states
+            #mcweights[j+1][uniqs], mcrates[j+1][uniqs] = mcweights[j+1][sortinds], mcrates[j+1][sortinds]
             gc.collect()
 
 
