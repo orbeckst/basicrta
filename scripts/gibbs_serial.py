@@ -6,6 +6,7 @@ import numpy as np
 import MDAnalysis as mda
 import os 
 from tqdm import tqdm
+import gc
 
 if __name__ == "__main__":
     # Parts of code taken from Shep (Centrifuge3.py, SuperMCMC.py)
@@ -17,6 +18,7 @@ if __name__ == "__main__":
     parser.add_argument('--protname')
     parser.add_argument('--resids', nargs='?')
     parser.add_argument('--niter', nargs='?', default=10000)
+    parser.add_argument('--sort', nargs='?', default=True)
     args = parser.parse_args()
     a = np.load(args.contacts)
 
@@ -42,7 +44,9 @@ if __name__ == "__main__":
     else:
         times = [a[a[:, 0] == i][:, 3] for i in uniqs]
 
+    times = times.copy()
     del a, u, ids, names, uniqs, resids, resnames
+    gc.collect()
 
     if not os.path.exists(f'BaSiC-RTA-{cutoff}'):
         os.mkdir(f'BaSiC-RTA-{cutoff}')

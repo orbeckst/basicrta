@@ -62,8 +62,8 @@ def gibbs_sorted(x, niter, residue):
 
 
 class newgibbs(object):
-    def __init__(self, times, residue, loc, ts, ncomp=20, niter=10000):
-        self.times, self.residue = times, residue
+    def __init__(self, times, residue, loc, ts, ncomp=20, niter=10000, sort=True):
+        self.times, self.residue, self.sort = times, residue, sort
         self.niter, self.loc, self.ts, self.ncomp = niter, loc, ts, ncomp
     # def __repr__(self):
     #     return f'Gibbs sampler with N_comp={self.ncomp}'
@@ -81,16 +81,16 @@ class newgibbs(object):
         #mcweights = np.memmap(f'{residue}/.mcweights.npy', shape=(self.niter + 1, ncomp), mode='w+')
         #mcrates = np.memmap(f'{residue}/.mcrates.npy', shape=(self.niter + 1, ncomp), mode='w+')
         #Ns = np.memmap(f'{residue}/.Ns.npy', shape=(self.niter, ncomp), mode='w+')
-        indicator = np.memmap(f'{residue}/.indicator.npy', shape=(self.niter, x.shape[0]),
+        Indicator = np.memmap(f'{residue}/.indicator.npy', shape=(self.niter, x.shape[0]),
                               mode='w+', dtype=np.uint8)
         mcweights = np.zeros((self.niter + 1, ncomp))
         mcrates = np.zeros((self.niter + 1, ncomp))
         Ns = np.zeros((self.niter, ncomp))
-        #indicator = np.zeros((x.shape[0], self.ncomp), dtype=np.uint32)
+        indicator = np.zeros((x.shape[0], self.ncomp), dtype=np.uint32)
         lnp = np.zeros(self.niter)                                                  
         tmpw = 9*10**(-np.arange(1, ncomp+1, dtype=float))                      
         mcweights[0], mcrates[0] = tmpw/tmpw.sum(), inrates[::-1]
-        whypers, rhypers = np.ones(ncomp)/[ncomp], np.ones((ncomp, 2))*[1.1, 1]  # guess hyperparameters
+        whypers, rhypers = np.ones(ncomp)/[ncomp], np.ones((ncomp, 2))*[1, 3]  # guess hyperparameters
         weights, rates = [], []
         g, burnin = 0, 0
 
@@ -99,16 +99,15 @@ class newgibbs(object):
         values = [mcweights, mcrates, ncomp, self.niter, _s, t, residue, Ns,
                   lnp, int(g), int(burnin)]
         for j in tqdm(range(self.niter), desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
-            if j%1000==0:
-                save_results(attrs, values)
+            #tmp = mcrates[j]*np.exp(np.outer(-mcrates[j],x)).T
             tmp = mcweights[j]*mcrates[j]*np.exp(np.outer(-mcrates[j],x)).T
             z = (tmp.T/tmp.sum(axis=1)).T
 
             c = z.cumsum(axis=1)                 
             uu = np.random.rand(len(c), 1)       
             s = np.array((uu < c).argmax(axis=1))
-            indicator[j] = s
-            #np.put_along_axis(indicator, s[:,None], np.take_along_axis(indicator, s[:,None], axis=1)+1, axis=1)
+            Indicator[j] = s
+            np.put_along_axis(indicator, s[:,None], np.take_along_axis(indicator, s[:,None], axis=1)+1, axis=1)
             
             uniqs = np.unique(s)
             inds = [np.where(s==i)[0] for i in range(ncomp)]
@@ -121,21 +120,58 @@ class newgibbs(object):
             Ts = np.array([x[inds[i]].sum() for i in range(ncomp)])  
             
             # Sample posteriors
-            mcweights[j+1] = np.random.dirichlet(whypers+Ns[j]) 
-            mcrates[j+1] = np.random.gamma(rhypers[:,0]+Ns[j], 1/(rhypers[:,1]+Ts))
+            mcweights[j+1] = rng.dirichlet(whypers+Ns[j]) 
+            mcrates[j+1] = rng.gamma(rhypers[:,0]+Ns[j], 1/(rhypers[:,1]+Ts))
 
-            ## Compute cost matrix for occupied states
+            ## Compute cost matrix for occupied states (initial fix (eqn. ))
             #tmpsum = np.ones((len(uniqs),len(uniqs)), dtype=np.float64)
             #for ii,val in enumerate(uniqs):
-            #    for jj,T in enumerate(Ts[uniqs]):
-            #        tmpsum[ii,jj] = mcrates[j][val]*T-Ns[j][uniqs[jj]]*np.log(mcweights[j][val])
-            #
+            #    for jj,val2 in enumerate(uniqs):
+            #        tmpsum[ii,jj] =
+            #        mcrates[j+1][val]*Ts[val2]-Ns[j][val2]*np.log(mcrates[j+1][val])
+            
+            # test cost matrix
+            #tmpsum = np.ones((len(uniqs),len(uniqs)), dtype=np.float64)
+            #for ii,val in enumerate(uniqs):
+            #    for jj,val2 in enumerate(uniqs):
+            #        tmpsum[ii,jj] = mcrates[j+1][val]*Ts[val2]-Ns[j][val2]*np.log(mcrates[j+1][val])
+                    #tmpsum[ii,jj] = \
+                    #mcrates[j+1][val]*T-Ns[j][uniqs[jj]]*np.log(mcrates[j+1][val]*mcweights[j+1][val])
+
             ## Hungarian algorithm for minimum cost 
-            #sortinds = lsa(tmpsum)[1]
+            #sort = lsa(tmpsum)
+            #if not(sort[0]==sort[1]).all():
+            #    print(sort, uniqs)
 
             ## Relabel states
-            #mcweights[j+1][uniqs], mcrates[j+1][uniqs] = mcweights[j+1][sortinds], mcrates[j+1][sortinds]
-            gc.collect()
+            mcweights[j+1][:len(uniqs)] = mcweights[j+1][uniqs]
+            mcrates[j+1][:len(uniqs)] = mcrates[j+1][uniqs]
+
+            #mcweights[j+1][uniqs] = mcweights[j+1][:len(uniqs)]
+            #mcrates[j+1][uniqs] = mcrates[j+1][:len(uniqs)]
+
+           
+            if self.sort:
+                if j==600:
+                    pinvals = np.median(mcweights[200:600], axis=0)
+                if j>600:
+                    #avgs = ((j-100)*avgs+mcweights[j+1])/(j+1-100)
+                    #mids = np.median(mcweights[:j+1], axis=0)
+
+                    ## test cost matrix
+                    tmpsum = np.ones((len(uniqs),len(uniqs)), dtype=np.float64)
+                    for ii,val in enumerate(uniqs):
+                        for jj,val2 in enumerate(uniqs):
+                            tmpsum[ii,jj] = abs(mcweights[j+1][val]-pinvals[val2])
+
+                    # Hungarian algorithm for minimum cost 
+                    sortinds = lsa(tmpsum)[1]
+
+                    # Relabel states
+                    mcweights[j+1][uniqs], mcrates[j+1][uniqs] = mcweights[j+1][sortinds], mcrates[j+1][sortinds]
+
+                    gc.collect()
+            #        ####################CHECK IF Ns Ts NEED TO BE SORTED AS WELL!!!!!
 
 
         naninds = np.where(lnp!=lnp)[0]
