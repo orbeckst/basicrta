@@ -42,5 +42,6 @@ def test_simdata():
 
 
 if __name__=="__main__":
-    test_parametric()
+    test_simdata()
+    test_gibbs()
 
