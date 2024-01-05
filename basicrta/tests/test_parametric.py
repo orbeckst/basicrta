@@ -24,13 +24,13 @@ def test_parametric():
         G.results.mcweights[i] = G.results.mcweights[i][sortinds] 
         G.results.mcrates[i] = G.results.mcrates[i][sortinds]
 
-    tmp = np.array([np.sort(G.results.weights[:,i]) for i in range(G.results.ncomp)])
+    tmp = np.array([np.sort(G.results.rates[:,i]) for i in range(G.results.ncomp)])
     tmp2 = (tmp.cumsum(axis=1).T/tmp.cumsum(axis=1).T[-1])
     tmp3 = tmp.T[[np.where((tmp2[:,i]>0.025)&(tmp2[:,i]<0.975))[0] for i in range(G.results.ncomp)][0]]
-    descsort = np.median(G.results.mcweights, axis=0).argsort()[::-1]
+    descsort = np.median(G.results.mcrates, axis=0).argsort()[::-1]
     ci = np.array([[line[0],line[-1]] for line in tmp3.T])
 
-    Bools = np.array([(wts[i]>ci[descsort][i,0])&(wts[i]<ci[descsort][i,1]) for i in descsort])
+    Bools = np.array([(rts[i]>ci[descsort][i,0])&(rts[i]<ci[descsort][i,1]) for i in descsort])
 
     assert Bools.all() == True
 
