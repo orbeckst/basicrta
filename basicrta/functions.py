@@ -241,7 +241,7 @@ def process_gibbs(results):
     indicator, Ns = r.indicator[burnin::r.g], r.Ns[burnin::r.g]
     lnp = r.lnp[r.burnin::r.g]
     
-    attrs = ['mcewights', 'mcrates', 'weights', 'rates', 'ncomp', 'niter', 's', 't',
+    attrs = ['mcweights', 'mcrates', 'weights', 'rates', 'ncomp', 'niter', 's', 't',
              'name', 'indicator', 'Ns', 'lnp', 'g', 'burnin']
     values = [r.mcweights, r.mcrates, weights, rates, ncomp, r.niter, r.s, r.t, r.name, indicator, Ns,
               lnp, r.g, int(burnin)]
