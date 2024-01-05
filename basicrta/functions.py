@@ -144,8 +144,8 @@ class newgibbs(object):
             #    print(sort, uniqs)
 
             ## Relabel states
-            mcweights[j+1][:len(uniqs)] = mcweights[j+1][uniqs]
-            mcrates[j+1][:len(uniqs)] = mcrates[j+1][uniqs]
+            mcweights[j+1][uniqs] = mcweights[j+1][:len(uniqs)]
+            mcrates[j+1][uniqs] = mcrates[j+1][:len(uniqs)]
 
             #mcweights[j+1][uniqs] = mcweights[j+1][:len(uniqs)]
             #mcrates[j+1][uniqs] = mcrates[j+1][:len(uniqs)]
@@ -188,7 +188,8 @@ class newgibbs(object):
         values = [mcweights, mcrates, ncomp, self.niter, _s, t, residue, indicator, Ns,
                   lnp, int(g), int(burnin)]
         r = save_results(attrs, values)
-        r, rpinds = process_gibbs(r)
+        rp, rpinds = process_gibbs(r)
+        self.results = rp
         #make_residue_plots(r)
         #plt.close('all')
         #all_post_hist(r, save=True)
@@ -240,10 +241,10 @@ def process_gibbs(results):
     indicator, Ns = r.indicator[burnin::r.g], r.Ns[burnin::r.g]
     lnp = r.lnp[r.burnin::r.g]
     
-    attrs = ['weights', 'rates', 'ncomp', 'niter', 's', 't', 'name',
-             'indicator', 'Ns', 'lnp']
-    values = [weights, rates, ncomp, r.niter, r.s, r.t, r.name, indicator, Ns,
-              lnp]
+    attrs = ['mcweights', 'mcrates', 'weights', 'rates', 'ncomp', 'niter', 's', 't',
+             'name', 'indicator', 'Ns', 'lnp', 'g', 'burnin']
+    values = [r.mcweights, r.mcrates, weights, rates, ncomp, r.niter, r.s, r.t, r.name, indicator, Ns,
+              lnp, r.g, int(burnin)]
     r = save_results(attrs, values, processed=True)
     return r, inds
 
