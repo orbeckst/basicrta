@@ -8,6 +8,12 @@ def test_parametric():
     x = simulate_hn(5e4, wts, [4.7, 0.8, 0.2, 0.02, 0.003])
     G = newgibbs(x, 'X1', 0, 0.1, ncomp=5, niter=10000, sort=False)
     G.run()
+
+    for i,rts in enumerate(G.results.mcrates):
+        sorts = rts.argsort()[::-1]
+        G.results.mcweights[i] = G.results.mcweights[i][sorts]
+        G.results.mcrates[i] = G.results.mcrates[i][sorts]
+
     tmp = np.array([np.sort(G.results.weights[:,i]) for i in range(G.results.ncomp)])
     tmp2 = (tmp.cumsum(axis=1).T/tmp.cumsum(axis=1).T[-1])
     tmp3 = tmp.T[[np.where((tmp2[:,i]>0.025)&(tmp2[:,i]<0.975))[0] for i in range(G.results.ncomp)][0]]
