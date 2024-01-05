@@ -1,8 +1,8 @@
 basicrta
 ==============================
 [//]: # (Badges)
-[![GitHub Actions Build Status](https://github.com/REPLACE_WITH_OWNER_ACCOUNT/basicrta/workflows/CI/badge.svg)](https://github.com/becksteinlab/basicrta/actions?query=workflow%3ACI)
-[![codecov](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/basicrta/branch/master/graph/badge.svg)](https://codecov.io/gh/becksteinlab/basicrta/branch/master)
+[![GitHub Actions Build Status](https://github.com/becksteinlab/basicrta/workflows/CI/badge.svg)](https://github.com/becksteinlab/basicrta/actions?query=workflow%3ACI)
+[![codecov](https://codecov.io/gh/becksteinlab/basicrta/branch/master/graph/badge.svg)](https://codecov.io/gh/becksteinlab/basicrta/branch/master)
 
 
 Bayesian single-cutoff residence time analysis
