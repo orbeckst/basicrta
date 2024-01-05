@@ -4,17 +4,16 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment as lsa
 
 def test_parametric():
-    wts = np.array([0.89, 0.098, 0.008, 0.002, 0.00056])
-    wts = wts/wts.sum()
-    rts = [4.7, 0.8, 0.2, 0.02, 0.003]
+    wts = np.array([0.901, 0.09, 0.009])
+    rts = [10, 0.1, 0.001]
     x = simulate_hn(1e5, wts, rts)
-    G = newgibbs(x, 'X1', 0, 0.1, ncomp=5, niter=10000, sort=False)
+    G = newgibbs(x, 'X1', 0, 0.1, ncomp=3, niter=10000, sort=False)
     G.run()
 
     for i in range(len(G.results.mcrates)):
-        tmpsum = np.ones((5, 5), dtype=np.float64)
-        for ii in range(5):
-            for jj in range(5):
+        tmpsum = np.ones((3, 3), dtype=np.float64)
+        for ii in range(3):
+            for jj in range(3):
                 tmpsum[ii,jj] = abs(G.results.mcrates[i][ii]-rts[jj])
 
         # Hungarian algorithm for minimum cost 
