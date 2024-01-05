@@ -1,7 +1,7 @@
 Bayesian Single-Cutoff Residence Time Analysis (basicrta)
 ==============================
 [//]: # (Badges)
-[![workflow]](https://github.com/becksteinlab/basicrta/actions/workflows/python_project/badge.svg)
+[![workflow]](https://github.com/becksteinlab/basicrta/actions/workflows/python_package.yml/badge.svg)
 [![codecov](https://codecov.io/gh/Becksteinlab/basicrta/graph/badge.svg?token=WoGPuQEqNI)](https://codecov.io/gh/Becksteinlab/basicrta)
 
 A Bayesian analysis to determine the time-scales involved in protein-small molecule binding events
