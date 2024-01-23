@@ -19,10 +19,11 @@ if __name__ == "__main__":
     parser.add_argument('--resids', nargs='?')
     parser.add_argument('--niter', nargs='?', default=10000)
     parser.add_argument('--sort', nargs='?', default=True)
+    parser.add_argument('--ncomp', nargs='?', default=10, type=int)
     args = parser.parse_args()
     a = np.load(args.contacts)
 
-    ts, ncomp = 0.1, 10
+    ts, ncomp = 0.1, args.ncomp
     cutoff = float(args.contacts.split('.npy')[0].split('_')[-1])
     nproc, prot = 1, args.protname
     if args.niter:
