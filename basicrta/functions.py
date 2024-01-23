@@ -164,9 +164,9 @@ class newgibbs(object):
 
             # Compute log posterior           
             lnp[j] = np.log(tmp.take(s)).sum()+\
-                     np.log(mcweights[j]).sum()-\
-                     (mcrates[j]*rhypers[:, 1]).sum()+\
-                     np.log(mcweights[j]**(whypers-1)).sum()
+                     np.log(mcweights[j][uniqs]).sum()-\
+                     (mcrates[j][uniqs]*rhypers[uniqs, 1]).sum()+\
+                     np.log(mcweights[j][uniqs]**(whypers[uniqs]-1)).sum()
             
             Ns[j][:] = np.array([len(inds[i]) for i in range(ncomp)])
             Ts = np.array([x[inds[i]].sum() for i in range(ncomp)])  
