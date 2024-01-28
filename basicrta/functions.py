@@ -1,4 +1,5 @@
-from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
+from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, \
+                               AutoMinorLocator)
 from matplotlib.patches import Rectangle
 from matplotlib.collections import PatchCollection
 import ast
@@ -20,20 +21,24 @@ import gc
 from scipy.optimize import linear_sum_assignment as lsa
 import bz2
 from scipy import stats
+from sklearn.cluster import KMeans
+
+
 gc.enable()
 mpl.rcParams['pdf.fonttype'] = 42
 rng = default_rng()
+
 
 __all__ = ['gibbs', 'unique_rates', 'get_s', 'plot_results', 'plot_post',
            'plot_trace', 'collect_results', 'save_results', 
            'make_residue_plots', 'plot_protein', 'run', 'run_residue', 
            'check_results', 'get_dec', 'get_start_stop_frames',
            'write_trajs', 'plot_hists', 'get_remaining_residue_inds',
-           'make_surv', 'norm_exp', 'get_dec'
+           'make_surv', 'get_dec'
            ]
 
 
-def resort(r):
+def KL_resort(r):
     mcweights, mcrates = r.mcweights.copy(), r.mcrates.copy()
     indicator[:] = indicator_bak
     Ls, niter = [L], 0
@@ -70,419 +75,156 @@ def tm(Prot,i):
         return [Prot['tm{0}'.format(i)],dif]
 
 
-def gibbs_sorted(x, niter, residue):
-    ncomp = 100
-    inrates = 10 ** (np.linspace(-3, 1, ncomp))
-    mcweights = np.zeros((niter + 1, ncomp))
-    mcrates = np.zeros((niter + 1, ncomp))
-    Ns = np.zeros((niter, ncomp))
-    tmp = np.exp(-50*np.linspace(0,10, ncomp))
-    mcweights[0], mcrates[0] = tmp/tmp.sum(), inrates
-    whypers, rhypers = np.ones(ncomp)/[ncomp], np.ones((ncomp, 2))*[2, 1]  # guess hyperparameters
-    for j in tqdm(range(niter), desc=f'{residue}-K{ncomp}', position=1, leave=False):
-        tmp = mcweights[j]*mcrates[j]*np.exp(np.outer(-mcrates[j], x)).T
-        z = (tmp.T/tmp.sum(axis=1)).T
-        c = z.cumsum(axis=1)
-        uu = np.random.rand(len(c), 1)
-        s = np.array((uu < c).argmax(axis=1))
-        Ns[j][:] = np.array([len(s[s==i]) for i in range(ncomp)])
-        inds = [np.where(s==i)[0] for i in range(ncomp)]
-        Ts = np.array([x[inds[i]].sum() for i in range(ncomp)])
-        wtmp, rtmp = np.random.dirichlet(whypers+Ns[j]), np.random.gamma(rhypers[:,0]+Ns[j], 1/(rhypers[:,1]+Ts))
-        winds = wtmp.argsort()[::-1]
-        mcweights[j+1], mcrates[j+1] = wtmp[winds], rtmp[winds]
-        gc.collect()
-    return mcweights, mcrates, Ns
+class gibbs(object):
+    def __init__(self, times, residue, loc=0, ncomp=15, niter=10000):
+        self.times, self.residue = times, residue
+        self.niter, self.loc, self.ncomp = niter, loc, ncomp
+
+        diff = (np.sort(times)[1:]-np.sort(times)[:-1])
+        self.ts = diff[diff!=0][0]
+        
+    def __repr__(self):
+        return f'Gibbs sampler'
 
 
-class newgibbs(object):
-    def __init__(self, times, residue, loc, ts, ncomp=20, niter=10000, sort=True):
-        self.times, self.residue, self.sort = times, residue, sort
-        self.niter, self.loc, self.ts, self.ncomp = niter, loc, ts, ncomp
-    # def __repr__(self):
-    #     return f'Gibbs sampler with N_comp={self.ncomp}'
+    def __str__(self):
+        return f'Gibbs sampler'
 
-    # def __str__(self):
-    #     return f'Gibbs sampler with N_comp={self.ncomp}'
 
     def run(self):
-        x, residue, ncomp = self.times, self.residue, self.ncomp
+        x = self.times 
         t, _s = get_s(x, self.ts)
-        if not os.path.exists(f'{residue}'):
-            os.mkdir(f'{residue}')
-
-        inrates = 0.5*10**np.arange(-ncomp+2, 2, dtype=float)                  
-        #mcweights = np.memmap(f'{residue}/.mcweights.npy', shape=(self.niter + 1, ncomp), mode='w+')
-        #mcrates = np.memmap(f'{residue}/.mcrates.npy', shape=(self.niter + 1, ncomp), mode='w+')
-        #Ns = np.memmap(f'{residue}/.Ns.npy', shape=(self.niter, ncomp), mode='w+')
-        #Indicator = np.memmap(f'{residue}/.indicator_{self.niter}.npy', shape=(self.niter, x.shape[0]),
-        #                      mode='w+', dtype=np.uint8)
-        mcweights = np.zeros((self.niter + 1, ncomp))
-        mcrates = np.zeros((self.niter + 1, ncomp))
-        Ns = np.zeros((self.niter, ncomp))
-        indicator = np.zeros((x.shape[0], self.ncomp), dtype=np.uint32)
-        lnp = np.zeros(self.niter)                                                  
-        tmpw = 9*10**(-np.arange(1, ncomp+1, dtype=float))                      
+        if not os.path.exists(f'{self.residue}'):
+            os.mkdir(f'{self.residue}')
+        
+        # initialize arrays
+        inrates = 0.5*10**np.arange(-self.ncomp+2, 2, dtype=float)                  
+        indicator = np.memmap(f'{self.residue}/.indicator_{self.niter}.npy', \
+                              shape=(self.niter, x.shape[0]), mode='w+', \
+                              dtype=np.uint8)
+        mcweights = np.zeros((self.niter + 1, self.ncomp))
+        mcrates = np.zeros((self.niter + 1, self.ncomp))
+        Ns, lnp = np.zeros((self.niter, self.ncomp)), np.zeros(self.niter) 
+        tmpw = 9*10**(-np.arange(1, self.ncomp+1, dtype=float))                      
         mcweights[0], mcrates[0] = tmpw/tmpw.sum(), inrates[::-1]
-        whypers, rhypers = np.ones(ncomp)/[ncomp], np.ones((ncomp, 2))*[1, 3]  # guess hyperparameters
-        #tmp = np.logspace(0,-2, ncomp)
-        #whypers = tmp/tmp.sum()
-        #tmpw = np.sort(np.outer(np.array([6, 3]), 10**np.arange(-ncomp//2, 0, dtype=float)).flatten())[::-1]
-        #whypers = (9*10**np.arange(-ncomp, 0, dtype=float))[::-1]
-        #whypers = tmpw/tmpw.sum()
-        #whypers = (np.arange(1,ncomp+1)[::-1]/np.arange(1,ncomp+1).sum())
-        #mult = 3
-        #whypers = (np.linspace(1,mult*(ncomp+1), ncomp)[::-1]/(np.linspace(1,mult*(ncomp+1), ncomp).sum()))
-        weights, rates = [], []
-        g, burnin = 0, 0
 
-        attrs = ['mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name',
-                 'Ns', 'lnp', 'g', 'burnin']
-        values = [mcweights, mcrates, ncomp, self.niter, _s, t, residue, Ns,
-                  lnp, int(g), int(burnin)]
-        for j in tqdm(range(self.niter), desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
-            #if j<3000:
-            #    whypers, rhypers = np.ones(ncomp)/[10], np.ones((ncomp, 2))*[1, 10]  # guess hyperparameters
-            #elif (j>=3000)&(j<6000):
-            #    whypers, rhypers = np.ones(ncomp)/[100], np.ones((ncomp, 2))*[1, 10]  # guess hyperparameters
-            #else: 
-            #    whypers, rhypers = np.ones(ncomp)/[1000], np.ones((ncomp, 2))*[1, 10]  # guess hyperparameters
+        # guess hyperparameters
+        whypers = np.ones(self.ncomp)/[self.ncomp] 
+        rhypers = np.ones((self.ncomp, 2))*[1, 3]
 
+        # gibbs sampler
+        for j in tqdm(range(self.niter), desc=f'{self.residue}-K{self.ncomp}', \
+                      position=self.loc, leave=False):
 
-            #tmp = mcrates[j]*np.exp(np.outer(-mcrates[j],x)).T
+            # compute probabilities
             tmp = mcweights[j]*mcrates[j]*np.exp(np.outer(-mcrates[j],x)).T
             z = (tmp.T/tmp.sum(axis=1)).T
-
-            c = z.cumsum(axis=1)                 
-            uu = np.random.rand(len(c), 1)       
-            s = np.array((uu < c).argmax(axis=1))
-            #Indicator[j] = s
-            np.put_along_axis(indicator, s[:,None], np.take_along_axis(indicator, s[:,None], axis=1)+1, axis=1)
+        
+            # sample and store indicator
+            s = np.argmax(rng.multinomial(1, z), axis=1)
+            indicator[j] = s
             
+            # get occupied states
             uniqs = np.unique(s)
-            inds = [np.where(s==i)[0] for i in range(ncomp)]
+            inds = [np.where(s==i)[0] for i in range(self.ncomp)]
 
-            # Compute log posterior           
+            # compute total time and number of point for each component
+            Ns[j][:] = np.array([len(inds[i]) for i in range(self.ncomp)])
+            Ts = np.array([x[inds[i]].sum() for i in range(self.ncomp)])  
+
+            # compute log posterior           
             lnp[j] = np.log(tmp.take(s)).sum()+\
                      np.log(mcweights[j][uniqs]).sum()-\
                      (mcrates[j][uniqs]*rhypers[uniqs, 1]).sum()+\
                      np.log(mcweights[j][uniqs]**(whypers[uniqs]-1)).sum()
-            
-            Ns[j][:] = np.array([len(inds[i]) for i in range(ncomp)])
-            Ts = np.array([x[inds[i]].sum() for i in range(ncomp)])  
-            #ms = np.zeros(ncomp)
-            #ss = np.ones(ncomp)
-            ##midTs = np.zeros(ncomp)
-            #for aval in uniqs:
-            #    #midTs[aval] = np.array([np.median(x[inds[aval]])*Nj/len(x) for Nj in Ns[j]])
-            #    ms[aval] = np.array([np.mean(x[inds[aval]])*Nj/len(x) for Nj in Ns[j]]).sum()  
-            #    ss[aval] = np.array([np.std(x[inds[aval]])*Nj/len(x) for Nj in Ns[j] if Nj>1]).sum()  
-            #ss[ss==0] = 1
 
-            # Sample posteriors
+            # sample posteriors
             mcweights[j+1] = rng.dirichlet(whypers+Ns[j]) 
             mcrates[j+1] = rng.gamma(rhypers[:,0]+Ns[j], 1/(rhypers[:,1]+Ts))
 
-#            # Compute cost matrix for occupied states (initial fix (eqn. ))
-            #if j>500:
-            #    tmpsum = np.ones((len(uniqs),len(uniqs)), dtype=np.float64)
-            #    for ii,val in enumerate(uniqs):
-            #        for jj,val2 in enumerate(uniqs):
-            #            #tmpsum[ii, jj] = Ts[val2]/midTs[val]+\
-            #            #                 Ns[j][val2]*np.log(midTs[val])
-            #            tmpsum[ii, jj] = Ns[j][val]*(((x[inds[val]]-ms[val2])/ss[val2])**2).sum()
-            #    
-
-            #    sorts = lsa(tmpsum)[1]
-            #    emptys = np.array([i for i in np.arange(ncomp) if i not in uniqs])
-            #    if len(emptys)>0:
-            #        sortinds = np.concatenate([uniqs[sorts], emptys])
-            #    else:
-            #        sortinds = uniqs[sorts]
-
-            #    mcweights[j+1] = mcweights[j+1][sortinds]
-            #    mcrates[j+1] = mcrates[j+1][sortinds]
-            #    Ns[j], Ts = Ns[j][sortinds], Ts[sortinds]
-            #    #midTs = midTs[sortinds]
-
-            #if j>500:
-            #    uniqs = np.arange(len(uniqs))
-            #    tmpsum = np.ones((len(uniqs),len(uniqs)), dtype=np.float64)
-            #    for ii,val in enumerate(uniqs):
-            #        for jj,val2 in enumerate(uniqs):
-            #            #tmpsum[ii,jj] = mcrates[j+1][val]*Ts[val2]-Ns[j][val2]*\
-            #            #                np.log(mcweights[j+1][val]*mcrates[j+1][val])
-            #            #tmpsum[ii, jj] = Ts[val2]/midTs[val]+\
-            #            #                 Ns[j][val2]*np.log(len(x)*midTs[val]/Ns[j][val])
-            #            #tmpsum[ii, jj] = abs(Ts[val2]*(1/midTs[val]-mcrates[j+1][val])+\
-            #            #                 Ns[j][val2]*np.log(len(x)*midTs[val]/(Ns[j][val]*\
-            #            #                 mcweights[j+1][val]*mcrates[j+1][val])))
-            #            #tmpsum[ii, jj] = np.exp(1-mcweights[j+1][val2]*Ns[j][val]/(len(x)))
-            #            #tmpsum[ii, jj] = abs(mcweights[j+1][val2]-Ns[j][val]/len(x))
-            #                             #abs(mcrates[j+1][val2]-1/Ts[val])
-            #                             #np.exp(abs(mcrates[j+1][val2]-1/midTs[val]))
-            #            #tmpsum[ii, jj] = abs(mcweights[j+1][val2]-mcweights[j][val])*\
-            #            #                 abs(mcrates[j+1][val2]-mcrates[j][val])
-            #            #                 #np.exp(abs(mcrates[j+1][val2]-1/midTs[val]))
-            #            #tmpsum[ii, jj] = \
-            #            #Ns[j][val]*(((x[inds[val]]-ms[val2])/ss[val2])**2).sum()
-            #            #Ns[j][val](((x[inds[val]]-ms[val2])/ss[val2])**2)
-            #            #*np.exp(abs(1/midTs[val]-mcrates[j+1][val2]))
-            #            #tmpsum[ii, jj] = Ts[val2]/midTs[val]+Ns[j][val2]*np.log(midTs[val])
-            #            #tmpsum[ii, jj] = abs(pinvals[val2] - mcweights[j+1][val])
-            #            #tmpsum[ii, jj] = abs(pinvals[val2] - mcrates[j+1][val])
-            #            tmpsum[ii, jj] = Ts[val]/midTs[val2]+Ns[j][val]*np.log(midTs[val2])
-
-            #    sorts = lsa(tmpsum)[1]
-            #    emptys = np.array([i for i in np.arange(ncomp) if i not in uniqs])
-            #    if len(emptys)>0:
-            #        sortinds = np.concatenate([uniqs[sorts], emptys])
-            #    else:
-            #        sortinds = uniqs[sorts]
-
-            #    mcweights[j+1] = mcweights[j+1][sortinds]
-            #    mcrates[j+1] = mcrates[j+1][sortinds]
-            #    Ns[j], Ts = Ns[j][sortinds], Ts[sortinds]
-            #    midTs = midTs[sortinds]
-                #for i in range(ncomp):
-                #    Indicator[j][inds[i]] = sortinds[i]
-            # test cost matrix
-            #tmpsum = np.ones((len(uniqs),len(uniqs)), dtype=np.float64)
-            #for ii,val in enumerate(uniqs):
-            #    for jj,val2 in enumerate(uniqs):
-            #        tmpsum[ii,jj] = mcrates[j+1][val]*Ts[val2]-Ns[j][val2]*np.log(mcrates[j+1][val])
-                    #tmpsum[ii,jj] = \
-                    #mcrates[j+1][val]*T-Ns[j][uniqs[jj]]*np.log(mcrates[j+1][val]*mcweights[j+1][val])
-
-            ## Hungarian algorithm for minimum cost 
-            #sort = lsa(tmpsum)
-            #if not(sort[0]==sort[1]).all():
-            #    print(sort, uniqs)
-
-            ## Relabel states
-#            mcweights[j+1][uniqs] = mcweights[j+1][:len(uniqs)]
-#            mcrates[j+1][uniqs] = mcrates[j+1][:len(uniqs)]
-
-            #mcweights[j+1][uniqs] = mcweights[j+1][:len(uniqs)]
-            #mcrates[j+1][uniqs] = mcrates[j+1][:len(uniqs)]
-
-           
-#            if self.sort:
-#                if j==600:
-#                    pinvals = np.median(mcweights[200:600], axis=0)
-#                if j>600:
-#                    #avgs = ((j-100)*avgs+mcweights[j+1])/(j+1-100)
-#                    #mids = np.median(mcweights[:j+1], axis=0)
-#
-#                    ## test cost matrix
-#                    tmpsum = np.ones((len(uniqs),len(uniqs)), dtype=np.float64)
-#                    for ii,val in enumerate(uniqs):
-#                        for jj,val2 in enumerate(uniqs):
-#                            tmpsum[ii,jj] = abs(mcweights[j+1][val]-pinvals[val2])
-#
-#                    # Hungarian algorithm for minimum cost 
-#                    sortinds = lsa(tmpsum)[1]
-#
-#                    # Relabel states
-#                    mcweights[j+1][uniqs], mcrates[j+1][uniqs] = mcweights[j+1][sortinds], mcrates[j+1][sortinds]
-#
-#                    gc.collect()
-#            #        ####################CHECK IF Ns Ts NEED TO BE SORTED AS WELL!!!!!
-
-
-#        naninds = np.where(lnp!=lnp)[0]
-#        lnp, Ns = np.delete(lnp, naninds), np.delete(Ns, naninds)
-#        mcrates = np.delete(mcrates, naninds, axis=0)
-#        mcweights = np.delete(mcweights, naninds, axis=0)
         
-        if self.niter>50000:
-            Fast=True
-        else:
-            Fast=False
-
-        burnin, g, nsample = pmts.detect_equilibration(lnp, fast=Fast)
-        g = np.ceil(g)
         
-        plt.close('all')
-        attrs = ['mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name',
-                 'indicator', 'Ns', 'lnp', 'g', 'burnin']
-        values = [mcweights, mcrates, ncomp, self.niter, _s, t, residue, indicator, Ns,
-                  lnp, int(g), int(burnin)]
+        attrs = ["mcweights", "mcrates", "ncomp", "niter", "s", "t", "residue",
+                 "lnp", "times"]
+        values = [mcweights, mcrates, self.ncomp, self.niter, _s, t, 
+                  self.residue, lnp, x]
+        
         r = save_results(attrs, values)
-        rp, rpinds = process_gibbs(r)
-        self.results = rp
-        #make_residue_plots(r)
-        #plt.close('all')
-        #all_post_hist(r, save=True)
-        #plt.close('all')
-        #plot_r_vs_w(r)
 
 
-def get_bars(data):
+def confidence_interval(data, percentage=95):
     ds = np.sort(data)
     perc = np.arange(1, len(ds)+1)/(len(ds))
+    lower, upper = (100-percentage)/200, (percentage+(100-percentage)/2)/100
+
     try:
-        l = ds[np.where(perc<=.025)[0][0]]
+        l = ds[np.where(perc<=lower)[0][-1]]
     except IndexError:
         l = ds[0]
     
     try:
-        u = ds[np.where(perc<=.975)[0][-1]]
+        u = ds[np.where(perc>=upper)[0][0]]
     except IndexError:
         u = ds[-1]
-    
-    if u-ds.mean()<0:
-        ub = 0
-    else:
-        ub = u-ds.mean()
-    
-    if ds.mean()-l<0:
-        lb = 0
-    else:
-        lb = ds.mean()-l
 
-    return [lb, ub]
+    return [l, u]
 
 
-def process_gibbs(results):
+def estimate_params(processed_results):
+    rp = processed_results
+    ds = [rp.rates[rp.labels==i]for i in range(rp.ncomp)]
+    bounds = np.array([confidence_interval(d) for d in ds])
+    H = [np.histogram(rp.rates[rp.labels==i], bins=20) for i in range(rp.ncomp)]
+
+    params = np.zeros(len(H))
+    for i, hist in enumerate(H):
+        ind = np.where(hist[0]==hist[0].max())[0]
+        val = 0.5*(hist[1][:-1][ind]+hist[1][1:][ind])
+        params[i] = val
+
+    setattr(rp, 'parameters', params)
+    setattr(rp, 'intervals', bounds)
+
+    return rp
+
+
+def process_gibbs(results, cutoff=1e-4):
     r = results
-    #stds = r.mcweights.mean(axis=0)
-    #inds = np.where(r.mcweights.mean(axis=0)>stds.mean())[0]
-    inds = np.where((r.mcweights.mean(axis=0)>1e-4)&(r.mcrates.std(axis=0)<0.1))[0]
-    ncomp = len(inds)
-    if ncomp>len(r.t):
-        inds = [0]
-
-    if r.burnin==0:
-        burnin = 100
-    else: 
-        burnin = r.burnin
-
-    weights, rates = r.mcweights[burnin::r.g, inds], r.mcrates[burnin::r.g, inds]
-    indicator, Ns = r.indicator[burnin::r.g], r.Ns[burnin::r.g]
-    lnp = r.lnp[r.burnin::r.g]
     
-    attrs = ['mcweights', 'mcrates', 'weights', 'rates', 'ncomp', 'niter', 's', 't',
-             'name', 'indicator', 'Ns', 'lnp', 'g', 'burnin']
-    values = [r.mcweights, r.mcrates, weights, rates, ncomp, r.niter, r.s, r.t, r.name, indicator, Ns,
-              lnp, r.g, int(burnin)]
+
+    #burnin, g, nsample = pmts.detect_equilibration(r.lnp, nskip=20)
+    burnin, g = int(burnin), int(np.ceil(g))
+
+    if burnin==0:
+        burnin = 500
+    else: 
+        burnin = burnin
+    
+    inds = np.where(r.mcweights[burnin::g]>cutoff)
+    indices = np.arange(burnin, r.niter, g)[inds[0]]
+    H = np.histogram([len(row[row>cutoff]) for row in r.mcweights[burnin::g]], \
+                      bins=np.arange(1, r.ncomp+1))
+    ncomp = int(H[1][:-1][H[0]==H[0].max()][0])
+
+    weights, rates = r.mcweights[burnin::g][inds], r.mcrates[burnin::g][inds]
+    lnp = r.lnp[burnin::g][inds[0]]
+    
+    Indicator = np.zeros((r.times.shape[0], ncomp))
+    
+    for j,iteration in enumerate(np.unique(indices)):
+        mapinds = km.labels_[inds[0]==j]
+        for i,indx in enumerate(inds[1][indices==iteration]):
+            tmpind = np.where(indicator[iteration]==indx)[0]
+            Indicator[tmpind, mapinds[i]] += 1
+
+    Indicator = (Indicator.T/Indicator.sum(axis=1)).T
+
+    attrs = ["weights", "rates", "ncomp", "residue", "indicator", "g", \
+             "burnin", "labels", "iteration", "niter"]
+    values = [weights, rates, ncomp, r.residue, Indicator, g, burnin, \
+              km.labels_, indices, r.niter]
     r = save_results(attrs, values, processed=True)
     return r, inds
-
-
-class gibbs(object):
-    def __init__(self, times, residue, loc, ts, ncomp=50, niter=10000):
-        self.times, self.residue = times, residue
-        self.niter, self.loc, self.ts, self.ncomp = niter, loc, ts, ncomp
-    # def __repr__(self):
-    #     return f'Gibbs sampler with N_comp={self.ncomp}'
-
-    # def __str__(self):
-    #     return f'Gibbs sampler with N_comp={self.ncomp}'
-
-    def run(self):
-        x, residue, niter_init = self.times.astype(float), self.residue, 2500
-        t, _s = get_s(x, self.ts)
-        if self.ncomp:
-            ncomp = int(self.ncomp)
-            inrates = 10 ** (np.linspace(-3, 1, ncomp))
-            mcweights = np.zeros((self.niter + 1, ncomp))
-            mcrates = np.zeros((self.niter + 1, ncomp))
-            tmp = np.exp(-np.linspace(0,10, ncomp))
-            mcweights[0], mcrates[0] = tmp/tmp.sum(), inrates[::-1]
-            whypers, rhypers = np.ones(ncomp)/[ncomp], np.ones((ncomp, 2))*[2, 1]  # guess hyperparameters
-            weights, rates = [], []
-            indicator = np.zeros((ncomp, x.shape[0]), dtype=float)
-            # indicator = np.zeros((x.shape[0], ncomp), dtype=int)
-            zs = []
-            for j in tqdm(range(self.niter), desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
-                tmp = mcweights[j]*mcrates[j]*np.exp(np.outer(-mcrates[j], x)).T
-                z = (tmp.T/tmp.sum(axis=1)).T
-                c = z.cumsum(axis=1)
-                uu = np.random.rand(len(c), 1)
-                s = np.array((uu < c).argmax(axis=1))
-                indicator += z.T
-                Ns = np.array([len(s[s==i]) for i in range(ncomp)])
-                inds = [np.where(s==i)[0] for i in range(ncomp)]
-                Ts = np.array([x[inds[i]].sum() for i in range(ncomp)])
-                mcweights[j + 1] = rng.dirichlet(whypers + Ns)
-                mcrates[j + 1] = np.random.gamma(rhypers[:,0]+Ns, 1/(rhypers[:,1]+Ts))
-
-            for i in range(ncomp):
-                start = 25
-                wburnin = pmts.detect_equilibration(mcweights[start:, i])[0] + start
-                rburnin = pmts.detect_equilibration(mcrates[start:, i])[0] + start
-                weights.append(mcweights[wburnin:, i][pmts.subsample_correlated_data(mcweights[wburnin:, i])])
-                rates.append(mcrates[rburnin:, i][pmts.subsample_correlated_data(mcrates[rburnin:, i])])
-            plt.close('all')
-            attrs = ['weights', 'rates', 'mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name',
-                     'indicator', 'Ns']
-            values = [weights, rates, mcweights, mcrates, ncomp, self.niter, _s, t, residue, indicator, Ns, zs]
-            r = save_results(attrs, values)
-            make_residue_plots(r)
-            plt.close('all')
-            all_post_hist(r, save=True)
-            plt.close('all')
-            plot_r_vs_w(r)
-        else:
-            for ncomp in range(2, 10):
-                inrates = 10 ** (np.linspace(-3, 1, ncomp))
-                mcweights = np.zeros((self.niter + 1, ncomp), dtype=float)
-                mcrates = np.zeros((self.niter + 1, ncomp), dtype=float)
-                tmp = np.exp(-np.linspace(0,10, ncomp))
-                mcweights[0], mcrates[0] = tmp/tmp.sum(), inrates[::-1]
-                whypers, rhypers = np.ones(ncomp)/[ncomp], np.ones((ncomp, 2))*[2, 1]  # guess hyperparameters
-                weights, rates = [], []
-                indicator = np.zeros((ncomp, x.shape[0]), dtype=float)
-                # indicator = np.zeros((x.shape[0], ncomp), dtype=int)
-                for j in tqdm(range(niter_init), desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
-                    tmp = mcweights[j]*mcrates[j]*np.exp(np.outer(-mcrates[j], x)).T
-                    z = (tmp.T/tmp.sum(axis=1)).T
-                    c = z.cumsum(axis=1)
-                    uu = np.random.rand(len(c), 1)
-                    s = np.array((uu < c).argmax(axis=1))
-                    indicator += z.T
-                    Ns = np.array([len(s[s==i]) for i in range(ncomp)])
-                    inds = [np.where(s==i)[0] for i in range(ncomp)]
-                    Ts = np.array([x[inds[i]].sum() for i in range(ncomp)])
-                    mcweights[j + 1] = rng.dirichlet(whypers + Ns)
-                    mcrates[j + 1] = np.random.gamma(rhypers[:,0]+Ns, 1/(rhypers[:,1]+Ts))
-
-                uniq_rts = unique_rates(ncomp, mcrates[:niter_init])
-                if uniq_rts != ncomp:
-                    break
-                else:
-                    for j in tqdm(range(niter_init, self.niter), initial=niter_init, total=self.niter,
-                                  desc=f'{residue}-K{ncomp}', position=self.loc, leave=False):
-                        tmp = mcweights[j]*mcrates[j]*np.exp(np.outer(-mcrates[j], x)).T
-                        z = (tmp.T/tmp.sum(axis=1)).T
-                        c = z.cumsum(axis=1)
-                        uu = np.random.rand(len(c), 1)
-                        s = np.array((uu < c).argmax(axis=1))
-                        indicator += z.T
-                        Ns = np.array([len(s[s==i]) for i in range(ncomp)])
-                        inds = [np.where(s==i)[0] for i in range(ncomp)]
-                        Ts = np.array([x[inds[i]].sum() for i in range(ncomp)])
-                        mcweights[j + 1] = rng.dirichlet(whypers + Ns)
-                        mcrates[j + 1] = np.random.gamma(rhypers[:,0]+Ns, 1/(rhypers[:,1]+Ts))
-
-                    uniq_rts = unique_rates(ncomp, mcrates)
-                    if uniq_rts == ncomp:
-                        for i in range(ncomp):
-                            wburnin = pmts.detect_equilibration(mcweights[:, i])[0]
-                            rburnin = pmts.detect_equilibration(mcrates[:, i])[0]
-                            weights.append(mcweights[wburnin:, i][pmts.subsample_correlated_data(mcweights[wburnin:, i])])
-                            rates.append(mcrates[rburnin:, i][pmts.subsample_correlated_data(mcrates[rburnin:, i])])
-                        plt.close('all')
-                        attrs = ['weights', 'rates', 'mcweights', 'mcrates', 'ncomp', 'niter', 's', 't', 'name', 'indicator']
-                        values = [weights, rates, mcweights, mcrates, ncomp, self.niter, _s, t, residue, indicator]
-                        r = save_results(attrs, values)
-                        make_residue_plots(r)
-                        all_post_hist(r, save=True)
-                        plot_r_vs_w(r)
-                    else:
-                        break
-                plt.close('all')
 
 
 def unique_rates(ncomp, mcrates):
@@ -504,6 +246,7 @@ def get_s(x, ts):
     Hist = np.histogram(x, bins=Bins)
     t, s = make_surv(Hist)
     return t, s
+
 
 def plot_r_vs_w(r, rrange=None, wrange=None):
     plt.close()                                                               
@@ -539,7 +282,6 @@ def plot_results(results, cond='ml', save=False, show=False):
     elif cond == 'ml':
         mlw, mlr = [], []
         for i in range(results.ncomp):
-            # tmpw, tmpr = plt.hist(weights[i], density=True), plt.hist(rates[i], density=True)
             mlw.append(w_hists[i][1][w_hists[i][0].argmax()])
             mlr.append(r_hists[i][1][r_hists[i][0].argmax()])
         mlw = np.array(mlw)
@@ -550,10 +292,11 @@ def plot_results(results, cond='ml', save=False, show=False):
 
     fig, axs = plt.subplots(figsize=(4,3))
     plt.scatter(results.t, results.s, s=15, label='data')
-    plt.plot(results.t, np.inner(weights, np.exp(np.outer(results.t, -rates))), label='fit', color='y', \
-            ls='dashed', lw=3)
+    plt.plot(results.t, np.inner(weights, np.exp(np.outer(results.t, -rates))),\
+            label='fit', color='y', ls='dashed', lw=3)
     for i in range(results.ncomp):
-        plt.plot(results.t, weights[i] * np.exp(results.t * -rates[i]), label=f'Comp.{i}', color=f'C{i}')
+        plt.plot(results.t, weights[i] * np.exp(results.t * -rates[i]), \
+                 label=f'Comp.{i}', color=f'C{i}')
     plt.plot([], [], ' ', label=rf'$\tau$={np.round(1/rates.min(), 1)} ns')
     plt.yscale('log')
     plt.ylim(0.8*results.s[-2], 2)
@@ -577,7 +320,8 @@ def all_post_hist(results, save=False, show=False, wlims=None, rlims=None):
         Attr = getattr(results, attr)
         plt.figure(figsize=(4,3))
         for i in range(results.ncomp):
-            plt.hist(Attr[i], density=True, bins=15, label=f'comp. {i}', alpha=0.5)
+            plt.hist(Attr[i], density=True, bins=15, label=f'comp. {i}', \
+                     alpha=0.5)
         plt.legend()
         plt.xlabel(f'{attr}{unit}'), plt.ylabel('p').set_rotation(0)
         plt.yscale('log'), plt.xscale('log')
@@ -588,11 +332,13 @@ def all_post_hist(results, save=False, show=False, wlims=None, rlims=None):
             plt.xlim(wlims[0])
             plt.ylim(wlims[1])
         if save:
-            plt.savefig(f'{outdir}/figs/k{results.ncomp}-posterior_{attr}_comp-all.png', bbox_inches='tight')
-            plt.savefig(f'{outdir}/figs/k{results.ncomp}-posterior_{attr}_comp-all.pdf', bbox_inches='tight')
+            name = f'{outdir}/figs/k{results.ncomp}-posterior_{attr}_comp-all'
+            plt.savefig(f'{name}.png', bbox_inches='tight')
+            plt.savefig(f'{name}.pdf', bbox_inches='tight')
         if show:
             plt.show()
         plt.close('all')
+
 
 def plot_post(results, attr, comp=None, save=False, show=False):
     outdir = results.name
@@ -606,8 +352,10 @@ def plot_post(results, attr, comp=None, save=False, show=False):
         [plt.hist(Attr[i], density=True, bins=50, label=f'comp. {i}') for i in comp]
         plt.legend()
         if save:
-            plt.savefig(f'{outdir}/figs/k{results.ncomp}-posterior_{attr}_comps-{"-".join([str(i) for i in comp])}.png')
-            plt.savefig(f'{outdir}/figs/k{results.ncomp}-posterior_{attr}_comps-{"-".join([str(i) for i in comp])}.pdf')
+            plt.savefig(f'{outdir}/figs/k{results.ncomp}-posterior_{attr}_\
+                           comps-{"-".join([str(i) for i in comp])}.png')
+            plt.savefig(f'{outdir}/figs/k{results.ncomp}-posterior_{attr}_\
+                           comps-{"-".join([str(i) for i in comp])}.pdf')
         if show:
             plt.show()
         plt.close('all')
@@ -621,8 +369,10 @@ def plot_post(results, attr, comp=None, save=False, show=False):
             plt.xlabel(rf'{attr[:-1]} {unit}')
             ax.xaxis.major.formatter._useMathText = True
             if save:
-                plt.savefig(f'{outdir}/figs/k{results.ncomp}-posterior_{attr}_comp-{i}.png', bbox_inches='tight')
-                plt.savefig(f'{outdir}/figs/k{results.ncomp}-posterior_{attr}_comp-{i}.pdf', bbox_inches='tight')
+                plt.savefig(f'{outdir}/figs/k{results.ncomp}-posterior_{attr}_\
+                               comp-{i}.png', bbox_inches='tight')
+                plt.savefig(f'{outdir}/figs/k{results.ncomp}-posterior_{attr}_\
+                               comp-{i}.pdf', bbox_inches='tight')
             if show:
                 plt.show()
 
@@ -724,24 +474,26 @@ def collect_n_plot(resids, comps):
                 tmp_res = pickle.load(W)
 
             make_residue_plots(tmp_res, comps)
-            all_post_hist(tmp_res, save=True, rlims=[[1e-3,10],[1e-2, 1e3]], wlims=[[1e-4, 1.1],[1e-1, 1e4]])
+            all_post_hist(tmp_res, save=True, rlims=[[1e-3,10],[1e-2, 1e3]], \
+                          wlims=[[1e-4, 1.1],[1e-1, 1e4]])
             plot_r_vs_w(tmp_res, rrange=[1e-3, 10], wrange=[1e-4, 5])
 
 
 def save_results(attr_names, values, processed=False):
+    from MDAnalysis.analysis.base import Results
     r = Results()
 
     for attr, value in zip(attr_names, values):
         setattr(r, attr, value)
 
-    if not os.path.exists(r.name):
-        os.mkdir(r.name)
+    if not os.path.exists(r.residue):
+        os.mkdir(r.residue)
 
     if processed:
-        with open(f'{r.name}/processed_results_{r.niter}.pkl', 'wb') as W:
+        with open(f'{r.residue}/processed_results_{r.niter}.pkl', 'wb') as W:
             pickle.dump(r, W)
     else:
-        with open(f'{r.name}/results_{r.niter}.pkl', 'wb') as W:
+        with open(f'{r.residue}/results_{r.niter}.pkl', 'wb') as W:
             pickle.dump(r, W)
 
     return r
@@ -771,7 +523,8 @@ def plot_protein(residues, t_slow, bars, prot):
 
     height, width = 3, 4
     fig, axs = plt.subplots(2,1,figsize=(width, height),sharex=True)
-    p =[Rectangle((tm(prots[prot]['helices'],i+1)[0][0],0),tm(prots[prot]['helices'],i+1)[1],1,fill=True) for i in range(7)]
+    p =[Rectangle((tm(prots[prot]['helices'],i+1)[0][0],0),\
+            tm(prots[prot]['helices'],i+1)[1],1,fill=True) for i in range(7)]
     patches = PatchCollection(p)
     patches.set_color('C0')
     resids = np.array([int(res[1:]) for res in residues])
@@ -817,7 +570,7 @@ def run(gib):
     gib.run()
 
 
-def run_residue(residue, time, ts, ncomp, niter):
+def run_residue(residue, time, ncomp, niter):
     x = np.array(time)
     if len(x)!=0:
         try:
@@ -825,9 +578,9 @@ def run_residue(residue, time, ts, ncomp, niter):
         except ValueError:
             proc = 1
         if niter:
-            gib = newgibbs(x, residue, proc, ts, ncomp=ncomp, niter=niter)
+            gib = gibbs(x, residue, proc, ncomp=ncomp, niter=niter)
         else:
-            gib = newgibbs(x, residue, proc, ts, ncomp=ncomp, niter=10000)
+            gib = gibbs(x, residue, proc, ncomp=ncomp, niter=10000)
         
         run(gib)
 
@@ -848,32 +601,6 @@ def check_results(residues, times, ts):
             plt.title('Results unavailable')
             plt.savefig(f'result_check/{residue}-s-vs-t.png')
             plt.close('all')
-
-
-# def get_frame_comps(time, indicator, trajtime):
-#     inds = np.array([np.where(indicator.argmax(axis=0) == i)[0] for i in range(8)])
-#     simtime = [time[inds[i]] for i in range(8)]
-#     timelen = [trajtime[inds[i]] for i in range(8)]
-#     return simtime, timelen
-
-
-# def plot_fill(simtime, timelen, indicator):
-#     bframe, eframe = get_start_stop_frames(simtime, timelen)
-#     framec = (np.round(timelen, 1)*10).astype(int)
-#     sortinds = bframe.argsort()
-#
-#     bframe.sort()
-#     eframe = eframe[sortinds]
-#     indicator = indicator[sortinds]
-#
-#     inds = np.array([np.where(indicator.argmax(axis=0) == i)[0] for i in range(8)])
-#     lens = np.array([len(ind) for ind in inds])
-#     ncomps = len(np.where(lens!=0)[0])
-#     compframe, comptime = [bframe[ind] for ind in inds], [framec[ind] for ind in inds]
-#     xvals = [np.insert(compframe[i], np.arange(len(compframe[i]))+1, compframe[i]+comptime[i]) for i in range(ncomps)]
-#     cindicator = indicator.cumsum(axis=0)
-#     compind = [cindicator[:ncomps][i][inds[i]] for i in range(ncomps)]
-#     yvals = [np.insert(compind[i], np.arange(len(compind[i])) + 1, compind[i]) for i in range(ncomps)]
 
 
 def get_dec(ts):
@@ -902,6 +629,7 @@ def get_write_frames(u, time, trajtime, lipind, comp):
     write_frames, write_Linds = np.concatenate([*tmp]), np.concatenate([*tmpL]).astype(int)
     return write_frames, write_Linds
 
+
 def write_trajs(u, time, trajtime, indicator, residue, lipind, step):
     try:
         proc = int(multiprocessing.current_process().name[-1])
@@ -913,18 +641,13 @@ def write_trajs(u, time, trajtime, indicator, residue, lipind, step):
     inds = np.array([np.where(indicator.argmax(axis=0) == i)[0] for i in range(8)], dtype=object)
     lens = np.array([len(ind) for ind in inds])
     for comp in np.where(lens != 0)[0]:
-        # bframes, eframes = get_start_stop_frames(trajtime[inds[comp]], time[inds[comp]], dt)
-        # sortinds = bframes.argsort()
-        # bframes.sort()
-        # eframes, lind = eframes[sortinds], lipind[inds[comp]][sortinds]
-        # tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]
-        # tmpL = [np.ones_like(np.arange(b, e))*l for b, e, l in zip(bframes, eframes, lind)]
-        # write_frames, write_Linds = np.concatenate([*tmp]), np.concatenate([*tmpL]).astype(int)
         write_frames, write_Linds = get_write_frames(u, time, trajtime, lipind, comp+2)
         if len(write_frames) > step:
             write_frames, write_Linds = write_frames[::step], write_Linds[::step]
-        with mda.Writer(f"{residue}/comp{comp}_traj.xtc", len((prot+chol.residues[0].atoms).atoms)) as W:
-            for i, ts in tqdm(enumerate(u.trajectory[write_frames]), desc=f"{residue}-comp{comp}", position=proc,
+        with mda.Writer(f"{residue}/comp{comp}_traj.xtc", \
+                len((prot+chol.residues[0].atoms).atoms)) as W:
+            for i, ts in tqdm(enumerate(u.trajectory[write_frames]), \
+                              desc=f"{residue}-comp{comp}", position=proc, \
                               leave=False, total=len(write_frames)):
                 ag = prot+chol.residues[write_Linds[i]].atoms
                 W.write(ag)
@@ -965,17 +688,6 @@ def get_remaining_residue_inds(residues, invert=True):
     return rem_inds
 
 
-def simulate_h2(n, params):
-    n, [a, alp, bet] = int(n), params
-    x = np.zeros(n)
-    p = np.random.rand(n)
-
-    x[p < a] = -np.log(np.random.rand(len(p[p < a])))/alp
-    x[p > a] = -np.log(np.random.rand(len(p[p > a])))/bet
-    x.sort()
-    return x
-
-
 def simulate_hn(n, weights, rates):
     n = int(n)
     x = np.zeros(n)
@@ -983,37 +695,23 @@ def simulate_hn(n, weights, rates):
 
     tmpw = np.concatenate(([0], np.cumsum(weights)))
     for i in range(len(weights)):
-        x[(p > tmpw[i]) & (p <= tmpw[i+1])] = -np.log(np.random.rand(len(p[(p > tmpw[i]) & (p <= tmpw[i+1])])))/rates[i]
+        x[(p > tmpw[i]) & (p <= tmpw[i+1])] = \
+        -np.log(np.random.rand(len(p[(p > tmpw[i]) & (p <= tmpw[i+1])])))/\
+        rates[i]
     x.sort()
     return x
 
 
-def simulate_stretch_k2(n, weights, rates, exp):
-    n = int(n)
-    x = np.zeros(n)
-    p = np.random.rand(n)
-
-    tmpw = np.concatenate(([0], np.cumsum(weights)))
-
-    x[(p > tmpw[0]) & (p <= tmpw[1])] = (-np.log(np.random.rand(len(p[(p > tmpw[0]) & (p <= tmpw[1])])))/rates[0])**(1/exp)
-    x[(p > tmpw[1]) & (p <= tmpw[2])] = -np.log(np.random.rand(len(p[(p > tmpw[1]) & (p <= tmpw[2])])))/rates[1]
-
-    x.sort()
-    return x
-
-
-def pdf_norm(x, mu, sigma):
-    return np.exp(-0.5*((x-mu)/sigma)**2)/(np.sqrt(2*np.pi)*sigma)
-
-
-def get_bins(x, ts):
-    if isinstance(x, list):
-        x = np.asarray(x)
-    elif isinstance(x, np.ndarray):
-        pass
-    else:
-        raise TypeError('Input should be a list or array')
-    return np.arange(1, int(x.max()//ts)+3)*ts
+def make_surv(ahist):
+    y = ahist[0][ahist[0] != 0]
+    tmpbin = ahist[1][:-1]
+    t = tmpbin[ahist[0] != 0]
+    t = np.insert(t, 0, 0)
+    y = np.cumsum(y)
+    y = np.insert(y, 0, 0)
+    y = y/y[-1]
+    s = 1-y
+    return t, s
 
 
 def expand_times(contacts):
@@ -1045,81 +743,12 @@ def expand_times(contacts):
     return np.asarray(alltimes)
 
 
-def make_surv(ahist):
-    y = ahist[0][ahist[0] != 0]
-    tmpbin = ahist[1][:-1]
-    t = tmpbin[ahist[0] != 0]
-    t = np.insert(t, 0, 0)
-    y = np.cumsum(y)
-    y = np.insert(y, 0, 0)
-    y = y/y[-1]
-    s = 1-y
-    return t, s
-
-
-def stretch_exp_p(x, bet, lamda):
-    return bet*lamda*x**(lamda-1)*np.exp(-bet*x**lamda)
-
-
-def stretch_exp_s(x, bet, lamda):
-    return np.exp(-bet*x**lamda)
-
-
-def surv(x, weights, rates):
-    return np.inner(weights, np.exp(np.outer(x, -rates)))
-
-
-def surv2(x, w1, r1, r2):
-    return w1*np.exp(-x*r1)+(1-w1)*np.exp(x*-r2)
-
-
-def prob(x, weights, rates):
-    return np.inner(weights*rates, np.exp(np.outer(x, -rates)))
-
-
-def lnL(data, weights, rates):
-    return np.sum(np.log(prob(data, weights, rates)))
-
-
-def make_F(data):
-    return lambda vars: -lnL(data, vars[0], vars[1])
-
-
-def make_jac(x):
-    return lambda params: jac(x, params)
-
-
-def jac(x, params):
-    a, alp, bet = params
-    w1 = np.sum((alp*np.exp(-alp*x)-bet*np.exp(-bet*x))/prob(x, params))
-    l1 = np.sum((a*np.exp(-alp*x)*(1-alp**2))/prob(x, params))
-    l2 = np.sum((-(1-a)*np.exp(-bet*x)*(1-bet**2))/prob(x, params))
-    tmparr = np.array((w1, l1, l2))
-    return np.transpose(tmparr)
-
-
-def norm_exp(x, rates):
-    return np.array([rate*np.exp(-rate*x) for rate in rates])
-
-# @njit
-# def norm_exp_numba(x, rates):
-#     tmparr = np.zeros((len(x), len(rates)))
-#     for i, rate in enumerate(rates):
-#         tmparr[:, i] = rate*np.exp(-rate*x)
-#     return tmparr
-
-
-def exp(x, rates):
-    return np.asarray([np.exp(-rate*x) for rate in rates])
-
-
-def w_prior(x, alp, bet):
-    return lambda a: np.sqrt(sum((exp(x, alp)-exp(x, bet))**2/(a*exp(x, alp)+(1-a)*exp(x, bet))))
-
-
-def approx_omega(x, lamda1, lamda2):
-    lamdaA, lamda0 = lamda2/(lamda1-1), lamda1-1
-    L = len(x)
-    return np.log(np.sqrt(2*np.pi/(lamda0+L)))+(L+lamda0)*np.log((lamda0+L)/(lamdaA*lamda0+x.sum()))+\
-           np.log((lamda0*lamdaA)**(lamda0+1)/(math.factorial(lamda0)*(lamdaA*lamda0+x.sum())))
+def get_bins(x, ts):
+    if isinstance(x, list):
+        x = np.asarray(x)
+    elif isinstance(x, np.ndarray):
+        pass
+    else:
+        raise TypeError('Input should be a list or array')
+    return np.arange(1, int(x.max()//ts)+3)*ts
 

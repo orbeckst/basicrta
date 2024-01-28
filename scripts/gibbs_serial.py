@@ -18,12 +18,11 @@ if __name__ == "__main__":
     parser.add_argument('--protname')
     parser.add_argument('--resids', nargs='?')
     parser.add_argument('--niter', nargs='?', default=10000)
-    parser.add_argument('--sort', nargs='?', default=True)
-    parser.add_argument('--ncomp', nargs='?', default=10, type=int)
+    parser.add_argument('--ncomp', nargs='?', default=15, type=int)
     args = parser.parse_args()
     a = np.load(args.contacts)
 
-    ts, ncomp = 0.1, args.ncomp
+    ncomp = args.ncomp
     cutoff = float(args.contacts.split('.npy')[0].split('_')[-1])
     nproc, prot = 1, args.protname
     if args.niter:
@@ -53,7 +52,7 @@ if __name__ == "__main__":
         os.mkdir(f'BaSiC-RTA-{cutoff}')
     os.chdir(f'BaSiC-RTA-{cutoff}')
 
-    input_list = np.array([[residues[i], times[i], ts, ncomp, niter] for i in range(len(residues))], dtype=object)
+    input_list = np.array([[residues[i], times[i], ncomp, niter] for i in range(len(residues))], dtype=object)
     with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
         for _ in tqdm(p.istarmap(run_residue, input_list), total=len(residues), position=0, desc='overall progress'):
             pass

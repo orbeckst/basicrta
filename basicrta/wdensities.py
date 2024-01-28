@@ -11,17 +11,17 @@ from basicrta.functions import process_gibbs
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--residue')
+    parser.add_argument('--processed_results')
     parser.add_argument('--cutoff')
     parser.add_argument('--filterP', nargs='?', default=0.85)
     parser.add_argument('--step', nargs='?', default=1)
     args = parser.parse_args()
 
-    residue, cutoff = args.residue, float(args.cutoff)
+    with open(f'{args.processed_results}', 'rb') as w:
+        rp = pickle.load(w)
+
+    residue, cutoff = rp.residue, float(args.cutoff)
     resid, step, filterP = int(residue[1:]), int(args.step), float(args.filterP)
-    
-    r = pickle.load(bz2.BZ2File(f'BaSiC-RTA-{cutoff}/{residue}/results_20000.pkl.bz2', 'rb'))
-    rp, rpinds = process_gibbs(r)
     ncomp = rp.ncomp
     
     files = ['1/fixrot_dimer.xtc', '2/fixrot_dimer.xtc', '3/fixrot_dimer.xtc']
@@ -41,8 +41,9 @@ if __name__ == "__main__":
         lipinds = np.array(a[a[:, 0] == index][:, 1])
         dt = u.trajectory.ts.dt/1000 #nanoseconds
 
-        sortinds = np.argsort([line.mean() for line in rp.rates.T])
-        indicators = (r.indicator.T/r.indicator.sum(axis=1))[rpinds][sortinds]
+        #sortinds = np.argsort([line.mean() for line in rp.rates.T])
+        #indicators = (r.indicator.T/r.indicator.sum(axis=1))[rpinds][sortinds]
+        indicators = rp.indicator
 
         bframes, eframes = get_start_stop_frames(trajtimes, times, dt)
         tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]
