@@ -209,7 +209,6 @@ def process_gibbs(results, cutoff=1e-4):
 
     weights = r.mcweights[burnin_ind::][inds]
     rates = r.mcrates[burnin_ind::][inds]
-    #lnp = r.lnp[burnin::g][inds[0]]
     
     data = np.stack((weights, rates), axis=1)
     km = KMeans(n_clusters=ncomp).fit(np.log(data))
