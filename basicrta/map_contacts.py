@@ -2,14 +2,11 @@
 
 import os
 os.environ['MKL_NUM_THREADS'] = '1'
-import MDAnalysis as mda
 from MDAnalysis.lib import distances
 import numpy as np
 from tqdm import tqdm
 import collections
-from pmdautil import make_balanced_slices
 from multiprocessing import Pool, Lock
-from glob import glob
 
 
 class MapContacts(object):
