@@ -51,7 +51,7 @@ class gibbs(object):
         self.whypers = np.ones(self.ncomp) / [self.ncomp]
         self.rhypers = np.ones((self.ncomp, 2)) * [1, 3]
 
-    def _run(self):
+    def run(self):
         # initialize weights and rates
         inrates = 0.5 * 10 ** np.arange(-self.ncomp + 2, 2, dtype=float)
         tmpw = 9 * 10 ** (-np.arange(1, self.ncomp + 1, dtype=float))
@@ -91,7 +91,7 @@ class gibbs(object):
         values = [self.mcweights, self.mcrates, self.ncomp, self.niter, self.s,
                   self.t, self.residue, self.times]
         
-        r = save_results(attrs, values)
+        r = _save_results(attrs, values)
         self.results = r
 
     def _process_gibbs(self, cutoff=1e-4):
@@ -124,9 +124,9 @@ class gibbs(object):
                  "iteration", "niter"]
         values = [weights, rates, ncomp, self.residue, Indicator,
                   km.labels_, indices, self.niter]
-        r = save_results(attrs, values, processed=True)
+        r = _save_results(attrs, values, processed=True)
 
-    def save_results(self, attrs, values, processed=False):
+    def _save_results(self, attrs, values, processed=False):
         from MDAnalysis.analysis.base import Results
         r = Results()
 
