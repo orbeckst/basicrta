@@ -1,6 +1,7 @@
 """Analysis functions"""
 
-import os, gc
+import os
+import gc
 import numpy as np
 import matplotlib as mpl
 from numpy.random import default_rng
@@ -22,7 +23,7 @@ class gibbs(object):
     def __init__(self, times, residue, loc=0, ncomp=15, niter=50000):
         self.times, self.residue = times, residue
         self.niter, self.loc, self.ncomp = niter, loc, ncomp
-        self.results, self.g = None, 100
+        self.results, self.g, self.burnin = None, 100, 10000
 
         diff = (np.sort(times)[1:]-np.sort(times)[:-1])
         self.ts = diff[diff != 0][0]
@@ -33,6 +34,7 @@ class gibbs(object):
 
 
     def _prepare(self):
+        from basicrta.functions import get_s
         self.t, self.s = get_s(self.times, self.ts)
 
         if not os.path.exists(f'{self.residue}'):
@@ -84,9 +86,6 @@ class gibbs(object):
                 self.mcweights[ind], self.mcrates[ind] = weights, rates
                 self.indicator[ind] = s
 
-        self._save()
-
-    def _save(self):
         attrs = ["mcweights", "mcrates", "ncomp", "niter", "s", "t", "residue",
                  "times"]
         values = [self.mcweights, self.mcrates, self.ncomp, self.niter, self.s,
@@ -94,4 +93,55 @@ class gibbs(object):
         
         r = save_results(attrs, values)
         self.results = r
+
+    def _process_gibbs(self, cutoff=1e-4):
+        burnin_ind = self.burnin // self.g
+
+        inds = np.where(self.mcweights[burnin_ind:] > cutoff)
+        indices = np.arange(self.burnin, self.niter + 1, self.g)[inds[0]] // self.g
+        lens = [len(row[row > cutoff]) for row in self.mcweights[burnin_ind:]]
+        ncomp = stats.mode(lens, keepdims=False)[0]
+
+        weights = self.mcweights[burnin_ind::][inds]
+        rates = self.mcrates[burnin_ind::][inds]
+
+        data = np.stack((weights, rates), axis=1)
+        km = KMeans(n_clusters=ncomp).fit(np.log(data))
+        Indicator = np.zeros((self.times.shape[0], ncomp))
+        indicator = np.memmap(f'{self.residue}/.indicator_{self.niter}.npy',
+                              shape=((self.niter + 1) // self.g, self.times.shape[0]),
+                              mode='r', dtype=np.uint8)
+
+        for j in np.unique(inds[0]):
+            mapinds = km.labels_[inds[0] == j]
+            for i, indx in enumerate(inds[1][inds[0] == j]):
+                tmpind = np.where(indicator[j] == indx)[0]
+                Indicator[tmpind, mapinds[i]] += 1
+
+        Indicator = (Indicator.T / Indicator.sum(axis=1)).T
+
+        attrs = ["weights", "rates", "ncomp", "residue", "indicator", "labels",
+                 "iteration", "niter"]
+        values = [weights, rates, ncomp, self.residue, Indicator,
+                  km.labels_, indices, self.niter]
+        r = save_results(attrs, values, processed=True)
+
+    def save_results(self, attrs, values, processed=False):
+        from MDAnalysis.analysis.base import Results
+        r = Results()
+
+        for attr, value in zip(attrs, values):
+            setattr(r, attr, value)
+
+        if processed:
+            with open(f'{r.residue}/processed_results_{r.niter}.pkl',
+                      'wb') as W:
+                pickle.dump(r, W)
+        else:
+            with open(f'{r.residue}/results_{r.niter}.pkl', 'wb') as W:
+                pickle.dump(r, W)
+
+        return r
+
+
 
