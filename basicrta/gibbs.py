@@ -1,4 +1,5 @@
-"""Analysis functions"""
+"""Analysis functions
+"""
 
 import os
 import gc
@@ -34,7 +35,7 @@ class gibbs(object):
 
 
     def _prepare(self):
-        from basicrta.functions import get_s
+        from basicrta.util import get_s
         self.t, self.s = get_s(self.times, self.ts)
 
         if not os.path.exists(f'{self.residue}'):
@@ -50,6 +51,7 @@ class gibbs(object):
         # guess hyperparameters
         self.whypers = np.ones(self.ncomp) / [self.ncomp]
         self.rhypers = np.ones((self.ncomp, 2)) * [1, 3]
+
 
     def run(self):
         # initialize weights and rates
@@ -91,8 +93,9 @@ class gibbs(object):
         values = [self.mcweights, self.mcrates, self.ncomp, self.niter, self.s,
                   self.t, self.residue, self.times]
         
-        r = _save_results(attrs, values)
+        r = self._save_results(attrs, values)
         self.results = r
+
 
     def _process_gibbs(self, cutoff=1e-4):
         burnin_ind = self.burnin // self.g
@@ -124,7 +127,8 @@ class gibbs(object):
                  "iteration", "niter"]
         values = [weights, rates, ncomp, self.residue, Indicator,
                   km.labels_, indices, self.niter]
-        r = _save_results(attrs, values, processed=True)
+        r = self._save_results(attrs, values, processed=True)
+
 
     def _save_results(self, attrs, values, processed=False):
         from MDAnalysis.analysis.base import Results
@@ -142,6 +146,7 @@ class gibbs(object):
                 pickle.dump(r, W)
 
         return r
+
 
 
 
