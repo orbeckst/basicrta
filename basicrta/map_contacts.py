@@ -17,28 +17,31 @@ class MapContacts(object):
     a contact is considered formed.
     """
 
-    def __init__(self, cutoff, u, ag1, ag2, nproc=1, frames=None):
+    def __init__(self, u, ag1, ag2, nproc=1, frames=None, cutoff=10.0):
         self.u, self.nproc = u, nproc
         self.ag1, self.ag2 = ag1, ag2
-        self.cutoff, self.frames = 10.0, frames
+        self.cutoff, self.frames = cutoff, frames
 
 
     def run(self):
         if self.frames:
-            sliced_frames = np.array_split(frames, args.nproc)
+            sliced_frames = np.array_split(self.frames, self.nproc)
         else:
             sliced_frames = np.array_split(np.arange(len(self.u.trajectory)),
                                            self.nproc)
 
-        input_list = [[i, self.u.trajectory[aslice]] for i, aslice in
-                      enumerate(sliced_frames)]
+        input_list = [[i%self.nproc, self.u.trajectory[aslice]] for
+                       i, aslice in enumerate(sliced_frames)]
         dsets = Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),))\
                 .starmap(self._run_contacts, input_list)
 
         np.save('contacts', np.concatenate([*dsets]))
+        print('\nSaved contacts as "contacts.npy"')
 
     def _run_contacts(self, i, sliced_traj):
-        dset = []
+        from basicrta.util import get_dec
+
+        dset, dec = [], get_dec(self.u.trajectory.ts.dt/1000) #convert to ns
         text = f'process {i+1} of {self.nproc}'
         for ts in tqdm(sliced_traj, desc=text, position=i,
                        total=len(sliced_traj), leave=False):
@@ -52,6 +55,6 @@ class MapContacts(object):
             for j in pairdir:
                 temp = pairdir[j]
                 dset.append([ts.frame, j[0], j[1], min(b[1][lsum:lsum+temp]),
-                             ts.time/1000]) # convert to ns
+                             np.round(ts.time, dec)/1000]) # convert to ns
                 lsum += temp
         return dset
