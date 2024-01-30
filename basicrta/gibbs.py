@@ -13,7 +13,7 @@ mpl.rcParams['pdf.fonttype'] = 42
 rng = default_rng()
 
 
-class gibbs(object):
+class Gibbs(object):
     """Gibbs sampler to estimate parameters of an exponential mixture for a set 
     of data. Results are stored in gibbs.results, which uses /home/ricky
     MDAnalysis.analysis.base.Results(). If 'results=None' the gibbs sampler has
