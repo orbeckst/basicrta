@@ -51,11 +51,12 @@ class Gibbs(object):
             os.mkdir(f'{self.residue}')
 
         # initialize arrays
-        self.indicator = np.memmap(f'{self.residue}/.indicator_{self.niter}.npy',
-                                   shape=((self.niter + 1) // g, x.shape[0]), mode='w+',
-                                   dtype=np.uint8)
-        self.mcweights = np.zeros(((self.niter + 1) // g, self.ncomp))
-        self.mcrates = np.zeros(((self.niter + 1) // g, self.ncomp))
+        self.indicator = np.memmap(f'{self.residue}/.indicator_{self.niter}.'
+                                   f'npy',
+                                   shape=((self.niter + 1) // g, x.shape[0]),
+                                   mode='w+', dtype=np.uint8)
+        self.mcweights = np.zeros(((self.niter + 1) // self.g, self.ncomp))
+        self.mcrates = np.zeros(((self.niter + 1) // self.g, self.ncomp))
 
         # guess hyperparameters
         self.whypers = np.ones(self.ncomp) / [self.ncomp]
