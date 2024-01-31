@@ -3,10 +3,15 @@
 
 import os
 import gc
+import pickle
+
 import numpy as np
 import matplotlib as mpl
+import matplotlib.pyplot as plt
 from numpy.random import default_rng
 from tqdm import tqdm
+from scipy import stats
+from sklearn.cluster import KMeans
 
 gc.enable()
 mpl.rcParams['pdf.fonttype'] = 42
@@ -21,18 +26,22 @@ class Gibbs(object):
     
     """
 
-    def __init__(self, times, residue, loc=0, ncomp=15, niter=50000):
+    def __init__(self, times=None, residue=None, loc=0, ncomp=15, niter=50000):
         self.times, self.residue = times, residue
         self.niter, self.loc, self.ncomp = niter, loc, ncomp
         self.results, self.g, self.burnin = None, 100, 10000
 
-        diff = (np.sort(times)[1:]-np.sort(times)[:-1])
-        self.ts = diff[diff != 0][0]
-        
+        if times:
+            diff = (np.sort(times)[1:]-np.sort(times)[:-1])
+            self.ts = diff[diff != 0][0]
+        else:
+            self.ts = None
 
     def __str__(self):
         return f'Gibbs sampler'
 
+    def __call__(self):
+        print('call')
 
     def _prepare(self):
         from basicrta.util import get_s
@@ -128,6 +137,7 @@ class Gibbs(object):
         values = [weights, rates, ncomp, self.residue, Indicator,
                   km.labels_, indices, self.niter]
         r = self._save_results(attrs, values, processed=True)
+        return r
 
 
     def _save_results(self, attrs, values, processed=False):
@@ -148,5 +158,74 @@ class Gibbs(object):
         return r
 
 
+    def load_results(self, results):
+        with open(results, 'r+b') as f:
+            self.results = pickle.load(f)
+
+        for attr in list(self.results.keys()):
+            setattr(self, attr, self.results[f'{attr}'])
 
 
+    def hist_results(self, scale=1.5, save=False):
+        cmap = mpl.colormaps['tab20']
+        rp = self._process_gibbs()
+
+        fig, ax = plt.subplots(1, 2, figsize=(4*scale, 3*scale))
+        [ax[0].hist(rp.weights[rp.labels == i],
+                     bins=np.exp(np.linspace(np.log(rp.weights[rp.labels == i]
+                                                    .min()),
+                                             np.log(rp.weights[rp.labels == i]
+                                                    .max()), 50)),
+                    label=f'{i+1}', alpha=0.5, color=cmap(i))
+         for i in range(rp.ncomp)]
+        [ax[1].hist(rp.rates[rp.labels == i],
+                    bins=np.exp(np.linspace(np.log(rp.rates[rp.labels == i]
+                                                   .min()),
+                                            np.log(rp.rates[rp.labels == i]
+                                                   .max()), 50)),
+                    label=f'{i+1}', alpha=0.5, color=cmap(i))
+         for i in range(rp.ncomp)]
+        ax[0].set_xscale('log')
+        ax[1].set_xscale('log')
+        ax[0].legend(title='component')
+        ax[1].legend(title='component')
+        ax[0].set_xlabel(r'weight')
+        ax[1].set_xlabel(r'rate ($ns^{-1}$)')
+        ax[0].set_ylabel('count')
+        ax[0].set_xlim(1e-4, 1)
+        ax[1].set_xlim(1e-3, 10)
+        plt.tight_layout()
+        if save:
+            plt.savefig('hist_results.png', bbox_inches='tight')
+            plt.savefig('hist_results.pdf', bbox_inches='tight')
+        plt.show()
+
+
+    def plot_results(self, scale=1.5, sparse=1, save=False):
+            cmap = mpl.colormaps['tab20']
+            rp = self._process_gibbs()
+
+            fig, ax = plt.subplots(2, figsize=(4*scale, 3*scale), sharex=True)
+            [ax[0].plot(rp.iteration[rp.labels == i][::sparse],
+                        rp.weights[rp.labels == i][::sparse], '.',
+                        label=f'{i+1}', color=cmap(i))
+             for i in range(rp.ncomp)]
+            ax[0].set_yscale('log')
+            ax[0].set_ylabel(r'weight')
+            [ax[1].plot(rp.iteration[rp.labels == i][::sparse],
+                        rp.rates[rp.labels == i][::sparse], '.', label=f'{i+1}',
+                        color=cmap(i)) for i in range(rp.ncomp)]
+            ax[1].set_yscale('log')
+            ax[1].set_ylabel(r'rate ($ns^{-1}$)')
+            ax[1].set_xlabel('sample')
+            ax[0].legend(title='component')
+            ax[1].legend(title='component')
+            plt.tight_layout()
+            if save:
+                plt.savefig('plot_results.png', bbox_inches='tight')
+                plt.savefig('plot_results.pdf', bbox_inches='tight')
+            plt.show()
+
+
+if __name__ == '__main__':
+    print('do nothing')
