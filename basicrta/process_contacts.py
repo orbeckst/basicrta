@@ -15,6 +15,8 @@ class ProcessContacts(object):
 
 
     def run(self):
+        from basicrta.util import siground
+
         if os.path.exists(self.map_name):
             memmap = np.load(self.map_name, mmap_mode='r')
             memmap = memmap[memmap[:, -2] <= self.cutoff]
@@ -23,7 +25,7 @@ class ProcessContacts(object):
                                     'contacts file using the "map_name" '
                                     'argument')
 
-        self.ts = np.unique(memmap[1:, 4]-memmap[:-1, 4])[1]
+        self.ts = siground(np.unique(memmap[1:, 4]-memmap[:-1, 4])[1], 1)
         lresids = np.unique(memmap[:, 2])
         params = [[res, memmap[memmap[:, 2] == res]] for res in lresids]
         pool = Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),))
@@ -33,7 +35,7 @@ class ProcessContacts(object):
         except KeyboardInterrupt:
             pool.terminate()
         pool.close()
-        print(self.ts)
+
         np.save(f'contacts_{self.cutoff}', np.concatenate([*dsets]))
         print(f'\nSaved contacts to "contacts_{self.cutoff}.npy"')
 
@@ -49,8 +51,8 @@ class ProcessContacts(object):
         presids = np.unique(memarr[:, 1])
         dset = []
         dec, ts = get_dec(self.ts), self.ts
-        for pres in tqdm(presids, desc=f'lipID {lip}', position=proc,
-                        leave=False):
+        for pres in tqdm(presids, desc=f'lipID {int(lip)}', position=proc,
+                         leave=False):
             stimes = np.round(memarr[:, -1][memarr[:, 1] == pres], dec)
             if len(stimes) == 0:
                 continue

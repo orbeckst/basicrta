@@ -1,4 +1,4 @@
-"""Analysis functions"""
+"""Functions used by other modules."""
 
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter,
                                AutoMinorLocator)
@@ -17,6 +17,10 @@ from scipy.optimize import linear_sum_assignment as lsa
 
 
 mpl.rcParams['pdf.fonttype'] = 42
+
+
+def siground(x, dec):
+    return float(f'%.{dec - 1}e' % x)
 
 
 def slice_trajectory(u, nslices):
