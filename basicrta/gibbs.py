@@ -38,8 +38,8 @@ class ProcessProtein(object):
         dirs = dirs[sorted_inds]
         for adir in tqdm(dirs):
             if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
-                self.residues[adir] = Gibbs().load_results(f'{adir}/gibbs_'
-                                                         f'{self.niter}.pkl')
+                with open(f'{adir}/gibbs_{self.niter}.pkl', 'rb') as r:
+                    self.residues[adir] = pickle.load(r)
             elif os.path.exists(f'{adir}/results_{self.niter}.pkl'):
                 self.residues[adir] = Gibbs().load_results(f'{adir}/results_'
                                                          f'{self.niter}.pkl')
@@ -187,7 +187,7 @@ class Gibbs(object):
 
 
     def _pickle_self(self):
-        with open(f'gibbs_{self.niter}.pkl', 'w+b') as f:
+        with open(f'{self.residue}/gibbs_{self.niter}.pkl', 'w+b') as f:
             pickle.dump(self, f)
 
 
