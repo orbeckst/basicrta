@@ -307,8 +307,8 @@ class Gibbs(object):
                 params[i] = val
             except ValueError:
                 params[i] = np.min(val)
-                print('May have underestimated param for component with label '
-                      f'{i}')
+                print(f'May have underestimated {self.residue} param for '
+                      f'component with label '{i}')
 
         setattr(rp, 'parameters', params)
         setattr(rp, 'intervals', bounds)
