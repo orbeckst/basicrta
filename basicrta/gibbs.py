@@ -4,7 +4,6 @@
 import os
 import gc
 import pickle
-
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -12,10 +11,48 @@ from numpy.random import default_rng
 from tqdm import tqdm
 from scipy import stats
 from sklearn.cluster import KMeans
+from MDAnalysis.analysis.base import Results
+from basicrta.util import confidence_interval
 
 gc.enable()
 mpl.rcParams['pdf.fonttype'] = 42
 rng = default_rng()
+
+
+class ProcessProtein(object):
+    def __init__(self, niter):
+        self.residues, self.niter = {}, niter
+
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+
+    def collect_results(self):
+        from glob import glob
+        if not os.getcwd().split('/')[-1][:8] == 'basicrta':
+            raise NotImplementedError('navigate to basicrta-{cutoff} directory'
+                                      'and rerun')
+        dirs = np.array(glob('?[0-9]*'))
+        sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
+        dirs = dirs[sorted_inds]
+        for adir in dirs:
+            if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
+                self.residues[adir] = Gibbs().load_results(f'{adir}/gibbs_'
+                                                         f'{self.niter}.pkl')
+            elif os.path.exists(f'{adir}/results_{self.niter}.pkl'):
+                self.residues[adir] = Gibbs().load_results(f'{adir}/results_'
+                                                         f'{self.niter}.pkl')
+            else:
+                raise FileNotFoundError(f'results for {adir} do not exist')
+
+
+
+class ParallelGibbs(object):
+    def __init__(self):
+        print('unimplemented')
+        # Add class to take in processed contacts and resids and
+        # run gibbs samplers
 
 
 class Gibbs(object):
@@ -23,13 +60,13 @@ class Gibbs(object):
     of data. Results are stored in gibbs.results, which uses /home/ricky
     MDAnalysis.analysis.base.Results(). If 'results=None' the gibbs sampler has
     not been executed, which requires calling '.run()'
-    
     """
 
     def __init__(self, times=None, residue=None, loc=0, ncomp=15, niter=50000):
         self.times, self.residue = times, residue
         self.niter, self.loc, self.ncomp = niter, loc, ncomp
-        self.results, self.g, self.burnin = None, 100, 10000
+        self.g, self.burnin = 100, 10000
+        self.processed_results = Results()
 
         if times:
             diff = (np.sort(times)[1:]-np.sort(times)[:-1])
@@ -37,11 +74,13 @@ class Gibbs(object):
         else:
             self.ts = None
 
-    def __str__(self):
-        return f'Gibbs sampler'
+        self.keys = {'times', 'residue', 'loc', 'ncomp', 'niter', 'g', 'burnin',
+                     'processed_results', 'ts'}
 
-    def __call__(self):
-        print('call')
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
 
     def _prepare(self):
         from basicrta.util import get_s
@@ -53,7 +92,8 @@ class Gibbs(object):
         # initialize arrays
         self.indicator = np.memmap(f'{self.residue}/.indicator_{self.niter}.'
                                    f'npy',
-                                   shape=((self.niter + 1) // g, x.shape[0]),
+                                   shape=((self.niter + 1) // self.g,
+                                          self.times.shape[0]),
                                    mode='w+', dtype=np.uint8)
         self.mcweights = np.zeros(((self.niter + 1) // self.g, self.ncomp))
         self.mcrates = np.zeros(((self.niter + 1) // self.g, self.ncomp))
@@ -65,6 +105,7 @@ class Gibbs(object):
 
     def run(self):
         # initialize weights and rates
+        self._prepare()
         inrates = 0.5 * 10 ** np.arange(-self.ncomp + 2, 2, dtype=float)
         tmpw = 9 * 10 ** (-np.arange(1, self.ncomp + 1, dtype=float))
         weights, rates = tmpw / tmpw.sum(), inrates[::-1]
@@ -75,7 +116,7 @@ class Gibbs(object):
                       position=self.loc, leave=False):
 
             # compute probabilities
-            tmp = weights*rates*np.exp(np.outer(-rates,x)).T
+            tmp = weights*rates*np.exp(np.outer(-rates, self.times)).T
             z = (tmp.T/tmp.sum(axis=1)).T
         
             # sample indicator
@@ -93,25 +134,27 @@ class Gibbs(object):
             rates = rng.gamma(self.rhypers[:, 0]+Ns, 1/(self.rhypers[:, 1]+Ts))
 
             # save every g steps
-            if j%g==0:
-                ind = j//g-1
+            if j%self.g == 0:
+                ind = j//self.g-1
                 self.mcweights[ind], self.mcrates[ind] = weights, rates
                 self.indicator[ind] = s
 
+        # attributes to save
         attrs = ["mcweights", "mcrates", "ncomp", "niter", "s", "t", "residue",
                  "times"]
         values = [self.mcweights, self.mcrates, self.ncomp, self.niter, self.s,
                   self.t, self.residue, self.times]
         
-        r = self._save_results(attrs, values)
-        self.results = r
+        self._save_results(attrs, values)
+        self._process_gibbs()
 
 
     def _process_gibbs(self, cutoff=1e-4):
         burnin_ind = self.burnin // self.g
 
         inds = np.where(self.mcweights[burnin_ind:] > cutoff)
-        indices = np.arange(self.burnin, self.niter + 1, self.g)[inds[0]] // self.g
+        indices = (np.arange(self.burnin, self.niter + 1, self.g)[inds[0]] //
+                   self.g)
         lens = [len(row[row > cutoff]) for row in self.mcweights[burnin_ind:]]
         ncomp = stats.mode(lens, keepdims=False)[0]
 
@@ -119,10 +162,11 @@ class Gibbs(object):
         rates = self.mcrates[burnin_ind::][inds]
 
         data = np.stack((weights, rates), axis=1)
-        km = KMeans(n_clusters=ncomp).fit(np.log(data))
+        km = KMeans(n_clusters=ncomp, n_init=17).fit(np.log(data))
         Indicator = np.zeros((self.times.shape[0], ncomp))
         indicator = np.memmap(f'{self.residue}/.indicator_{self.niter}.npy',
-                              shape=((self.niter + 1) // self.g, self.times.shape[0]),
+                              shape=((self.niter + 1) // self.g,
+                                     self.times.shape[0]),
                               mode='r', dtype=np.uint8)
 
         for j in np.unique(inds[0]):
@@ -137,13 +181,16 @@ class Gibbs(object):
                  "iteration", "niter"]
         values = [weights, rates, ncomp, self.residue, Indicator,
                   km.labels_, indices, self.niter]
-        r = self._save_results(attrs, values, processed=True)
-        return r
+        self._save_results(attrs, values, processed=True)
+        self.processed_results
+        self._estimate_params()
 
 
     def _save_results(self, attrs, values, processed=False):
-        from MDAnalysis.analysis.base import Results
-        r = Results()
+        if processed:
+            r = self.processed_results
+        else:
+            r = self
 
         for attr, value in zip(attrs, values):
             setattr(r, attr, value)
@@ -156,20 +203,28 @@ class Gibbs(object):
             with open(f'{r.residue}/results_{r.niter}.pkl', 'wb') as W:
                 pickle.dump(r, W)
 
-        return r
 
+    def load_results(self, results, processed=False):
+        if processed:
+            with open(results, 'r+b') as f:
+                r = pickle.load(f)
 
-    def load_results(self, results):
-        with open(results, 'r+b') as f:
-            self.results = pickle.load(f)
+            for attr in list(r.keys()):
+                setattr(self.processed_results, attr, r[f'{attr}'])
+        else:
+            with open(results, 'r+b') as f:
+                r = pickle.load(f)
 
-        for attr in list(self.results.keys()):
-            setattr(self, attr, self.results[f'{attr}'])
+            for attr in list(r.keys()):
+                setattr(self, attr, r[f'{attr}'])
+
+            self._process_gibbs()
+        return self
 
 
     def hist_results(self, scale=1.5, save=False):
         cmap = mpl.colormaps['tab20']
-        rp = self._process_gibbs()
+        rp = self.processed_results
 
         fig, ax = plt.subplots(1, 2, figsize=(4*scale, 3*scale))
         [ax[0].hist(rp.weights[rp.labels == i],
@@ -204,7 +259,7 @@ class Gibbs(object):
 
     def plot_results(self, scale=1.5, sparse=1, save=False):
             cmap = mpl.colormaps['tab20']
-            rp = self._process_gibbs()
+            rp = self.processed_results
 
             fig, ax = plt.subplots(2, figsize=(4*scale, 3*scale), sharex=True)
             [ax[0].plot(rp.iteration[rp.labels == i][::sparse],
@@ -226,6 +281,35 @@ class Gibbs(object):
                 plt.savefig('plot_results.png', bbox_inches='tight')
                 plt.savefig('plot_results.pdf', bbox_inches='tight')
             plt.show()
+
+
+    def _estimate_params(self):
+        rp = self.processed_results
+
+        ds = [rp.rates[rp.labels == i] for i in range(rp.ncomp)]
+        bounds = np.array([confidence_interval(d) for d in ds])
+        H = [np.histogram(rp.rates[rp.labels == i], bins=15) for i in
+             range(rp.ncomp)]
+
+        params = np.zeros(len(H))
+        for i, hist in enumerate(H):
+            ind = np.where(hist[0] == hist[0].max())[0]
+            val = 0.5 * (hist[1][:-1][ind] + hist[1][1:][ind])
+            params[i] = val
+
+        setattr(rp, 'parameters', params)
+        setattr(rp, 'intervals', bounds)
+
+
+    def estimate_tau(self):
+        rp = self.processed_results
+        index = np.argmin(rp.parameters)
+        taus = 1/rp.rates[rp.labels == index]
+        ci = confidence_interval(taus)
+        H = np.histogram(taus, bins=15)
+        indmax = np.where(H[0] == H[0].max())[0]
+        val = 0.5 * (H[1][:-1][indmax] + H[1][1:][indmax])[0]
+        return [ci[0], val, ci[1]]
 
 
 if __name__ == '__main__':

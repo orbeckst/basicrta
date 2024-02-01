@@ -72,7 +72,6 @@ def tm(Prot,i):
         return [Prot['tm{0}'.format(i)],dif]
 
 
-
 def confidence_interval(data, percentage=95):
     ds = np.sort(data)
     perc = np.arange(1, len(ds)+1)/(len(ds))
@@ -89,6 +88,12 @@ def confidence_interval(data, percentage=95):
         u = ds[-1]
 
     return [l, u]
+
+
+def get_bars(tau):
+    maxs = tau[:,1]
+    lb, ub = tau[:,0], tau[:,2]
+    return [maxs-lb, ub-maxs]
 
 
 def unique_rates(ncomp, mcrates):
