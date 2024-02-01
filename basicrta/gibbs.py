@@ -182,8 +182,13 @@ class Gibbs(object):
         values = [weights, rates, ncomp, self.residue, Indicator,
                   km.labels_, indices, self.niter]
         self._save_results(attrs, values, processed=True)
-        self.processed_results
         self._estimate_params()
+        self._pickle_self()
+
+
+    def _pickle_self(self):
+        with open(f'gibbs_{self.niter}.pkl', 'w+b') as f:
+            pickle.dump(self, f)
 
 
     def _save_results(self, attrs, values, processed=False):
