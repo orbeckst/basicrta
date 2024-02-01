@@ -36,7 +36,7 @@ class ProcessProtein(object):
         dirs = np.array(glob('?[0-9]*'))
         sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
         dirs = dirs[sorted_inds]
-        for adir in dirs:
+        for adir in tqdm(dirs):
             if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
                 self.residues[adir] = Gibbs().load_results(f'{adir}/gibbs_'
                                                          f'{self.niter}.pkl')
@@ -44,8 +44,8 @@ class ProcessProtein(object):
                 self.residues[adir] = Gibbs().load_results(f'{adir}/results_'
                                                          f'{self.niter}.pkl')
             else:
-                raise FileNotFoundError(f'results for {adir} do not exist')
-
+                print(f'results for {adir} do not exist')
+                # raise FileNotFoundError(f'results for {adir} do not exist')
 
 
 class ParallelGibbs(object):
