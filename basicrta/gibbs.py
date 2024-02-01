@@ -297,7 +297,7 @@ class Gibbs(object):
 
         ds = [rp.rates[rp.labels == i] for i in range(rp.ncomp)]
         bounds = np.array([confidence_interval(d) for d in ds])
-        H = [np.histogram(rp.rates[rp.labels == i], bins=50) for i in
+        H = [np.histogram(rp.rates[rp.labels == i], bins=100) for i in
              range(rp.ncomp)]
         params = np.zeros(len(H))
         for i, hist in enumerate(H):
