@@ -303,7 +303,12 @@ class Gibbs(object):
         for i, hist in enumerate(H):
             ind = np.where(hist[0] == hist[0].max())[0]
             val = 0.5 * (hist[1][:-1][ind] + hist[1][1:][ind])
-            params[i] = val
+            try:
+                params[i] = val
+            except ValueError:
+                params[i] = np.min(val)
+                print('May have underestimated param for component with label '
+                      f'{i}')
 
         setattr(rp, 'parameters', params)
         setattr(rp, 'intervals', bounds)
