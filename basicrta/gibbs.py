@@ -323,7 +323,7 @@ class Gibbs(object):
         H = np.histogram(taus, bins=15)
         indmax = np.where(H[0] == H[0].max())[0]
         val = 0.5 * (H[1][:-1][indmax] + H[1][1:][indmax])[0]
-        bars = get_bars([ci[0], val, ci[1]])
+        bars = get_bars(ci[0], val, ci[1])
         return [val, *bars]
 
 
