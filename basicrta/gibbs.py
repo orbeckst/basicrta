@@ -43,7 +43,7 @@ class ProcessProtein(object):
             elif os.path.exists(f'{adir}/results_{self.niter}.pkl'):
                 try:
                     self.residues[adir] = Gibbs().load_results(f'{adir}/results'
-                                                            '_{self.niter}.pkl')
+                                                           f'_{self.niter}.pkl')
                 except ValueError:
                     print(f'{adir} does not contain a valid dataset')
                     continue
