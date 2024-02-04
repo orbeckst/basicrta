@@ -761,7 +761,8 @@ def mixture_and_plot(gibbs, method, log=True, **kwargs):
                                                      kwargs.values())]
     kwarg_str = '_'.join(keyvalpairs)
 
-    weights, rates = gibbs.mcweights, gibbs.mcrates
+    burnin_ind = gibbs.burnin // gibbs.g
+    weights, rates = gibbs.mcweights[burnin_ind:], gibbs.mcrates[burnin_ind:]
     lens = np.array([len(row[row > 1e-4]) for row in weights])
     lmin, lmode, lmax = lens.min(), stats.mode(lens).mode, lens.max()
     train_param = lmode
