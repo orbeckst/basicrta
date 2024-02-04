@@ -862,7 +862,8 @@ def mixture_and_plot(gibbs, method, log=True, **kwargs):
                ncols=len(plot_labels)/2, title='cluster')
     fig.suptitle(f'{method} '+' '.join(keyvalpairs), fontsize=16)
     plt.tight_layout(rect=(0, 0.05, 1, 1))
-    plt.savefig(f"figs/results_{method}_{kwarg_str}.png", bbox_inches='tight')
+    plt.savefig(f"{gibbs.residue}/results_{method}_{kwarg_str}.png",
+                bbox_inches='tight')
     #plt.show()
 
     # tparams, fparams = [], []
