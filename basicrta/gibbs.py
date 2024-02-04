@@ -172,8 +172,8 @@ class Gibbs(object):
                                      self.times.shape[0]),
                               mode='r', dtype=np.uint8)
 
-        gm, labels = mixture_and_plot(weights, rates, 'GaussianMixture',
-                                      n_init=17, n_components=lmode)
+        gm, labels = mixture_and_plot(self, 'GaussianMixture', n_init=17,
+                                      n_components=lmode)
 
         for j in np.unique(inds[0]):
             mapinds = labels[inds[0] == j]
