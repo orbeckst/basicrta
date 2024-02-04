@@ -760,7 +760,7 @@ def mixture_and_plot(gibbs, method, log=True, **kwargs):
     keyvalpairs = [f'{key}_{val}' for key,val in zip(kwargs.keys(),
                                                      kwargs.values())]
     kwarg_str = '_'.join(keyvalpairs)
-
+#
     burnin_ind = gibbs.burnin // gibbs.g
     weights, rates = gibbs.mcweights[burnin_ind:], gibbs.mcrates[burnin_ind:]
     lens = np.array([len(row[row > 1e-4]) for row in weights])
