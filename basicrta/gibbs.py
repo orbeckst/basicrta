@@ -9,8 +9,6 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from numpy.random import default_rng
 from tqdm import tqdm
-from scipy import stats
-from sklearn.cluster import KMeans
 from MDAnalysis.analysis.base import Results
 from basicrta.util import confidence_interval
 
@@ -154,27 +152,31 @@ class Gibbs(object):
 
 
     def _process_gibbs(self, cutoff=1e-4):
-        burnin_ind = self.burnin // self.g
+        from basicrta.util import mixture_and_plot
+        from scipy import stats
 
+        burnin_ind = self.burnin // self.g
         inds = np.where(self.mcweights[burnin_ind:] > cutoff)
         indices = (np.arange(self.burnin, self.niter + 1, self.g)[inds[0]] //
                    self.g)
+        weights, rates = self.mcweights[burnin_ind:], self.mcrates[burnin_ind:]
+        fweights, frates = weights[inds], rates[inds]
+
         lens = [len(row[row > cutoff]) for row in self.mcweights[burnin_ind:]]
-        ncomp = stats.mode(lens, keepdims=False)[0]
+        lmin, lmode, lmax = np.min(lens), stats.mode(lens).mode, np.max(lens)
+        train_param = lmode
 
-        weights = self.mcweights[burnin_ind::][inds]
-        rates = self.mcrates[burnin_ind::][inds]
-
-        data = np.stack((weights, rates), axis=1)
-        km = KMeans(n_clusters=ncomp, n_init=17).fit(np.log(data))
-        Indicator = np.zeros((self.times.shape[0], ncomp))
+        Indicator = np.zeros((self.times.shape[0], train_param))
         indicator = np.memmap(f'{self.residue}/.indicator_{self.niter}.npy',
                               shape=((self.niter + 1) // self.g,
                                      self.times.shape[0]),
                               mode='r', dtype=np.uint8)
 
+        gm, labels = mixture_and_plot(weights, rates, 'GaussianMixture',
+                                      n_init=17, n_components=lmode)
+
         for j in np.unique(inds[0]):
-            mapinds = km.labels_[inds[0] == j]
+            mapinds = labels[inds[0] == j]
             for i, indx in enumerate(inds[1][inds[0] == j]):
                 tmpind = np.where(indicator[j] == indx)[0]
                 Indicator[tmpind, mapinds[i]] += 1
@@ -183,8 +185,8 @@ class Gibbs(object):
 
         attrs = ["weights", "rates", "ncomp", "residue", "indicator", "labels",
                  "iteration", "niter"]
-        values = [weights, rates, ncomp, self.residue, Indicator,
-                  km.labels_, indices, self.niter]
+        values = [fweights, frates, lmode, self.residue, Indicator,
+                  labels, indices, self.niter]
         self._save_results(attrs, values, processed=True)
         self._estimate_params()
         self._pickle_self()
@@ -297,18 +299,19 @@ class Gibbs(object):
 
         ds = [rp.rates[rp.labels == i] for i in range(rp.ncomp)]
         bounds = np.array([confidence_interval(d) for d in ds])
-        H = [np.histogram(rp.rates[rp.labels == i], bins=100) for i in
-             range(rp.ncomp)]
-        params = np.zeros(len(H))
-        for i, hist in enumerate(H):
-            ind = np.where(hist[0] == hist[0].max())[0]
-            val = 0.5 * (hist[1][:-1][ind] + hist[1][1:][ind])
-            try:
-                params[i] = val
-            except ValueError:
-                params[i] = np.min(val)
-                print(f'May have underestimated {self.residue} param for '
-                      f'component with label {i}')
+        params = np.array([np.mean(d) for d in ds])
+        # H = [np.histogram(rp.rates[rp.labels == i], bins=100) for i in
+        #      range(rp.ncomp)]
+        # params = np.zeros(len(H))
+        # for i, hist in enumerate(H):
+        #     ind = np.where(hist[0] == hist[0].max())[0]
+        #     val = 0.5 * (hist[1][:-1][ind] + hist[1][1:][ind])
+        #     try:
+        #         params[i] = val
+        #     except ValueError:
+        #         params[i] = np.min(val)
+        #         print(f'May have underestimated {self.residue} param for '
+        #               f'component with label {i}')
 
         setattr(rp, 'parameters', params)
         setattr(rp, 'intervals', bounds)
@@ -317,9 +320,10 @@ class Gibbs(object):
     def estimate_tau(self):
         rp = self.processed_results
         index = np.argmin(rp.parameters)
-        taus = 1/rp.rates[rp.labels == index]
+        taus = 1 / rp.rates[rp.labels == index]
         ci = confidence_interval(taus)
-        H = np.histogram(taus, bins=15)
+        bins = np.exp(np.linspace(np.log(taus.min()), np.log(taus.max()), 100))
+        H = np.histogram(taus, bins=bins)
         indmax = np.where(H[0] == H[0].max())[0]
         val = 0.5 * (H[1][:-1][indmax] + H[1][1:][indmax])[0]
         return [ci[0], val, ci[1]]
