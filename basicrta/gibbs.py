@@ -173,7 +173,8 @@ class Gibbs(object):
                               mode='r', dtype=np.uint8)
 
         gm, labels = mixture_and_plot(self, 'GaussianMixture', n_init=17,
-                                      n_components=lmode)
+                                      n_components=lmode,
+                                      covariance_type='spherical')
         for j in np.unique(inds[0]):
             mapinds = labels[inds[0] == j]
             for i, indx in enumerate(inds[1][inds[0] == j]):

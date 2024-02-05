@@ -634,125 +634,7 @@ def get_bins(x, ts):
     return np.arange(1, int(x.max()//ts)+3)*ts
 
 
-def cluster_and_plot(weights, rates, method, log=True, **kwargs):
-    from sklearn import cluster
-    clu = getattr(cluster, method)
-    niter, ncomp = weights.shape
-    keyvalpairs = [f'{key}_{val}' for key,val in zip(kwargs.keys(),
-                                                     kwargs.values())]
-    kwarg_str = '_'.join(keyvalpairs)
-
-    lens = np.array([len(row[row>1e-4]) for row in weights])
-    lmin, lmode, lmax = lens.min(), stats.mode(lens).mode, lens.max()
-    train_param = lmode
-
-    train_inds = np.where(lens==train_param)[0]
-    train_weights = weights[train_inds][weights[train_inds]>1e-4].reshape(-1, train_param)
-    train_rates = rates[train_inds][weights[train_inds]>1e-4].reshape(-1, train_param)
-    inds = np.where(weights>1e-4)
-
-    tweights, trates = train_weights.flatten(), train_rates.flatten()
-    train_data = np.stack((tweights, trates), axis=1)
-    fweights, frates = weights[inds], rates[inds]
-    data = np.stack((fweights, frates), axis=1)
-
-    if log:
-        r = clu(**kwargs).fit(np.log(train_data))
-
-    else:
-        r = clu(**kwargs).fit(train_data)
-
-    #labels = np.unique(r.labels_)
-    labels = clu(**kwargs).fit_predict(np.log(train_data))
-    uniq_labels = np.unique(labels)
-    leg_labels = np.array([f'{i}' for i in uniq_labels])
-    predict_labels = r.predict(np.log(data))
-    pNs = [len(np.where(predict_labels==i)[0]) for i in uniq_labels]
-    print(pNs)
-    #leg_labels[10:] = '_nolegend_'
-
-    cmap = mpl.colormaps['tab20']
-    cmap.set_under()
-    scale, sparse = 3, 1
-
-    fig, ax = plt.subplots(2, 2, figsize=(4*scale, 3*scale))
-    for i,label in enumerate(uniq_labels):
-        tinds = np.where(labels == label)[0]
-        pinds = np.where(predict_labels == i)[0]
-        bins = np.exp(np.linspace(np.log(frates[tinds].min()),
-                                  np.log(frates[tinds].max()), 50))
-        ax[0, 0].hist(frates[pinds], bins=bins, label=leg_labels[i],
-                      color=cmap(get_color(i)), zorder=1)
-        ax[0, 0].hist(trates[tinds], bins=bins, label=leg_labels[i],
-                      color=cmap(get_color(i)), zorder=2, alpha=0.7)
-
-    ax[0, 0].set_xscale('log')
-    ax[0, 0].set_xlabel(r'rate ($ns^{-1}$)')
-    ax[0, 0].set_ylabel('count')
-    ax[0, 0].set_xlim(1e-3, 10)
-
-    fiter = np.array(list(range(len(weights)))*train_param)[inds[0]]
-    titer = np.array(list(range(len(weights)))*train_param).reshape(-1, train_param)[train_inds].flatten()
-
-    for i,label in enumerate(uniq_labels):
-        tinds = np.where(labels == i)[0]
-        pinds = np.where(predict_labels == i)[0]
-        ax[0, 1].plot(fiter[pinds], fweights[pinds][::sparse], '.',
-                      label=leg_labels[i], color=cmap(get_color(i)), zorder=1)
-        ax[1, 1].plot(fiter[pinds], frates[pinds][::sparse], '.',
-                      label=leg_labels[i], color=cmap(get_color(i)), zorder=1)
-        ax[0, 1].plot(titer[tinds], tweights[tinds][::sparse], '.',
-                      label=leg_labels[i], color=cmap(get_color(i)), zorder=2, alpha=0.7)
-        ax[1, 1].plot(titer[tinds], trates[tinds][::sparse], '.',
-                      label=leg_labels[i], color=cmap(get_color(i)), zorder=2, alpha=0.7)
-
-    ax[0, 1].set_yscale('log')
-    ax[0, 1].set_ylabel(r'weight')
-    ax[1, 1].set_yscale('log')
-    ax[1, 1].set_ylabel(r'rate ($ns^{-1}$)')
-    ax[1, 1].set_xlabel('sample')
-    ax[0, 1].set_xlabel('sample')
-    ax[0, 1].set_ylim(1e-4, 1)
-    ax[1, 1].set_xlabel('sample')
-    ax[1, 1].set_ylim(1e-3, 10)
-
-    for i,label in enumerate(uniq_labels):
-        tinds = np.where(labels == i)[0]
-        pinds = np.where(predict_labels == i)[0]
-        ax[1, 0].plot(frates[pinds], fweights[pinds], '.', label=leg_labels[i],
-                      color=cmap(get_color(i)), zorder=1)
-        ax[1, 0].plot(trates[tinds], tweights[tinds], '.', label=leg_labels[i],
-                      color=cmap(get_color(i)), zorder=2, alpha=0.7)
-
-    ax[1, 0].set_yscale('log')
-    ax[1, 0].set_xscale('log')
-    ax[1, 0].set_ylabel('weight')
-    ax[1, 0].set_xlabel(r'rate ($ns^{-1}$)')
-    ax[1, 0].set_xlim(1e-3, 10)
-    ax[1, 0].set_ylim(1e-4, 1)
-    handles, Labels = ax[0, 0].get_legend_handles_labels()
-    sorts = np.argsort([int(i) for i in Labels])
-    handles, Labels = np.array(handles)[sorts], np.array(Labels)[sorts]
-    [handle.set_color(cmap(get_color(int(i)))) for i, handle in zip(Labels, handles)]
-    fig.legend(handles, Labels, loc='lower center', ncols=len(Labels)/2, title='cluster')
-    fig.suptitle(f'{method} '+' '.join(keyvalpairs), fontsize=16)
-    plt.tight_layout(rect=(0, 0.05, 1, 1))
-    plt.savefig(f"figs/results_{method}_{kwarg_str}.png", bbox_inches='tight')
-    plt.show()
-
-    #estimate_tau()
-    tparams, fparams = [], []
-    for i in uniq_labels:
-        tinds = np.where(labels == i)[0]
-        pinds = np.where(predict_labels == i)[0]
-        tparams.append(trates[tinds].mean())
-        fparams.append(frates[pinds].mean())
-    tindex, pindex = np.where(tparams==np.min(tparams))[0], np.where(fparams==np.min(fparams))[0]
-    clu_rates = np.concatenate([trates[labels==tindex], frates[predict_labels==pindex]])
-    return [(1/clu_rates).mean(), confidence_interval(1/clu_rates)], [(1/trates[labels==tindex]).mean(), confidence_interval(1/trates[labels==tindex])]
-
-
-def mixture_and_plot(gibbs, method, log=True, **kwargs):
+def mixture_and_plot(gibbs, method, **kwargs):
     from sklearn import mixture
     from scipy import stats
 
@@ -760,7 +642,7 @@ def mixture_and_plot(gibbs, method, log=True, **kwargs):
     keyvalpairs = [f'{key}_{val}' for key,val in zip(kwargs.keys(),
                                                      kwargs.values())]
     kwarg_str = '_'.join(keyvalpairs)
-#
+
     burnin_ind = gibbs.burnin // gibbs.g
     weights, rates = gibbs.mcweights[burnin_ind:], gibbs.mcrates[burnin_ind:]
     lens = np.array([len(row[row > 1e-4]) for row in weights])
@@ -772,62 +654,80 @@ def mixture_and_plot(gibbs, method, log=True, **kwargs):
                      reshape(-1, train_param))
     train_rates = (rates[train_inds][weights[train_inds]>1e-4].
                    reshape(-1, train_param))
+
     inds = np.where(weights > 1e-4)
+    aweights, arates = weights[inds], rates[inds]
+    data = np.stack((aweights, arates), axis=1)
 
     tweights, trates = train_weights.flatten(), train_rates.flatten()
     train_data = np.stack((tweights, trates), axis=1)
-    fweights, frates = weights[inds], rates[inds]
-    data = np.stack((fweights, frates), axis=1)
 
-    if log:
-        r = clu(**kwargs).fit(np.log(train_data))
+    tmpw, tmpr = np.delete(weights, train_inds), np.delete(rates, train_inds)
+    pweights, prates = tmpw[tmpw > 1e-4], tmpr[tmpw > 1e-4]
+    predict_data = np.stack((pweights, prates), axis=1)
 
-    else:
-        r = clu(**kwargs).fit(train_data)
-
-    labels = clu(**kwargs).fit_predict(np.log(train_data))
+    r = clu(**kwargs)
+    labels = r.fit_predict(np.log(train_data))
     uniq_labels = np.unique(labels)
     leg_labels = np.array([f'{i}' for i in uniq_labels])
-    predict_labels = r.predict(np.log(data))
+    predict_labels = r.predict(np.log(predict_data))
+
+    sorts = r.precisions_.argsort()[::-1]
+    tinds = np.array([np.where(labels == i)[0] for i in uniq_labels],
+                     dtype=object)
+    pinds = np.array([np.where(predict_labels == i)[0] for i in uniq_labels],
+                     dtype=object)
+    for i in uniq_labels:
+        labels[tinds[i]] = sorts[i]
+        predict_labels[pinds[i]] = sorts[i]
+    tinds = np.array([np.where(labels == i)[0] for i in uniq_labels],
+                     dtype=object)
+    pinds = np.array([np.where(predict_labels == i)[0] for i in uniq_labels],
+                     dtype=object)
+
+    train_data_inds = np.array([np.where(data == col)[0][0] for col in
+                                train_data])
+    predict_data_inds = np.array([np.where(data == col)[0][0] for col in
+                                  predict_data])
+    all_labels = np.zeros(data.shape[0], dtype=np.uint8)
+    all_labels[train_data_inds] = labels
+    all_labels[predict_data_inds] = predict_labels
     #leg_labels[10:] = '_nolegend_'
 
-    cmap = mpl.colormaps['tab20']
+    cmap = mpl.colormaps['tab10']
     cmap.set_under()
     scale, sparse = 3, 1
 
     fig, ax = plt.subplots(2, 2, figsize=(4*scale, 3*scale))
-    for i, label in enumerate(uniq_labels):
-        tinds = np.where(labels == label)[0]
-        pinds = np.where(predict_labels == i)[0]
-        bins = np.exp(np.linspace(np.log(frates[tinds].min()),
-                                  np.log(frates[tinds].max()), 50))
-        ax[0, 0].hist(frates[pinds], bins=bins, label=leg_labels[i],
+    for i in uniq_labels:
+        bins = np.exp(np.linspace(np.log(trates[tinds[i]].min()),
+                                  np.log(trates[tinds[i]].max()), 50))
+        ax[0, 0].hist(prates[pinds[i]], bins=bins, label=leg_labels[i],
                       color=cmap(get_color(i)), zorder=1)
-        ax[0, 0].hist(trates[tinds], bins=bins, label=leg_labels[i],
-                      color=cmap(get_color(i)), zorder=2, alpha=0.7)
+        ax[0, 0].hist(trates[tinds[i]], bins=bins, label=leg_labels[i],
+                      color=cmap(get_color(i)), zorder=2, alpha=0.5,
+                      edgecolor='k')
 
     ax[0, 0].set_xscale('log')
     ax[0, 0].set_xlabel(r'rate ($ns^{-1}$)')
     ax[0, 0].set_ylabel('count')
     ax[0, 0].set_xlim(1e-3, 10)
 
-    fiter = np.array(list(range(len(weights)))*train_param)[inds[0]]
-    titer = (np.array(list(range(len(weights)))*train_param).
-             reshape(-1, train_param)[train_inds].flatten())
-
-    for i, label in enumerate(uniq_labels):
-        tinds = np.where(labels == i)[0]
-        pinds = np.where(predict_labels == i)[0]
-        ax[0, 1].plot(fiter[pinds], fweights[pinds][::sparse], '.',
+    row, col = gibbs.mcweights[burnin_ind:].shape
+    iter_arr = np.mgrid[:row, :col][0]
+    iters = iter_arr[inds]
+    titer, piter = iters[train_data_inds], iters[predict_data_inds]
+    for i in uniq_labels:
+        ax[0, 1].plot(piter[pinds[i]], pweights[pinds[i]][::sparse], '.',
                       label=leg_labels[i], color=cmap(get_color(i)), zorder=1)
-        ax[1, 1].plot(fiter[pinds], frates[pinds][::sparse], '.',
+        ax[1, 1].plot(piter[pinds[i]], prates[pinds[i]][::sparse], '.',
                       label=leg_labels[i], color=cmap(get_color(i)), zorder=1)
-        ax[0, 1].plot(titer[tinds], tweights[tinds][::sparse], '.',
+        ax[0, 1].plot(titer[tinds[i]], tweights[tinds[i]][::sparse], '.',
                       label=leg_labels[i], color=cmap(get_color(i)), zorder=2,
-                      alpha=0.7)
-        ax[1, 1].plot(titer[tinds], trates[tinds][::sparse], '.',
+                      alpha=0.5, mec='k', mew=1)
+        ax[1, 1].plot(titer[tinds[i]], trates[tinds[i]][::sparse], '.',
                       label=leg_labels[i], color=cmap(get_color(i)), zorder=2,
-                      alpha=0.7)
+                      alpha=0.5, mec='k', mew=1)
 
     ax[0, 1].set_yscale('log')
     ax[0, 1].set_ylabel(r'weight')
@@ -839,13 +739,14 @@ def mixture_and_plot(gibbs, method, log=True, **kwargs):
     ax[1, 1].set_xlabel('sample')
     ax[1, 1].set_ylim(1e-3, 10)
 
-    for i, label in enumerate(uniq_labels):
-        tinds = np.where(labels == i)[0]
-        pinds = np.where(predict_labels == i)[0]
-        ax[1, 0].plot(frates[pinds], fweights[pinds], '.', label=leg_labels[i],
+    for i in uniq_labels:
+        ax[1, 0].plot(prates[pinds[i]], pweights[pinds[i]], '.',
+                      label=leg_labels[i],
                       color=cmap(get_color(i)), zorder=1)
-        ax[1, 0].plot(trates[tinds], tweights[tinds], '.', label=leg_labels[i],
-                      color=cmap(get_color(i)), zorder=2, alpha=0.7)
+        ax[1, 0].plot(trates[tinds[i]], tweights[tinds[i]], '.',
+                      label=leg_labels[i],
+                      color=cmap(get_color(i)), zorder=2, alpha=0.5,
+                      mec='k', mew=1)
 
     ax[1, 0].set_yscale('log')
     ax[1, 0].set_xscale('log')
@@ -853,33 +754,37 @@ def mixture_and_plot(gibbs, method, log=True, **kwargs):
     ax[1, 0].set_xlabel(r'rate ($ns^{-1}$)')
     ax[1, 0].set_xlim(1e-3, 10)
     ax[1, 0].set_ylim(1e-4, 1)
+
     handles, plot_labels = ax[0, 0].get_legend_handles_labels()
-    sorts = np.argsort([int(i) for i in plot_labels])
-    handles = np.array(handles)[sorts]
-    plot_labels = np.array(plot_labels)[sorts]
+    # sorts = np.argsort([int(i) for i in plot_labels])
+    # handles = np.array(handles)[sorts]
+    # plot_labels = np.array(plot_labels)[sorts]
     [handle.set_color(cmap(get_color(int(i)))) for i, handle in
      zip(plot_labels, handles)]
+    [handle.set_edgecolor('k') for i, handle in zip(plot_labels, handles)]
     fig.legend(handles, plot_labels, loc='lower center',
                ncols=len(plot_labels)/2, title='cluster')
+    fig.legend()
     fig.suptitle(f'{method} '+' '.join(keyvalpairs), fontsize=16)
     plt.tight_layout(rect=(0, 0.05, 1, 1))
     plt.savefig(f"{gibbs.residue}/results_{method}_{kwarg_str}.png",
                 bbox_inches='tight')
-    #plt.show()
+    plt.show()
 
-    # tparams, fparams = [], []
+    # tparams, pparams = [], []
     # for i in uniq_labels:
     #     tinds = np.where(labels == i)[0]
     #     pinds = np.where(predict_labels == i)[0]
     #     tparams.append(trates[tinds].mean())
-    #     fparams.append(frates[pinds].mean())
+    #     pparams.append(prates[pinds].mean())
     # tindex = np.where(tparams == np.min(tparams))[0]
-    # pindex = np.where(fparams == np.min(fparams))[0]
+    # pindex = np.where(pparams == np.min(pparams))[0]
     # clu_rates = np.concatenate([trates[labels == tindex],
-                                # frates[predict_labels == pindex]])
-    # train_results = [(1/clu_rates).mean(), confidence_interval(1/clu_rates)]
-    # predict_results = [(1/trates[labels == tindex]).mean(),
+    #                             prates[predict_labels == pindex]])
+    # all_results = [(1/clu_rates).mean(), confidence_interval(1/clu_rates)]
+    # train_results = [(1/trates[labels == tindex]).mean(),
     #                    confidence_interval(1/trates[labels == tindex])]
-
-    return r, predict_labels
+    # predict_results = [(1/prates[predict_labels == pindex]).mean(),
+    #                    confidence_interval(1/prates[predict_labels == pindex])]
+    return r, all_labels
 
