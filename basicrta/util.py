@@ -769,8 +769,7 @@ def mixture_and_plot(gibbs, method, **kwargs):
     plt.tight_layout(rect=(0, 0.05, 1, 1))
     plt.savefig(f"{gibbs.residue}/results_{method}_{kwarg_str}.png",
                 bbox_inches='tight')
-    plt.show()
-
+    # plt.show()
     # tparams, pparams = [], []
     # for i in uniq_labels:
     #     tinds = np.where(labels == i)[0]
