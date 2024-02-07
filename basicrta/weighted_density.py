@@ -3,88 +3,105 @@ import numpy as np
 import MDAnalysis as mda
 import os
 from tqdm import tqdm
-import pickle, bz2
+from basicrta.util import get_start_stop_frames
 
 
 class WeightedDensity(object):
-    def __init__(self, gibbs):
-        self.gibbs = gibbs
-        print('preparing')
+    def __init__(self, gibbs, u, contacts, step=1, N=1000):
+        self.gibbs, self.u, self.N = gibbs, u, N
+        self.contacts, self.step = contacts, step
+        self.cutoff = float(contacts.split('/')[-1].strip('.npy').
+                            split('_')[-1])
+        self.write_sel = None
+        self.dataname = (f'basicrta-{self.cutoff}/{self.gibbs.residue}/'
+                         f'den_write_data_step{self.step}.npy')
+        self.trajname = (f'basicrta-{self.cutoff}/{self.gibbs.residue}/'
+                         f'chol_traj_step{self.step}.xtc')
+
 
     def _prepare(self):
-        print('do nothing')
+        print('no nothing')
 
 
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--processed_results')
-    parser.add_argument('--cutoff')
-    parser.add_argument('--filterP', nargs='?', default=0.85)
-    parser.add_argument('--step', nargs='?', default=1)
-    args = parser.parse_args()
+    def _create_data(self):
+        contacts = np.load(self.contacts, mmap_mode='r')
+        resid = int(self.gibbs.residue[1:])
+        ncomp = self.gibbs.processed_results.ncomp
 
-    with open(f'{args.processed_results}', 'rb') as w:
-        rp = pickle.load(w)
+        times = np.array(contacts[contacts[:, 0] == resid][:, 3])
+        trajtimes = np.array(contacts[contacts[:, 0] == resid][:, 2])
+        lipinds = np.array(contacts[contacts[:, 0] == resid][:, 1])
+        dt = self.u.trajectory.ts.dt/1000 #nanoseconds
 
-    residue, cutoff = rp.residue, float(args.cutoff)
-    resid, step, filterP = int(residue[1:]), int(args.step), float(args.filterP)
-    ncomp = rp.ncomp
-    
-    files = ['1/fixrot_dimer.xtc', '2/fixrot_dimer.xtc', '3/fixrot_dimer.xtc']
-    u = mda.Universe(os.path.abspath('step7_production.tpr'), files)
-    uf = mda.Universe('step7_fixed.pdb')
-    protein = u.select_atoms('protein')
-    chol = u.select_atoms('resname CHOL')
-    
-    write_sel = protein+chol.residues[0].atoms
-    resids = uf.select_atoms('protein').residues.resids
-    index = np.where(resids==resid)[0][0]
-    if not os.path.exists(f'BaSiC-RTA-{cutoff}/{residue}/den_write_data_step{step}.npy'):
-        a = np.load(f'lipswap_contacts_combined_{cutoff}.npy')
-        
-        times = np.array(a[a[:, 0] == index][:, 3])
-        trajtimes = np.array(a[a[:, 0] == index][:, 2])
-        lipinds = np.array(a[a[:, 0] == index][:, 1])
-        dt = u.trajectory.ts.dt/1000 #nanoseconds
-
-        #sortinds = np.argsort([line.mean() for line in rp.rates.T])
-        #indicators = (r.indicator.T/r.indicator.sum(axis=1))[rpinds][sortinds]
-        indicators = rp.indicator
+        indicators = self.gibbs.processed_results.indicator
 
         bframes, eframes = get_start_stop_frames(trajtimes, times, dt)
         tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]
-        tmpL = [np.ones_like(np.arange(b, e))*l for b, e, l in zip(bframes, eframes, lipinds)]
-        tmpI = [indic*np.ones((len(np.arange(b, e)), ncomp)) for b, e, indic in zip(bframes, eframes, indicators.T)]
-            
-        write_frames = np.concatenate([*tmp]).astype(int) 
-        write_Linds = np.concatenate([*tmpL]).astype(int)
-        write_Indics = np.concatenate([*tmpI])
-        
-        wf, wl, wi = write_frames, write_Linds, write_Indics
-        darray = np.zeros((len(wf),ncomp+2))
-        darray[:, 0], darray[:,1], darray[:,2:] = wf, wl, wi
-        np.save(f'BaSiC-RTA-{cutoff}/{residue}/den_write_data_step{step}', darray)
-    else:
-        tmp = np.load(f'BaSiC-RTA-{cutoff}/{residue}/den_write_data_step{step}.npy')
-        wf, wl, wi = tmp[:,0], tmp[:,1], tmp[:,2:]
+        tmpL = [np.ones_like(np.arange(b, e)) * l for b, e, l in
+                zip(bframes, eframes, lipinds)]
+        tmpI = [indic * np.ones((len(np.arange(b, e)), ncomp))
+                for b, e, indic in zip(bframes, eframes, indicators.T)]
 
-    if not os.path.exists(f"BaSiC-RTA-{cutoff}/{residue}/chol_traj_step{step}.xtc"):
-        with mda.Writer(f"BaSiC-RTA-{cutoff}/{residue}/chol_traj_step{step}.xtc", len(write_sel.atoms)) as W:
-            for i, ts in tqdm(enumerate(u.trajectory[wf[::step]]), total=len(wf)//step+1, desc='writing single lipid trajectory'):
-                W.write(protein+chol.residues[wl[::step][i]].atoms)
-    
-    u_red = mda.Universe('prot_chol.gro',f'BaSiC-RTA-{cutoff}/{residue}/chol_traj_step{step}.xtc')
-    chol_red = u_red.select_atoms('resname CHOL')
+        write_frames = np.concatenate([*tmp]).astype(int)
+        write_linds = np.concatenate([*tmpL]).astype(int)
+        write_indics = np.concatenate([*tmpI])
 
-    filter_inds = np.where(wi[::step]>filterP)
-    wf = wf[::step][filter_inds[0]].astype(int)
-    wl = wl[::step][filter_inds[0]].astype(int)
-    wi = wi[::step][filter_inds[0]]
-    comp_inds = [np.where(filter_inds[1]==i)[0] for i in range(ncomp)]
-    
+        darray = np.zeros((len(write_frames), ncomp + 2))
+        darray[:, 0], darray[:, 1], darray[:, 2:] = (write_frames, write_linds,
+                                                     write_indics)
+        np.save(self.dataname, darray)
 
-    for i in range(ncomp):
-        D = WDensityAnalysis(chol_red, wi[comp_inds[i], i], gridcenter=u_red.select_atoms(f'protein and resid {index}').center_of_geometry(), xdim=40, ydim=40, zdim=40)
-        D.run(verbose=True, frames=filter_inds[0][comp_inds[i]])
-        D.results.density.export(f'BaSiC-RTA-{cutoff}/{residue}/wcomp{i}_step{step}_p{filterP}.dx')
+
+    def _create_traj(self):
+        protein = self.u.select_atoms('protein')
+        chol = self.u.select_atoms('resname CHOL')
+        write_sel = protein + chol.residues[0].atoms
+
+        if not os.path.exists(self.dataname):
+            self._create_data()
+
+        tmp = np.load(self.dataname)
+        wf, wl, wi = tmp[:, 0], tmp[:, 1], tmp[:, 2:]
+
+        if not os.path.exists(self.trajname):
+            with mda.Writer(self.trajname, len(write_sel.atoms)) as W:
+                for i, ts in tqdm(enumerate(self.u.trajectory[wf[::self.step]]),
+                                  total=len(wf)//(self.step+1),
+                                  desc='writing trajectory'):
+                    W.write(protein+chol.residues[wl[::self.step][i]].atoms)
+
+
+    def run(self):
+        if not os.path.exists(self.trajname):
+            self._create_traj()
+
+        resid = int(self.gibbs.residue[1:])
+        tmp = np.load(self.dataname)
+        wi = tmp[:, 2:]
+
+        # filter_inds = np.where(wi > filterP)
+        # wi = wi[filter_inds[0]][::self.step]
+        # comp_inds = [np.where(filter_inds[1] == i)[0] for i in
+        #              range(self.gibbs.processed_results.ncomp)]
+
+        u_red = mda.Universe('prot_chol.gro', self.trajname)
+        chol_red = u_red.select_atoms('resname CHOL')
+
+        sortinds = [wi[:, i].argsort()[::-1] for i in
+                    range(self.gibbs.processed_results.ncomp)]
+        for i in range(self.gibbs.processed_results.ncomp):
+            D = WDensityAnalysis(chol_red, wi[sortinds[i], i],
+                                 gridcenter=u_red.select_atoms(f'protein and '
+                                                               f'resid {resid}')
+                                 .center_of_geometry(), xdim=40, ydim=40,
+                                 zdim=40)
+            D.run(verbose=True, frames=sortinds[i])
+            D.results.density.export(f'basicrta-{self.cutoff}/'
+                                     f'{self.gibbs.processed_results.residue}/'
+                                     f'wcomp{i}_top{self.N}.dx')
+
+
+
+if __name__ == "__main__":
+    print('not implemented')
+
