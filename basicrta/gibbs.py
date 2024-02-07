@@ -175,6 +175,7 @@ class Gibbs(object):
         gm, labels = mixture_and_plot(self, 'GaussianMixture', n_init=17,
                                       n_components=lmode,
                                       covariance_type='spherical')
+        indicator = indicator[burnin_ind:]
         for j in np.unique(inds[0]):
             mapinds = labels[inds[0] == j]
             for i, indx in enumerate(inds[1][inds[0] == j]):
@@ -243,14 +244,14 @@ class Gibbs(object):
                                                     .min()),
                                              np.log(rp.weights[rp.labels == i]
                                                     .max()), 50)),
-                    label=f'{i+1}', alpha=0.5, color=cmap(i))
+                    label=f'{i}', alpha=0.5, color=cmap(i))
          for i in range(rp.ncomp)]
         [ax[1].hist(rp.rates[rp.labels == i],
                     bins=np.exp(np.linspace(np.log(rp.rates[rp.labels == i]
                                                    .min()),
                                             np.log(rp.rates[rp.labels == i]
                                                    .max()), 50)),
-                    label=f'{i+1}', alpha=0.5, color=cmap(i))
+                    label=f'{i}', alpha=0.5, color=cmap(i))
          for i in range(rp.ncomp)]
         ax[0].set_xscale('log')
         ax[1].set_xscale('log')
@@ -269,19 +270,19 @@ class Gibbs(object):
 
 
     def plot_results(self, scale=1.5, sparse=1, save=False):
-            cmap = mpl.colormaps['tab20']
+            cmap = mpl.colormaps['tab10']
             rp = self.processed_results
 
             fig, ax = plt.subplots(2, figsize=(4*scale, 3*scale), sharex=True)
             [ax[0].plot(rp.iteration[rp.labels == i][::sparse],
                         rp.weights[rp.labels == i][::sparse], '.',
-                        label=f'{i+1}', color=cmap(i))
-             for i in range(rp.ncomp)]
+                        label=f'{i}', color=cmap(i))
+             for i in np.unique(rp.labels)]
             ax[0].set_yscale('log')
             ax[0].set_ylabel(r'weight')
             [ax[1].plot(rp.iteration[rp.labels == i][::sparse],
-                        rp.rates[rp.labels == i][::sparse], '.', label=f'{i+1}',
-                        color=cmap(i)) for i in range(rp.ncomp)]
+                        rp.rates[rp.labels == i][::sparse], '.', label=f'{i}',
+                        color=cmap(i)) for i in np.unique(rp.labels)]
             ax[1].set_yscale('log')
             ax[1].set_ylabel(r'rate ($ns^{-1}$)')
             ax[1].set_xlabel('sample')

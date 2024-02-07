@@ -672,27 +672,22 @@ def mixture_and_plot(gibbs, method, **kwargs):
     leg_labels = np.array([f'{i}' for i in uniq_labels])
     predict_labels = r.predict(np.log(predict_data))
 
-    sorts = r.precisions_.argsort()[::-1]
-    tinds = np.array([np.where(labels == i)[0] for i in uniq_labels],
-                     dtype=object)
-    pinds = np.array([np.where(predict_labels == i)[0] for i in uniq_labels],
-                     dtype=object)
-    for i in uniq_labels:
-        labels[tinds[i]] = sorts[i]
-        predict_labels[pinds[i]] = sorts[i]
-    tinds = np.array([np.where(labels == i)[0] for i in uniq_labels],
-                     dtype=object)
-    pinds = np.array([np.where(predict_labels == i)[0] for i in uniq_labels],
-                     dtype=object)
+    # sorts = r.precisions_.argsort()[::-1]
+    # tinds = np.array([np.where(labels == i)[0] for i in uniq_labels],
+    #                  dtype=object)
+    # pinds = np.array([np.where(predict_labels == i)[0] for i in uniq_labels],
+    #                  dtype=object)
+    # for i in uniq_labels:
+    #     labels[tinds[i]] = sorts[i]
+    #     predict_labels[pinds[i]] = sorts[i]
+    tinds = [np.where(labels == i)[0] for i in uniq_labels]
+    pinds = [np.where(predict_labels == i)[0] for i in uniq_labels]
 
     train_data_inds = np.array([np.where(data == col)[0][0] for col in
                                 train_data])
     predict_data_inds = np.array([np.where(data == col)[0][0] for col in
                                   predict_data])
-    all_labels = np.zeros(data.shape[0], dtype=np.uint8)
-    all_labels[train_data_inds] = labels
-    all_labels[predict_data_inds] = predict_labels
-    #leg_labels[10:] = '_nolegend_'
+    all_labels = r.predict(np.log(data))
 
     cmap = mpl.colormaps['tab10']
     cmap.set_under()
@@ -764,12 +759,11 @@ def mixture_and_plot(gibbs, method, **kwargs):
     [handle.set_edgecolor('k') for i, handle in zip(plot_labels, handles)]
     fig.legend(handles, plot_labels, loc='lower center',
                ncols=len(plot_labels)/2, title='cluster')
-    fig.legend()
     fig.suptitle(f'{method} '+' '.join(keyvalpairs), fontsize=16)
     plt.tight_layout(rect=(0, 0.05, 1, 1))
     plt.savefig(f"{gibbs.residue}/results_{method}_{kwarg_str}.png",
                 bbox_inches='tight')
-    # plt.show()
+    plt.show()
     # tparams, pparams = [], []
     # for i in uniq_labels:
     #     tinds = np.where(labels == i)[0]
