@@ -446,23 +446,20 @@ def plot_protein(residues, t_slow, bars, prot):
 #  ##  plt.show()
 
 
-def run(gib):
-    gib.run()
+# def run(gib):
+#     gib.run()
 
 
-def run_residue(residue, time, ncomp, niter):
+def run_residue(residue, time, proc, ncomp, niter):
     x = np.array(time)
-    if len(x)!=0:
-        try:
-            proc = int(multiprocessing.current_process().name.split('-')[-1])
-        except ValueError:
-            proc = 1
-        if niter:
-            gib = gibbs(x, residue, proc, ncomp=ncomp, niter=niter)
-        else:
-            gib = gibbs(x, residue, proc, ncomp=ncomp, niter=10000)
-        
-        run(gib)
+    # if len(x) != 0:
+    #     try:
+    #         proc = int(multiprocessing.current_process().name.split('-')[-1])
+    #     except ValueError:
+    #         proc = 1
+    #
+    gib = gibbs(x, residue, proc, ncomp=ncomp, niter=niter)
+    gib.run()
 
 
 def check_results(residues, times, ts):

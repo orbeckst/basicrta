@@ -11,6 +11,7 @@ from numpy.random import default_rng
 from tqdm import tqdm
 from MDAnalysis.analysis.base import Results
 from basicrta.util import confidence_interval
+from multiprocessing import Pool, Lock
 
 gc.enable()
 mpl.rcParams['pdf.fonttype'] = 42
@@ -51,10 +52,48 @@ class ProcessProtein(object):
 
 
 class ParallelGibbs(object):
-    def __init__(self):
-        print('unimplemented')
-        # Add class to take in processed contacts and resids and
-        # run gibbs samplers
+    """
+    A module to take a contact map and run Gibbs samplers for each residue
+    """
+
+    def __init__(self, contacts, nproc=1, ncomp=15, niter=50000):
+        with open(contacts, 'r+b') as f:
+            self.contacts = pickle.load(f)
+        self.cutoff = float(contacts.strip('.npy').split('/')[-1].split('_')[-1])
+        self.niter, self.nproc, self.ncomp = niter, nproc, ncomp
+
+
+    def run(self, run_resids):
+        from basicrta.util import run_residue
+
+        protids = np.unique(self.contacts[:, 0])
+        times = [self.contacts[self.contacts[:, 0] == i][:, 3] for i in protids]
+
+        lens = np.array([len(np.unique(time)) for time in times])
+        validinds = np.where(lens > 50)[0]
+        protids, times = protids[validinds], times[validinds]
+        residues = self.contacts.dtype['ag1'].residues
+        resids = np.array([int(res[1:]) for res in residues])
+
+        if run_resids:
+            inds = np.array([np.where(resids == resid)[0] for resid in
+                             run_resids])
+            residues, times = residues[inds], times[inds]
+
+        if not os.path.exists(f'basicrta-{self.cutoff}'):
+            os.mkdir(f'basicrta-{self.cutoff}')
+        os.chdir(f'basicrta-{self.cutoff}')
+
+        input_list = np.array([[times[i], residues[i], i % self.nproc,
+                                self.ncomp, self.niter] for i in
+                               range(len(residues))], dtype=object)
+
+        with (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as
+              p):
+            for _ in tqdm(p.istarmap(run_residue, input_list),
+                          total=len(residues), position=0,
+                          desc='overall progress'):
+                pass
 
 
 class Gibbs(object):
@@ -70,7 +109,7 @@ class Gibbs(object):
         self.g, self.burnin = 100, 10000
         self.processed_results = Results()
 
-        if times:
+        if times.size:
             diff = (np.sort(times)[1:]-np.sort(times)[:-1])
             self.ts = diff[diff != 0][0]
         else:
@@ -301,18 +340,6 @@ class Gibbs(object):
         ds = [rp.rates[rp.labels == i] for i in range(rp.ncomp)]
         bounds = np.array([confidence_interval(d) for d in ds])
         params = np.array([np.mean(d) for d in ds])
-        # H = [np.histogram(rp.rates[rp.labels == i], bins=100) for i in
-        #      range(rp.ncomp)]
-        # params = np.zeros(len(H))
-        # for i, hist in enumerate(H):
-        #     ind = np.where(hist[0] == hist[0].max())[0]
-        #     val = 0.5 * (hist[1][:-1][ind] + hist[1][1:][ind])
-        #     try:
-        #         params[i] = val
-        #     except ValueError:
-        #         params[i] = np.min(val)
-        #         print(f'May have underestimated {self.residue} param for '
-        #               f'component with label {i}')
 
         setattr(rp, 'parameters', params)
         setattr(rp, 'intervals', bounds)

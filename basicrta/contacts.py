@@ -8,7 +8,7 @@ from MDAnalysis.lib import distances
 import collections
 from multiprocessing import Pool, Lock
 import MDAnalysis as mda
-
+import pickle
 
 class MapContacts(object):
     """
@@ -51,7 +51,14 @@ class MapContacts(object):
             filename = f'.contacts_{proc:03}.npy'
             mmaps.append(np.load(filename, mmap_mode='r'))
 
-        np.save('contacts', np.concatenate([*mmaps]))
+        dtype = np.dtype(np.float64, metadata={'top': self.u.filename,
+                                            'traj': self.u.trajectory.filename,
+                                            'ag1': ag1, 'ag2': ag2})
+
+        outarr = np.concatenate([*mmaps], dtype=dtype)
+        with open('contacts.pkl', 'w+b') as f:
+            pickle.dump(outarr, f)
+
         print('\nSaved contacts as "contacts.npy"')
 
 
@@ -83,7 +90,7 @@ class MapContacts(object):
 
 
 class ProcessContacts(object):
-    def __init__(self, cutoff, nproc, map_name='contacts.npy'):
+    def __init__(self, cutoff, nproc, map_name='contacts.pkl'):
         self.cutoff, self.nproc = cutoff, nproc
         self.map_name = map_name
 
@@ -92,8 +99,11 @@ class ProcessContacts(object):
         from basicrta.util import siground
 
         if os.path.exists(self.map_name):
-            memmap = np.load(self.map_name, mmap_mode='r')
+            with open(self.map_name, 'r+b') as f:
+                memmap = pickle.load(f)
+            # memmap = np.load(self.map_name, mmap_mode='r')
             memmap = memmap[memmap[:, -2] <= self.cutoff]
+            dtype = memmap.dtype
         else:
             raise FileNotFoundError(f'{self.map_name} not found. Specify the '
                                     'contacts file using the "map_name" '
@@ -110,7 +120,10 @@ class ProcessContacts(object):
             pool.terminate()
         pool.close()
 
-        np.save(f'contacts_{self.cutoff}', np.concatenate([*dsets]))
+        outarr = np.concatenate([*dsets], dtype=dtype)
+        with open(f'contacts_{cutoff}.pkl', 'w+b') as f:
+            pickle.dump(outarr, f)
+
         print(f'\nSaved contacts to "contacts_{self.cutoff}.npy"')
 
 
@@ -152,14 +165,15 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--top', type=str)
-    parser.add_argument('--traj', type=str)
+    parser.add_argument('--traj', type=str, nargs='+')
     parser.add_argument('--sel1', type=str)
     parser.add_argument('--sel2', type=str)
     parser.add_argument('--cutoff', type=float)
     parser.add_argument('--nproc', type=int, default=1)
     args = parser.parse_args()
 
-    u = mda.Universe(args.top, args.traj)
+    u = mda.Universe(args.top)
+    [u.load_new(traj) for traj in args.traj]
     cutoff, nproc = args.cutoff, args.nproc
     ag1 = u.select_atoms(args.sel1)
     ag2 = u.select_atoms(args.sel2)
