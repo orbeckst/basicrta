@@ -102,12 +102,15 @@ class MapContacts(object):
     def _run_contacts(self, i, sliced_traj):
         from basicrta.util import get_dec
 
-        map = np.memmap(f'.contacts_{i:03}', mode='w+', size=(0, 4))
+        data_len = 0
+        oldmap = np.memmap(f'.tmpmap', mode='w+', shape=(data_len + 1, 4))
+        del oldmap
+
         dec = get_dec(self.u.trajectory.ts.dt/1000)  # convert to ns
         text = f'process {i+1} of {self.nproc}'
-        data_len = 0
         for ts in tqdm(sliced_traj, desc=text, position=i,
                        total=len(sliced_traj), leave=False):
+            oldmap = np.memmap(f'.tmpmap', mode='r', shape=(data_len+1, 4))
             dset = []
             b = distances.capped_distance(self.ag1.positions,
                                           self.ag2.positions,
@@ -124,8 +127,14 @@ class MapContacts(object):
                              np.round(ts.time, dec)/1000])  # convert to ns
                 lsum += temp
             new_len = data_len + len(dset)
-            map.resize((new_len, 4))
-            map[data_len:new_len] = dset
+            newmap = np.memmap(f'.contacts_{i:03}', mode='w+',
+                               shape=(new_len, 4))
+            newmap[:data_len] = oldmap[:data_len]
+            newmap[data_len:new_len] = dset
+            del oldmap
+            oldmap = np.memmap(f'.tmpmap', mode='w+',
+                               shape=(new_len, 4))
+            oldmap[:] = newmap[:]
             data_len += new_len
         # map.dump()
         return map
