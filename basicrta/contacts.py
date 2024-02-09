@@ -9,8 +9,7 @@ import collections
 from multiprocessing import Pool, Lock
 import MDAnalysis as mda
 import pickle
-from basicrta import istarmap
-
+import glob
 class MapContacts(object):
     """
     This class is used to create the map of contacts between two groups of
@@ -29,12 +28,9 @@ class MapContacts(object):
     def run(self):
         if self.frames:
             sliced_frames = np.array_split(self.frames, self.nslices)
-            # sliced_frames = np.array_split(self.frames, self.nproc)
         else:
             sliced_frames = np.array_split(np.arange(len(self.u.trajectory)),
                                            self.nslices)
-            # sliced_frames = np.array_split(np.arange(len(self.u.trajectory)),
-            #                                            self.nproc)
 
         input_list = [[i, self.u.trajectory[aslice]] for
                       i, aslice in enumerate(sliced_frames)]
@@ -69,7 +65,9 @@ class MapContacts(object):
         del dset
         contact_map.dump('contacts.pkl')
         os.remove('.tmpmap')
-        print('\nSaved contacts as "contacts.pkl"')
+        cfiles = glob.glob('.contacts*')
+        [os.remove(f) for f in cfiles]
+    print('\nSaved contacts as "contacts.pkl"')
 
 
     def _run_contacts(self, i, sliced_traj):
@@ -170,54 +168,75 @@ class ProcessContacts(object):
 
         self.ts = siground(np.unique(memmap[1:, 4]-memmap[:-1, 4])[1], 1)
         lresids = np.unique(memmap[:, 2])
-        params = [[res, memmap[memmap[:, 2] == res]] for res in lresids]
+        params = [[res, memmap[memmap[:, 2] == res], i] for i, res in
+                  enumerate(lresids)]
         pool = Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),))
 
         try:
-            dsets = pool.starmap(self._lipswap, params)
+            lens = pool.starmap(self._lipswap, params)
         except KeyboardInterrupt:
             pool.terminate()
         pool.close()
 
-        outarr = np.concatenate([*dsets], dtype=dtype)
-        with open(f'contacts_{cutoff}.pkl', 'w+b') as f:
-            pickle.dump(outarr, f)
+        bounds = np.concatenate([[0], np.cumsum(lens)])
+        mapsize = sum(lens)
+        contact_map = np.memmap('.tmpmap', mode='w+', shape=(mapsize, 4),
+                                dtype=dtype)
 
+        for i in range(self.nproc):
+            filename = f'.contacts_{i:04}'
+            dset = []
+            with open(filename, 'r') as f:
+                for line in f:
+                    dset.append([float(i) for i in line.strip('[]\n').
+                                split(',')])
+            contact_map[bounds[i]:bounds[i+1]] = dset
+        del dset
+        contact_map.dump(f'contacts_{self.cutoff}.pkl')
+        os.remove('.tmpmap')
+        cfiles = glob.glob('.contacts*')
+        [os.remove(f) for f in cfiles]
         print(f'\nSaved contacts to "contacts_{self.cutoff}.npy"')
 
 
-    def _lipswap(self, lip, memarr):
+    def _lipswap(self, lip, memarr, i):
         from basicrta.util import get_dec
-
         try:
-            proc = int(multiprocessing.current_process().name[-1])
+            # proc = int(multiprocessing.current_process().name[-1])
+            proc = int(multiprocessing.current_process().name.split('-')[-1])
         except ValueError:
             proc = 1
 
         presids = np.unique(memarr[:, 1])
-        dset = []
+        dset, data_len = [], 0
         dec, ts = get_dec(self.ts), self.ts
-        for pres in tqdm(presids, desc=f'lipID {int(lip)}', position=proc,
-                         leave=False):
-            stimes = np.round(memarr[:, -1][memarr[:, 1] == pres], dec)
-            if len(stimes) == 0:
-                continue
-            stimes = np.concatenate([np.array([-1]), stimes,
-                                     np.array([stimes[-1]+1])])
-            diff = np.round(stimes[1:]-stimes[:-1], dec)
-            singles = stimes[np.where((diff[1:] > ts) & (diff[:-1] > ts))[0]+1]
-            diff[diff > ts] = 0
-            inds = np.where(diff == 0)[0]
-            sums = [sum(diff[inds[i]:inds[i+1]]) for i in range(len(inds)-1)]
-            clens = np.round(np.array(sums), dec)
-            minds = np.where(clens != 0)[0]
-            clens = clens[minds]+ts
-            strt_times = stimes[inds[minds]+1]
+        with open(f'.contacts_{i:04}', 'w+') as f:
+            for pres in tqdm(presids, desc=f'lipID {int(lip)}', position=proc,
+                             leave=False):
+                stimes = np.round(memarr[:, -1][memarr[:, 1] == pres], dec)
+                if len(stimes) == 0:
+                    continue
+                stimes = np.concatenate([np.array([-1]), stimes,
+                                         np.array([stimes[-1] + 1])])
+                diff = np.round(stimes[1:] - stimes[:-1], dec)
+                singles = stimes[
+                    np.where((diff[1:] > ts) & (diff[:-1] > ts))[0] + 1]
+                diff[diff > ts] = 0
+                inds = np.where(diff == 0)[0]
+                sums = [sum(diff[inds[i]:inds[i + 1]]) for i in
+                        range(len(inds) - 1)]
+                clens = np.round(np.array(sums), dec)
+                minds = np.where(clens != 0)[0]
+                clens = clens[minds] + ts
+                strt_times = stimes[inds[minds] + 1]
 
-            [dset.append([pres, lip, time, ts]) for time in singles]
-            [dset.append([pres, lip, time, clen]) for time, clen in
-             zip(strt_times, clens)]
-        return dset
+                [dset.append([pres, lip, time, ts]) for time in singles]
+                [dset.append([pres, lip, time, clen]) for time, clen in
+                 zip(strt_times, clens)]
+                [f.write(f"{line}\n") for line in dset]
+                data_len += len(dset)
+            f.flush()
+        return data_len
 
 
 if __name__ == '__main__':
