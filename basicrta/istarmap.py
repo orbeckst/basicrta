@@ -24,7 +24,8 @@ def istarmap(self, func, iterable, chunksize=1):
                                           task_batches),
             result._set_length
         ))
-    return (item for chunk in result for item in chunk)
+    # return (item for chunk in result for item in chunk)
+    return result._set_length
 
 
 mpp.Pool.istarmap = istarmap

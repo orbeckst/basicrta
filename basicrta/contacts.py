@@ -19,10 +19,11 @@ class MapContacts(object):
     a contact is considered formed.
     """
 
-    def __init__(self, u, ag1, ag2, nproc=1, frames=None, cutoff=10.0):
+    def __init__(self, u, ag1, ag2, nproc=1, frames=None, cutoff=10.0,
+                 nslices=100):
         self.u, self.nproc = u, nproc
         self.ag1, self.ag2 = ag1, ag2
-        self.cutoff, self.frames, self.nslices = cutoff, frames, 500
+        self.cutoff, self.frames, self.nslices = cutoff, frames, nslices
 
 
     def run(self):
@@ -38,20 +39,25 @@ class MapContacts(object):
         input_list = [[i, self.u.trajectory[aslice]] for
                       i, aslice in enumerate(sliced_frames)]
 
-        # lens = (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)).
-        #         istarmap(self._run_contacts, input_list))
-
-
-        with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
-            for _ in tqdm(p.istarmap(self._run_contacts, input_list),
-                          total=self.nslices, position=0,
-                          desc='overall progress'):
-                return _
+        lens = (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)).
+                starmap(self._run_contacts, input_list))
+        # lens = []
+        # with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
+        #     for _ in tqdm(p.istarmap(self._run_contacts, input_list),
+        #                   total=self.nslices, position=0,
+        #                   desc='overall progress'):
+        #         lens.append(alen)
+                # pass
 
         bounds = np.concatenate([[0], np.cumsum(lens)])
         mapsize = sum(lens)
-        contact_map = np.memmap('contacts.pkl', mode='w+', shape=(mapsize, 5),
-                                dtype=np.float64)
+        dtype = np.dtype(np.float64,
+                         metadata={'top': self.u.filename,
+                                   'traj': self.u.trajectory.filename,
+                                   'ag1': ag1, 'ag2': ag2})
+
+        contact_map = np.memmap('.tmpmap', mode='w+', shape=(mapsize, 5),
+                                dtype=dtype)
         for i in range(self.nproc):
             filename = f'.contacts_{i:04}'
             dset = []
@@ -60,24 +66,10 @@ class MapContacts(object):
                     dset.append([float(i) for i in line.strip('[]\n').
                                 split(',')])
             contact_map[bounds[i]:bounds[i+1]] = dset
-
-        # mmaps = []
-        # for proc in range(self.nproc):
-        #     filename = f'.contacts_{proc:03}.npy'
-        #     mmaps.append(np.load(filename, mmap_mode='r'))
-
-        dtype = np.dtype(np.float64,
-                         metadata={'top': self.u.filename,
-                                   'traj': self.u.trajectory.filename,
-                                   'ag1': ag1, 'ag2': ag2})
-
-        # outarr = np.concatenate([*mmaps], dtype=dtype)
-        contact_map.dtype = dtype
+        del dset
         contact_map.dump('contacts.pkl')
-        # with open('contacts.pkl', 'w+b') as f:
-        #     pickle.dump(outarr, f)
-
-        print('\nSaved contacts as "contacts.npy"')
+        os.remove('.tmpmap')
+        print('\nSaved contacts as "contacts.pkl"')
 
 
     def _run_contacts(self, i, sliced_traj):
@@ -237,13 +229,14 @@ if __name__ == '__main__':
     parser.add_argument('--sel2', type=str)
     parser.add_argument('--cutoff', type=float)
     parser.add_argument('--nproc', type=int, default=1)
+    parser.add_argument('--nslices', type=int, default=100)
     args = parser.parse_args()
 
     u = mda.Universe(args.top)
     [u.load_new(traj) for traj in args.traj]
-    cutoff, nproc = args.cutoff, args.nproc
+    cutoff, nproc, nslices = args.cutoff, args.nproc, args.nslices
     ag1 = u.select_atoms(args.sel1)
     ag2 = u.select_atoms(args.sel2)
 
-    MapContacts(u, ag1, ag2, nproc=nproc).run()
+    MapContacts(u, ag1, ag2, nproc=nproc, nslices=nslices).run()
     ProcessContacts(cutoff, nproc).run()
