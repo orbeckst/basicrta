@@ -10,6 +10,9 @@ from multiprocessing import Pool, Lock
 import MDAnalysis as mda
 import pickle
 import glob
+from basicrta import istarmap
+
+
 class MapContacts(object):
     """
     This class is used to create the map of contacts between two groups of
@@ -35,14 +38,14 @@ class MapContacts(object):
         input_list = [[i, self.u.trajectory[aslice]] for
                       i, aslice in enumerate(sliced_frames)]
 
-        lens = (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)).
-                starmap(self._run_contacts, input_list))
-        # lens = []
-        # with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
-        #     for _ in tqdm(p.istarmap(self._run_contacts, input_list),
-        #                   total=self.nslices, position=0,
-        #                   desc='overall progress'):
-        #         lens.append(alen)
+        # lens = (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)).
+        #         starmap(self._run_contacts, input_list))
+        lens = []
+        with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
+            for alen in tqdm(p.istarmap(self._run_contacts, input_list),
+                          total=self.nslices, position=0,
+                          desc='overall progress'):
+                lens.append(alen)
                 # pass
 
         bounds = np.concatenate([[0], np.cumsum(lens)])
