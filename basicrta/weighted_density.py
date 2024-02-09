@@ -19,10 +19,6 @@ class WeightedDensity(object):
                          f'chol_traj_step{self.step}.xtc')
 
 
-    def _prepare(self):
-        print('no nothing')
-
-
     def _create_data(self):
         contacts = np.load(self.contacts, mmap_mode='r')
         resid = int(self.gibbs.residue[1:])
