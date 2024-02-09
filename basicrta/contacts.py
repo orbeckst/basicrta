@@ -38,7 +38,7 @@ class MapContacts(object):
                       i, aslice in enumerate(sliced_frames)]
 
         lens = (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)).
-                starmap(self._run_contacts, input_list))
+                starmap_async(self._run_contacts, input_list))
 
         bounds = np.concatenate([[0], np.cumsum(lens)])
         mapsize = sum(lens)
@@ -75,11 +75,16 @@ class MapContacts(object):
     def _run_contacts(self, i, sliced_traj):
         from basicrta.util import get_dec
 
+        try:
+            proc = int(multiprocessing.current_process().name.split('-')[-1])
+        except ValueError:
+            proc = 1
+
         with open(f'.contacts_{i:04}', 'w+') as f:
             dec = get_dec(self.u.trajectory.ts.dt/1000)  # convert to ns
             text = f'slice {i+1} of {self.nslices}'
             data_len = 0
-            for ts in tqdm(sliced_traj, desc=text, position=i % self.nproc,
+            for ts in tqdm(sliced_traj, desc=text, position=proc,
                            total=len(sliced_traj), leave=False):
                 dset = []
                 b = distances.capped_distance(self.ag1.positions,
