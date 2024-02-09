@@ -54,8 +54,7 @@ class MapContacts(object):
         contact_map = np.memmap('.tmpmap', mode='w+', shape=(bounds[-1], 5),
                                 dtype=dtype)
         for i in range(self.nslices):
-            contact_map[bounds[i]:bounds[i+1]] = np.load(f'.contacts_{i:04}.'
-                                                         f'npy')
+            contact_map[bounds[i]:bounds[i+1]] = np.genfromtxt(f'.contacts_{i:04}', delimiter=',')
 
         contact_map.dump('contacts.pkl')
         os.remove('.tmpmap')
@@ -72,52 +71,52 @@ class MapContacts(object):
         except ValueError:
             proc = 1
 
-        dec = get_dec(self.u.trajectory.ts.dt/1000)  # convert to ns
-        text = f'slice {i+1} of {self.nslices}'
-        dset = []
-        for ts in tqdm(sliced_traj, desc=text, position=proc,
-                       total=len(sliced_traj), leave=False):
-            b = distances.capped_distance(self.ag1.positions,
-                                          self.ag2.positions,
-                                          max_cutoff=self.cutoff)
-            pairlist = [(self.ag1.resids[b[0][i, 0]],
-                         self.ag2.resids[b[0][i, 1]]) for i in
-                        range(len(b[0]))]
-            pairdir = collections.Counter(a for a in pairlist)
-            lsum = 0
-            for j in pairdir:
-                temp = pairdir[j]
-                dset.append([ts.frame, j[0], j[1],
-                             min(b[1][lsum:lsum+temp]),
-                             np.round(ts.time, dec)/1000])  # convert to ns
-                lsum += temp
-            np.save(f'.contacts_{i:04}', np.array(dset))
-        return len(dset)
-        # with open(f'.contacts_{i:04}', 'w+') as f:
-        #     dec = get_dec(self.u.trajectory.ts.dt/1000)  # convert to ns
-        #     text = f'slice {i+1} of {self.nslices}'
-        #     data_len = 0
-        #     for ts in tqdm(sliced_traj, desc=text, position=proc,
-        #                    total=len(sliced_traj), leave=False):
-        #         dset = []
-        #         b = distances.capped_distance(self.ag1.positions,
-        #                                       self.ag2.positions,
-        #                                       max_cutoff=self.cutoff)
-        #         pairlist = [(self.ag1.resids[b[0][i, 0]],
-        #                      self.ag2.resids[b[0][i, 1]]) for i in
-        #                     range(len(b[0]))]
-        #         pairdir = collections.Counter(a for a in pairlist)
-        #         lsum = 0
-        #         for j in pairdir:
-        #             temp = pairdir[j]
-        #             dset.append([ts.frame, j[0], j[1],
-        #                          min(b[1][lsum:lsum+temp]),
-        #                          np.round(ts.time, dec)/1000])  # convert to ns
-        #             lsum += temp
-        #         [f.write(f"{line}".strip('[]') + "\n") for line in dset]
-        #         data_len += len(dset)
-        #     f.flush()
-        # return data_len
+        # dec = get_dec(self.u.trajectory.ts.dt/1000)  # convert to ns
+        # text = f'slice {i+1} of {self.nslices}'
+        # dset = []
+        # for ts in tqdm(sliced_traj, desc=text, position=proc,
+        #                total=len(sliced_traj), leave=False):
+        #     b = distances.capped_distance(self.ag1.positions,
+        #                                   self.ag2.positions,
+        #                                   max_cutoff=self.cutoff)
+        #     pairlist = [(self.ag1.resids[b[0][i, 0]],
+        #                  self.ag2.resids[b[0][i, 1]]) for i in
+        #                 range(len(b[0]))]
+        #     pairdir = collections.Counter(a for a in pairlist)
+        #     lsum = 0
+        #     for j in pairdir:
+        #         temp = pairdir[j]
+        #         dset.append([ts.frame, j[0], j[1],
+        #                      min(b[1][lsum:lsum+temp]),
+        #                      np.round(ts.time, dec)/1000])  # convert to ns
+        #         lsum += temp
+        #     np.save(f'.contacts_{i:04}', np.array(dset))
+        # return len(dset)
+        with open(f'.contacts_{i:04}', 'w+') as f:
+            dec = get_dec(self.u.trajectory.ts.dt/1000)  # convert to ns
+            text = f'slice {i+1} of {self.nslices}'
+            data_len = 0
+            for ts in tqdm(sliced_traj, desc=text, position=proc,
+                           total=len(sliced_traj), leave=False):
+                dset = []
+                b = distances.capped_distance(self.ag1.positions,
+                                              self.ag2.positions,
+                                              max_cutoff=self.cutoff)
+                pairlist = [(self.ag1.resids[b[0][i, 0]],
+                             self.ag2.resids[b[0][i, 1]]) for i in
+                            range(len(b[0]))]
+                pairdir = collections.Counter(a for a in pairlist)
+                lsum = 0
+                for j in pairdir:
+                    temp = pairdir[j]
+                    dset.append([ts.frame, j[0], j[1],
+                                 min(b[1][lsum:lsum+temp]),
+                                 np.round(ts.time, dec)/1000])  # convert to ns
+                    lsum += temp
+                [f.write(f"{line}".strip('[]') + "\n") for line in dset]
+                data_len += len(dset)
+            f.flush()
+        return data_len
 
     # def _run_contacts(self, i, sliced_traj):
     #     from basicrta.util import get_dec
