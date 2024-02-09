@@ -778,14 +778,3 @@ def mixture_and_plot(gibbs, method, **kwargs):
     #                    confidence_interval(1/prates[predict_labels == pindex])]
     return r, all_labels
 
-
-# This function was taken from stackoverflow.com user Michael Bacon and modified
-# https://stackoverflow.com/questions/845058/how-to-get-the-line-count-of-a-
-# large-file-cheaply-in-python
-def rawincount(filename):
-    from functools import partial
-    with open(filename, 'rb', buffering=0) as f:
-        bufgen = iter(partial(f.read, 1024 * 1024), b'')
-        fsum = sum(buf.count(b'\n') for buf in bufgen)
-    return fsum
-

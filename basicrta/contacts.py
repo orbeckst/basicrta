@@ -21,16 +21,18 @@ class MapContacts(object):
     def __init__(self, u, ag1, ag2, nproc=1, frames=None, cutoff=10.0):
         self.u, self.nproc = u, nproc
         self.ag1, self.ag2 = ag1, ag2
-        self.cutoff, self.frames = cutoff, frames
+        self.cutoff, self.frames, self.nslices = cutoff, frames, 500
 
 
     def run(self):
-        from basicrta.util import rawincount
         if self.frames:
-            sliced_frames = np.array_split(self.frames, self.nproc)
+            sliced_frames = np.array_split(self.frames, self.nslices)
+            # sliced_frames = np.array_split(self.frames, self.nproc)
         else:
             sliced_frames = np.array_split(np.arange(len(self.u.trajectory)),
-                                           self.nproc)
+                                           self.nslices)
+            # sliced_frames = np.array_split(np.arange(len(self.u.trajectory)),
+            #                                            self.nproc)
 
         input_list = [[i % self.nproc, self.u.trajectory[aslice]] for
                       i, aslice in enumerate(sliced_frames)]
@@ -40,10 +42,10 @@ class MapContacts(object):
 
         bounds = np.concatenate([[0], np.cumsum(lens)])
         mapsize = sum(lens)
-        contact_map = np.memmap('contacts.pkl', mode='w+', shape=(mapsize, 4),
+        contact_map = np.memmap('contacts.pkl', mode='w+', shape=(mapsize, 5),
                                 dtype=np.float64)
         for i in range(self.nproc):
-            filename = f'.contacts_{i:03}'
+            filename = f'.contacts_{i:04}'
             dset = []
             with open(filename, 'r') as f:
                 for line in f:
@@ -73,7 +75,7 @@ class MapContacts(object):
     def _run_contacts(self, i, sliced_traj):
         from basicrta.util import get_dec
 
-        with open(f'.contacts_{i:03}', 'w+') as f:
+        with open(f'.contacts_{i:04}', 'w+') as f:
             dec = get_dec(self.u.trajectory.ts.dt/1000)  # convert to ns
             text = f'process {i+1} of {self.nproc}'
             data_len = 0
