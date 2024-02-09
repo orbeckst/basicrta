@@ -38,8 +38,15 @@ class MapContacts(object):
         input_list = [[i, self.u.trajectory[aslice]] for
                       i, aslice in enumerate(sliced_frames)]
 
-        lens = (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)).
-                istarmap(self._run_contacts, input_list))
+        # lens = (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)).
+        #         istarmap(self._run_contacts, input_list))
+
+
+        with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
+            for _ in tqdm(p.istarmap(self._run_contacts, input_list),
+                          total=self.nslices, position=0,
+                          desc='overall progress'):
+                return _
 
         bounds = np.concatenate([[0], np.cumsum(lens)])
         mapsize = sum(lens)
