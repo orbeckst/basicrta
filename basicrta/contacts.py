@@ -34,7 +34,7 @@ class MapContacts(object):
             # sliced_frames = np.array_split(np.arange(len(self.u.trajectory)),
             #                                            self.nproc)
 
-        input_list = [[i % self.nproc, self.u.trajectory[aslice]] for
+        input_list = [[i, self.u.trajectory[aslice]] for
                       i, aslice in enumerate(sliced_frames)]
 
         lens = (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)).
@@ -77,10 +77,10 @@ class MapContacts(object):
 
         with open(f'.contacts_{i:04}', 'w+') as f:
             dec = get_dec(self.u.trajectory.ts.dt/1000)  # convert to ns
-            text = f'process {i+1} of {self.nproc}'
+            text = f'slice {i+1} of {self.nslices}'
             data_len = 0
-            for ts in tqdm(sliced_traj, desc=text, position=i,
-                       total=len(sliced_traj), leave=False):
+            for ts in tqdm(sliced_traj, desc=text, position=i % self.nproc,
+                           total=len(sliced_traj), leave=False):
                 dset = []
                 b = distances.capped_distance(self.ag1.positions,
                                               self.ag2.positions,
