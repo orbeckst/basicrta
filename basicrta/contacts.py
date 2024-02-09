@@ -9,6 +9,7 @@ import collections
 from multiprocessing import Pool, Lock
 import MDAnalysis as mda
 import pickle
+from basicrta import istarmap
 
 class MapContacts(object):
     """
@@ -38,7 +39,7 @@ class MapContacts(object):
                       i, aslice in enumerate(sliced_frames)]
 
         lens = (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)).
-                starmap_async(self._run_contacts, input_list))
+                istarmap(self._run_contacts, input_list))
 
         bounds = np.concatenate([[0], np.cumsum(lens)])
         mapsize = sum(lens)
