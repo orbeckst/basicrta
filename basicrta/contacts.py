@@ -44,23 +44,27 @@ class MapContacts(object):
                           total=self.nslices, position=0,
                           desc='overall progress'):
                 lens.append(alen)
-        lens = np.array(lens, dtype=int)
+        lens = np.array(lens)
+        mapsize = sum(lens)
         bounds = np.concatenate([[0], np.cumsum(lens)])
         dtype = np.dtype(np.float64,
                          metadata={'top': self.u.filename,
                                    'traj': self.u.trajectory.filename,
                                    'ag1': ag1, 'ag2': ag2})
 
-        contact_map = np.memmap('.tmpmap', mode='w+', shape=(bounds[-1], 5),
-                                dtype=dtype)
+        contact_map = np.memmap('.tmpmap', mode='w+',
+                                shape=(mapsize, 5), dtype=np.float64)
         for i in range(self.nslices):
-            contact_map[bounds[i]:bounds[i+1]] = np.genfromtxt(f'.contacts_{i:04}', delimiter=',')
+            contact_map[bounds[i]:bounds[i+1]] = np.genfromtxt(f'.contacts_'
+                                                               f'{i:04}',
+                                                               delimiter=',')
+            contact_map.flush()
 
-        contact_map.dump('contacts.pkl')
-        os.remove('.tmpmap')
-        cfiles = glob.glob('.contacts*')
-        [os.remove(f) for f in cfiles]
-    print('\nSaved contacts as "contacts.pkl"')
+        contact_map.dump('contacts.pkl', protocol=5)
+        # os.remove('.tmpmap')
+        # cfiles = glob.glob('.contacts*')
+        # [os.remove(f) for f in cfiles]
+        print('\nSaved contacts as "contacts.pkl"')
 
 
     def _run_contacts(self, i, sliced_traj):
@@ -194,17 +198,18 @@ class ProcessContacts(object):
 
         bounds = np.concatenate([[0], np.cumsum(lens)])
         mapsize = sum(lens)
-        contact_map = np.memmap('.tmpmap', mode='w+', shape=(mapsize, 4),
-                                dtype=dtype)
+        contact_map = np.memmap(f'.tmpmap', mode='w+',
+                                shape=(mapsize, 4), dtype=dtype)
 
         for i in range(self.nproc):
             contact_map[bounds[i]:bounds[i+1]] = np.load(f'.contacts_{i:04}.'
                                                          f'npy')
+            contact_map.flush()
 
-        contact_map.dump(f'contacts_{self.cutoff}.pkl')
-        os.remove('.tmpmap')
-        cfiles = glob.glob('.contacts*')
-        [os.remove(f) for f in cfiles]
+        contact_map.dump(f'contacts_{self.cutoff}.pkl', protocol=5)
+        # os.remove('.tmpmap')
+        # cfiles = glob.glob('.contacts*')
+        # [os.remove(f) for f in cfiles]
         print(f'\nSaved contacts to "contacts_{self.cutoff}.npy"')
 
 
