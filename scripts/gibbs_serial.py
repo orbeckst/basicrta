@@ -43,7 +43,12 @@ if __name__ == "__main__":
         times = [a[a[:, 0] == i][:, 3] for i in uniqs[idinds]]
     else:
         times = [a[a[:, 0] == i][:, 3] for i in uniqs]
-
+    
+    lens = np.array([len(np.unique(time)) for time in times])
+    zeroinds, validinds = np.where(lens==1)[0], np.where(lens>1)[0]
+    [times.pop(ind) for ind in zeroinds]
+    residues = residues[validinds]
+    
     times = times.copy()
     del a, u, ids, names, uniqs, resids, resnames
     gc.collect()
