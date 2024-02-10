@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 import os
 os.environ['MKL_NUM_THREADS'] = '1'
 from tqdm import tqdm
@@ -61,9 +62,9 @@ class MapContacts(object):
             contact_map.flush()
 
         contact_map.dump('contacts.pkl', protocol=5)
-        # os.remove('.tmpmap')
-        # cfiles = glob.glob('.contacts*')
-        # [os.remove(f) for f in cfiles]
+        os.remove('.tmpmap')
+        cfiles = glob.glob('.contacts*')
+        [os.remove(f) for f in cfiles]
         print('\nSaved contacts as "contacts.pkl"')
 
 
@@ -75,27 +76,6 @@ class MapContacts(object):
         except ValueError:
             proc = 1
 
-        # dec = get_dec(self.u.trajectory.ts.dt/1000)  # convert to ns
-        # text = f'slice {i+1} of {self.nslices}'
-        # dset = []
-        # for ts in tqdm(sliced_traj, desc=text, position=proc,
-        #                total=len(sliced_traj), leave=False):
-        #     b = distances.capped_distance(self.ag1.positions,
-        #                                   self.ag2.positions,
-        #                                   max_cutoff=self.cutoff)
-        #     pairlist = [(self.ag1.resids[b[0][i, 0]],
-        #                  self.ag2.resids[b[0][i, 1]]) for i in
-        #                 range(len(b[0]))]
-        #     pairdir = collections.Counter(a for a in pairlist)
-        #     lsum = 0
-        #     for j in pairdir:
-        #         temp = pairdir[j]
-        #         dset.append([ts.frame, j[0], j[1],
-        #                      min(b[1][lsum:lsum+temp]),
-        #                      np.round(ts.time, dec)/1000])  # convert to ns
-        #         lsum += temp
-        #     np.save(f'.contacts_{i:04}', np.array(dset))
-        # return len(dset)
         with open(f'.contacts_{i:04}', 'w+') as f:
             dec = get_dec(self.u.trajectory.ts.dt/1000)  # convert to ns
             text = f'slice {i+1} of {self.nslices}'
@@ -122,47 +102,6 @@ class MapContacts(object):
             f.flush()
         return data_len
 
-    # def _run_contacts(self, i, sliced_traj):
-    #     from basicrta.util import get_dec
-    #
-    #     data_len = 0
-    #     oldmap = np.memmap(f'.tmpmap', mode='w+', shape=(data_len + 1, 5),
-    #                        dtype=np.float64)
-    #     del oldmap
-    #
-    #     dec = get_dec(self.u.trajectory.ts.dt/1000)  # convert to ns
-    #     text = f'process {i+1} of {self.nproc}'
-    #     for ts in tqdm(sliced_traj, desc=text, position=i,
-    #                    total=len(sliced_traj), leave=False):
-    #         oldmap = np.memmap(f'.tmpmap', mode='r', shape=(data_len+1, 5),
-    #                            dtype=np.float64)
-    #         dset = []
-    #         b = distances.capped_distance(self.ag1.positions,
-    #                                       self.ag2.positions,
-    #                                       max_cutoff=self.cutoff)
-    #         pairlist = [(self.ag1.resids[b[0][i, 0]],
-    #                      self.ag2.resids[b[0][i, 1]]) for i in
-    #                     range(len(b[0]))]
-    #         pairdir = collections.Counter(a for a in pairlist)
-    #         lsum = 0
-    #         for j in pairdir:
-    #             temp = pairdir[j]
-    #             dset.append([ts.frame, j[0], j[1],
-    #                          min(b[1][lsum:lsum+temp]),
-    #                          np.round(ts.time, dec)/1000])  # convert to ns
-    #             lsum += temp
-    #         new_len = data_len + len(dset) + 1
-    #         newmap = np.memmap(f'.contacts_{i:03}', mode='w+',
-    #                            shape=(new_len, 5), dtype=np.float64)
-    #         newmap[:data_len] = oldmap[:data_len]
-    #         newmap[data_len:new_len] = dset
-    #         del oldmap
-    #         oldmap = np.memmap(f'.tmpmap', mode='w+',
-    #                            shape=(new_len, 5), dtype=np.float64)
-    #         oldmap[:] = newmap[:]
-    #         data_len += new_len
-    #     # map.dump()
-    #     return map
 
 class ProcessContacts(object):
     def __init__(self, cutoff, nproc, map_name='contacts.pkl'):
@@ -207,9 +146,9 @@ class ProcessContacts(object):
             contact_map.flush()
 
         contact_map.dump(f'contacts_{self.cutoff}.pkl', protocol=5)
-        # os.remove('.tmpmap')
-        # cfiles = glob.glob('.contacts*')
-        # [os.remove(f) for f in cfiles]
+        os.remove('.tmpmap')
+        cfiles = glob.glob('.contacts*')
+        [os.remove(f) for f in cfiles]
         print(f'\nSaved contacts to "contacts_{self.cutoff}.npy"')
 
 
