@@ -10,7 +10,11 @@ logger = logging.getLogger("MDAnalysis.analysis.density")
 
 
 class WDensityAnalysis(AnalysisBase):
+<<<<<<< HEAD
     r"""Volumetric density analysis.
+=======
+    r"""Weighted volumetric density analysis.
+>>>>>>> basicrta-kit/master
     The trajectory is read, frame by frame, and the atoms in `atomgroup` are
     histogrammed on a 3D grid with spacing `delta`.
     Parameters

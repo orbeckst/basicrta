@@ -1,12 +1,26 @@
+<<<<<<< HEAD
 name: docs
 channels:
+=======
+name: basicrta-docs
+channels:
+
+  - conda-forge
+
+>>>>>>> basicrta-kit/master
 dependencies:
     # Base depends
   - python
   - pip
 
+<<<<<<< HEAD
 
 
     # Pip-only installs
   #- pip:
 
+=======
+  - mdanalysis-sphinx-theme >=1.0.1
+    # Pip-only installs
+  #- pip:
+>>>>>>> basicrta-kit/master
