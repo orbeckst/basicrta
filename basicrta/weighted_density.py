@@ -65,14 +65,14 @@ class WeightedDensity(object):
             self._create_data()
 
         tmp = np.load(self.dataname)
-        wf, wl, wi = tmp[:, 0], tmp[:, 1], tmp[:, 2:]
+        wf, wl, wi = tmp[:, 0].astype(int), tmp[:, 1].astype(int), tmp[:, 2:]
 
         if not os.path.exists(self.trajname):
             with mda.Writer(self.trajname, len(write_ag.atoms)) as W:
                 for i, ts in tqdm(enumerate(self.u.trajectory[wf[::self.step]]),
-                                  total=len(wf)//(self.step+1),
+                                  total=len(wf)//self.step+1,
                                   desc='writing trajectory'):
-                    W.write(self.ag1.atoms+
+                    W.write(self.ag1.atoms +
                             self.ag2.residues[wl[::self.step][i]].atoms)
 
 
