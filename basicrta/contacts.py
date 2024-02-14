@@ -40,7 +40,8 @@ class MapContacts(object):
                       i, aslice in enumerate(sliced_frames)]
 
         lens = []
-        with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
+        with (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),))
+              as p):
             for alen in tqdm(p.istarmap(self._run_contacts, input_list),
                           total=self.nslices, position=0,
                           desc='overall progress'):
@@ -123,14 +124,14 @@ class ProcessContacts(object):
                                     'contacts file using the "map_name" '
                                     'argument')
 
-        self.ts = siground(np.unique(memmap[1:, 4]-memmap[:-1, 4])[1], 1)
+        self.ts = dtype.metadata['u'].trajectory.dt/1000  # convert to ns
         lresids = np.unique(memmap[:, 2])
         params = [[res, memmap[memmap[:, 2] == res], i] for i, res in
                   enumerate(lresids)]
         pool = Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),))
 
         try:
-            lens = pool.starmap(self._lipswap, params)
+            lens = pool.istarmap(self._lipswap, params)
         except KeyboardInterrupt:
             pool.terminate()
         pool.close()
@@ -146,9 +147,9 @@ class ProcessContacts(object):
             contact_map.flush()
 
         contact_map.dump(f'contacts_{self.cutoff}.pkl', protocol=5)
-        os.remove('.tmpmap')
-        cfiles = glob.glob('.contacts*')
-        [os.remove(f) for f in cfiles]
+        # os.remove('.tmpmap')
+        # cfiles = glob.glob('.contacts*')
+        # [os.remove(f) for f in cfiles]
         print(f'\nSaved contacts to "contacts_{self.cutoff}.npy"')
 
 

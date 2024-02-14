@@ -8,9 +8,9 @@ import pickle
 from MDAnalysis.lib.util import realpath
 
 
-class WeightedDensity(object):
-    def __init__(self, gibbs, contacts, step=1, n=None):
-        self.gibbs, self.N, self.step = gibbs, n, step
+class MapKinetics(object):
+    def __init__(self, gibbs, contacts, n=None):
+        self.gibbs, self.N = gibbs, n
         self.cutoff = float(contacts.split('/')[-1].strip('.pkl').
                             split('_')[-1])
         self.write_sel = None
@@ -22,39 +22,55 @@ class WeightedDensity(object):
         traj = realpath(metadata['traj'])
         self.ag1, self.ag2 = metadata['ag1'], metadata['ag2']
         self.u = mda.Universe(top, traj)
-        self.dataname = (f'{self.gibbs.residue}/den_write_data_'
-                         f'step{self.step}.npy')
+
         self.topname = (f'{self.gibbs.residue}/reduced.pdb')
-        self.trajname = (f'{self.gibbs.residue}/chol_traj_step{self.step}.xtc')
+        if n is not None:
+            self.dataname = (f'{self.gibbs.residue}/den_write_data_'
+                             f'top{self.N}.npy')
+            self.trajname = (f'{self.gibbs.residue}/chol_traj_top{self.N}.xtc')
+        else:
+            self.dataname = (f'{self.gibbs.residue}/den_write_data_all.npy')
+            self.trajname = (f'{self.gibbs.residue}/chol_traj_all.xtc')
 
 
     def _create_data(self):
-        contacts = self.contacts
-        resid = int(self.gibbs.residue[1:])
-        ncomp = self.gibbs.processed_results.ncomp
+        if os.path.exists(f'{self.gibbs.residue}/den_write_data_all.npy') and \
+            self.N is not None:
+            tmp = np.load(f'{self.gibbs.residue}/den_write_data_all.npy')
+            wf, wl, wi = (tmp[:, 0].astype(int), tmp[:, 1].astype(int),
+                          tmp[:, 2:])
+            sortinds = [wi[:, i].argsort()[::-1][:self.N] for i in
+                        range(self.gibbs.processed_results.ncomp)]
 
-        times = np.array(contacts[contacts[:, 0] == resid][:, 3])
-        trajtimes = np.array(contacts[contacts[:, 0] == resid][:, 2])
-        lipinds = np.array(contacts[contacts[:, 0] == resid][:, 1])
-        dt = self.u.trajectory.ts.dt/1000 #nanoseconds
 
-        indicators = self.gibbs.processed_results.indicator
+        else:
+            contacts = self.contacts
+            resid = int(self.gibbs.residue[1:])
+            ncomp = self.gibbs.processed_results.ncomp
 
-        bframes, eframes = get_start_stop_frames(trajtimes, times, dt)
-        tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]
-        tmpL = [np.ones_like(np.arange(b, e)) * l for b, e, l in
-                zip(bframes, eframes, lipinds)]
-        tmpI = [indic * np.ones((len(np.arange(b, e)), ncomp))
-                for b, e, indic in zip(bframes, eframes, indicators)]
+            times = np.array(contacts[contacts[:, 0] == resid][:, 3])
+            trajtimes = np.array(contacts[contacts[:, 0] == resid][:, 2])
+            lipinds = np.array(contacts[contacts[:, 0] == resid][:, 1])
+            dt = self.u.trajectory.ts.dt/1000 #nanoseconds
 
-        write_frames = np.concatenate([*tmp]).astype(int)
-        write_linds = np.concatenate([*tmpL]).astype(int)
-        write_indics = np.concatenate([*tmpI])
+            indicators = self.gibbs.processed_results.indicator
 
-        darray = np.zeros((len(write_frames), ncomp + 2))
-        darray[:, 0], darray[:, 1], darray[:, 2:] = (write_frames, write_linds,
-                                                     write_indics)
-        np.save(self.dataname, darray)
+            bframes, eframes = get_start_stop_frames(trajtimes, times, dt)
+            tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]
+            tmpL = [np.ones_like(np.arange(b, e)) * l for b, e, l in
+                    zip(bframes, eframes, lipinds)]
+            tmpI = [indic * np.ones((len(np.arange(b, e)), ncomp))
+                    for b, e, indic in zip(bframes, eframes, indicators)]
+
+            write_frames = np.concatenate([*tmp]).astype(int)
+            write_linds = np.concatenate([*tmpL]).astype(int)
+            write_indics = np.concatenate([*tmpI])
+
+            darray = np.zeros((len(write_frames), ncomp + 2))
+            darray[:, 0], darray[:, 1], darray[:, 2:] = (write_frames,
+                                                         write_linds,
+                                                         write_indics)
+            np.save(self.dataname, darray)
 
 
     def _create_traj(self):
@@ -67,15 +83,23 @@ class WeightedDensity(object):
         tmp = np.load(self.dataname)
         wf, wl, wi = tmp[:, 0].astype(int), tmp[:, 1].astype(int), tmp[:, 2:]
 
+        if self.N is not None:
+            sortinds = [wi[:, i].argsort()[::-1][:self.N] for i in
+                        range(self.gibbs.processed_results.ncomp)]
+        else:
+            sortinds = None
+
         if not os.path.exists(self.trajname):
             with mda.Writer(self.trajname, len(write_ag.atoms)) as W:
-                for i, ts in tqdm(enumerate(self.u.trajectory[wf]),
-                                  total=len(wf), desc='writing trajectory'):
+                for i, ts in tqdm(enumerate(self.u.trajectory[wf[sortinds]]),
+                                  total=self.N, desc='writing trajectory'):
                     W.write(self.ag1.atoms +
-                            self.ag2.residues[wl[i]].atoms)
+                            self.ag2.residues[wl[sortinds][i]].atoms)
+        else:
 
 
-    def run(self):
+
+    def compute_weighted_densities(self):
         if not os.path.exists(self.trajname):
             self._create_traj()
 
