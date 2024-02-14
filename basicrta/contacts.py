@@ -136,12 +136,12 @@ class ProcessContacts(object):
             pool.terminate()
         pool.close()
 
-        bounds = np.concatenate([[0], np.cumsum(lens)])
+        bounds = np.concatenate([[0], np.cumsum(lens)]).astype(int)
         mapsize = sum(lens)
         contact_map = np.memmap(f'.tmpmap', mode='w+',
                                 shape=(mapsize, 4), dtype=dtype)
 
-        for i in range(self.nproc):
+        for i in range(len(lresids)):
             contact_map[bounds[i]:bounds[i+1]] = np.load(f'.contacts_{i:04}.'
                                                          f'npy')
             contact_map.flush()

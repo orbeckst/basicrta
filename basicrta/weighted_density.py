@@ -83,20 +83,18 @@ class MapKinetics(object):
         tmp = np.load(self.dataname)
         wf, wl, wi = tmp[:, 0].astype(int), tmp[:, 1].astype(int), tmp[:, 2:]
 
-        if self.N is not None:
-            sortinds = [wi[:, i].argsort()[::-1][:self.N] for i in
-                        range(self.gibbs.processed_results.ncomp)]
-        else:
-            sortinds = None
+        # if self.N is not None:
+        #     sortinds = [wi[:, i].argsort()[::-1][:self.N] for i in
+        #                 range(self.gibbs.processed_results.ncomp)]
+        # else:
+        #     sortinds = None
 
         if not os.path.exists(self.trajname):
             with mda.Writer(self.trajname, len(write_ag.atoms)) as W:
-                for i, ts in tqdm(enumerate(self.u.trajectory[wf[sortinds]]),
+                for i, ts in tqdm(enumerate(self.u.trajectory[wf]),
                                   total=self.N, desc='writing trajectory'):
                     W.write(self.ag1.atoms +
-                            self.ag2.residues[wl[sortinds][i]].atoms)
-        else:
-
+                            self.ag2.residues[wl[i]].atoms)
 
 
     def compute_weighted_densities(self):
