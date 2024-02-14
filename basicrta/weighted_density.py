@@ -18,10 +18,8 @@ class MapKinetics(object):
             self.contacts = pickle.load(f)
 
         metadata = self.contacts.dtype.metadata
-        top = realpath(metadata['top'])
-        traj = realpath(metadata['traj'])
         self.ag1, self.ag2 = metadata['ag1'], metadata['ag2']
-        self.u = mda.Universe(top, traj)
+        self.u = metadata['u']
 
         self.topname = (f'{self.gibbs.residue}/reduced.pdb')
         if n is not None:
