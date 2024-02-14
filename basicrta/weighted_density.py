@@ -9,8 +9,8 @@ from MDAnalysis.lib.util import realpath
 
 
 class WeightedDensity(object):
-    def __init__(self, gibbs, contacts, step=1, N=1000):
-        self.gibbs, self.N, self.step = gibbs, N, step
+    def __init__(self, gibbs, contacts, step=1, n=None):
+        self.gibbs, self.N, self.step = gibbs, n, step
         self.cutoff = float(contacts.split('/')[-1].strip('.pkl').
                             split('_')[-1])
         self.write_sel = None
@@ -69,11 +69,10 @@ class WeightedDensity(object):
 
         if not os.path.exists(self.trajname):
             with mda.Writer(self.trajname, len(write_ag.atoms)) as W:
-                for i, ts in tqdm(enumerate(self.u.trajectory[wf[::self.step]]),
-                                  total=len(wf)//self.step+1,
-                                  desc='writing trajectory'):
+                for i, ts in tqdm(enumerate(self.u.trajectory[wf]),
+                                  total=len(wf), desc='writing trajectory'):
                     W.write(self.ag1.atoms +
-                            self.ag2.residues[wl[::self.step][i]].atoms)
+                            self.ag2.residues[wl[i]].atoms)
 
 
     def run(self):
@@ -95,15 +94,18 @@ class WeightedDensity(object):
         sortinds = [wi[:, i].argsort()[::-1] for i in
                     range(self.gibbs.processed_results.ncomp)]
         for i in range(self.gibbs.processed_results.ncomp):
-            D = WDensityAnalysis(chol_red, wi[sortinds[i], i],
+            d = WDensityAnalysis(chol_red, wi[sortinds[i], i],
                                  gridcenter=u_red.select_atoms(f'protein and '
                                                                f'resid {resid}')
                                  .center_of_geometry(), xdim=40, ydim=40,
                                  zdim=40)
-            D.run(verbose=True, frames=sortinds[i])
-            D.results.density.export(f'basicrta-{self.cutoff}/'
-                                     f'{self.gibbs.processed_results.residue}/'
-                                     f'wcomp{i}_top{self.N}.dx')
+            d.run(verbose=True, frames=sortinds[i])
+            if self.N is not None:
+                outname = f'{self.gibbs.residue}/wcomp{i}_top{self.N}.dx'
+            else:
+                outname = f'{self.gibbs.residue}/wcomp{i}_all.dx'
+
+            d.results.density.export(outname)
 
 
 
