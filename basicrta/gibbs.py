@@ -12,6 +12,8 @@ from tqdm import tqdm
 from MDAnalysis.analysis.base import Results
 from basicrta.util import confidence_interval
 from multiprocessing import Pool, Lock
+import MDAnalysis as mda
+from basicrta import istarmap
 
 gc.enable()
 mpl.rcParams['pdf.fonttype'] = 42
@@ -59,40 +61,49 @@ class ParallelGibbs(object):
     def __init__(self, contacts, nproc=1, ncomp=15, niter=50000):
         with open(contacts, 'r+b') as f:
             self.contacts = pickle.load(f)
-        self.cutoff = float(contacts.strip('.npy').split('/')[-1].split('_')[-1])
+        self.cutoff = float(contacts.strip('.pkl').split('/')[-1].split('_')[-1])
         self.niter, self.nproc, self.ncomp = niter, nproc, ncomp
 
 
-    def run(self, run_resids):
+    def run(self, run_resids=None):
         from basicrta.util import run_residue
 
         protids = np.unique(self.contacts[:, 0])
-        times = [self.contacts[self.contacts[:, 0] == i][:, 3] for i in protids]
+        if not run_resids:
+            run_resids = protids
+
+        if (type(run_resids) != list) and (type(run_resids) != np.ndarray):
+            run_resids = [run_resids]
+
+        rg = self.contacts.dtype.metadata['ag1'].residues
+        resids = rg.resids
+        reslets = np.array([mda.lib.util.convert_aa_code(name) for name in
+                            rg.resnames])
+        residues = np.array([f'{reslet}{resid}' for reslet, resid in
+                             zip(reslets, resids)])
+        times = [self.contacts[self.contacts[:, 0] == i][:, 3] for i in
+                 run_resids]
+        inds = np.array([np.where(resids == resid)[0][0] for resid in
+                         run_resids])
+        residues = residues[inds]
 
         lens = np.array([len(np.unique(time)) for time in times])
-        validinds = np.where(lens > 50)[0]
-        protids, times = protids[validinds], times[validinds]
-        residues = self.contacts.dtype['ag1'].residues
-        resids = np.array([int(res[1:]) for res in residues])
+        validinds, zeroinds = (np.where(lens > 50)[0],
+                               np.where(lens <= 50)[0][::-1])
+        protids, residues = protids[validinds], residues[validinds]
+        [times.pop(zind) for zind in zeroinds]
 
-        if run_resids:
-            inds = np.array([np.where(resids == resid)[0] for resid in
-                             run_resids])
-            residues, times = residues[inds], times[inds]
-
-        if not os.path.exists(f'basicrta-{self.cutoff}'):
-            os.mkdir(f'basicrta-{self.cutoff}')
-        os.chdir(f'basicrta-{self.cutoff}')
-
-        input_list = np.array([[times[i], residues[i], i % self.nproc,
+        input_list = np.array([[residues[i], times[i], i % self.nproc,
                                 self.ncomp, self.niter] for i in
                                range(len(residues))], dtype=object)
 
-        with (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as
-              p):
-            for _ in tqdm(p.istarmap(run_residue, input_list),
-                          total=len(residues), position=0,
-                          desc='overall progress'):
+        with Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
+            try:
+                for _ in tqdm(p.istarmap(run_residue, input_list),
+                              total=len(residues), position=0,
+                              desc='overall progress'):
+                    pass
+            except KeyboardInterrupt:
                 pass
 
 
@@ -109,7 +120,7 @@ class Gibbs(object):
         self.g, self.burnin = 100, 10000
         self.processed_results = Results()
 
-        if times.size:
+        if times is not None:
             diff = (np.sort(times)[1:]-np.sort(times)[:-1])
             self.ts = diff[diff != 0][0]
         else:
@@ -247,8 +258,8 @@ class Gibbs(object):
             setattr(r, attr, value)
 
         if processed:
-            with open(f'{r.residue}/processed_results_{r.niter}.pkl',
-                      'wb') as W:
+            with (open(f'{r.residue}/processed_results_{r.niter}.pkl', 'wb')
+                  as W):
                 pickle.dump(r, W)
         else:
             with open(f'{r.residue}/results_{r.niter}.pkl', 'wb') as W:

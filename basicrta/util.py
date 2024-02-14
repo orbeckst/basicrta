@@ -451,14 +451,15 @@ def plot_protein(residues, t_slow, bars, prot):
 
 
 def run_residue(residue, time, proc, ncomp, niter):
+    from basicrta.gibbs import Gibbs
     x = np.array(time)
-    # if len(x) != 0:
-    #     try:
-    #         proc = int(multiprocessing.current_process().name.split('-')[-1])
-    #     except ValueError:
-    #         proc = 1
-    #
-    gib = gibbs(x, residue, proc, ncomp=ncomp, niter=niter)
+    if len(x) != 0:
+        try:
+            proc = int(multiprocessing.current_process().name.split('-')[-1])
+        except ValueError:
+            proc = 1
+
+    gib = Gibbs(x, residue, proc, ncomp=ncomp, niter=niter)
     gib.run()
 
 
