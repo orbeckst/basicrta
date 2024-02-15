@@ -5,7 +5,7 @@ import os
 from tqdm import tqdm
 from basicrta.util import get_start_stop_frames
 import pickle
-from MDAnalysis.lib.util import realpath
+# from MDAnalysis.lib.util import realpath
 
 
 class MapKinetics(object):
@@ -21,27 +21,12 @@ class MapKinetics(object):
         self.ag1, self.ag2 = metadata['ag1'], metadata['ag2']
         self.u = metadata['u']
 
-        self.topname = (f'{self.gibbs.residue}/reduced.pdb')
-        if n is not None:
-            self.dataname = (f'{self.gibbs.residue}/den_write_data_'
-                             f'top{self.N}.npy')
-            self.trajname = (f'{self.gibbs.residue}/chol_traj_top{self.N}.xtc')
-        else:
-            self.dataname = (f'{self.gibbs.residue}/den_write_data_all.npy')
-            self.trajname = (f'{self.gibbs.residue}/chol_traj_all.xtc')
+        self.dataname = f'{self.gibbs.residue}/den_write_data_all.npy'
+        self.topname = f'{self.gibbs.residue}/reduced.pdb'
+        self.fulltraj = f'{self.gibbs.residue}/chol_traj_all.xtc'
 
 
     def _create_data(self):
-        if os.path.exists(f'{self.gibbs.residue}/den_write_data_all.npy') and \
-         self.N is not None:
-            tmp = np.load(f'{self.gibbs.residue}/den_write_data_all.npy')
-            wf, wl, wi = (tmp[:, 0].astype(int), tmp[:, 1].astype(int),
-                          tmp[:, 2:])
-            sortinds = [wi[:, i].argsort()[::-1][:self.N] for i in
-                        range(self.gibbs.processed_results.ncomp)]
-
-
-        else:
             contacts = self.contacts
             resid = int(self.gibbs.residue[1:])
             ncomp = self.gibbs.processed_results.ncomp
@@ -81,14 +66,21 @@ class MapKinetics(object):
         tmp = np.load(self.dataname)
         wf, wl, wi = tmp[:, 0].astype(int), tmp[:, 1].astype(int), tmp[:, 2:]
 
-        # if self.N is not None:
-        #     sortinds = [wi[:, i].argsort()[::-1][:self.N] for i in
-        #                 range(self.gibbs.processed_results.ncomp)]
-        # else:
-        #     sortinds = None
+        if self.N is not None:
+            sortinds = [wi[:, i].argsort()[::-1][:self.N] for i in
+                        range(self.gibbs.processed_results.ncomp)]
+            for k in range(self.gibbs.processed_results.ncomp):
+                swf, swl = wf[sortinds[k]], wl[sortinds[k]]
+                with mda.Writer(f'chol_traj_comp{k}_top{self.N}',
+                                len(write_ag.atoms)) as W:
+                    for i, ts in tqdm(enumerate(self.u.trajectory[swf]),
+                                      total=len(swf),
+                                      desc=f'writing component {k}'):
+                        W.write(self.ag1 +
+                                self.ag2.select_atoms(f'resid {swl[i]}').atoms)
 
-        if not os.path.exists(self.trajname):
-            with mda.Writer(self.trajname, len(write_ag.atoms)) as W:
+        else:
+            with mda.Writer(self.fulltraj, len(write_ag.atoms)) as W:
                 for i, ts in tqdm(enumerate(self.u.trajectory[wf]),
                                   total=len(wf), desc='writing trajectory'):
                     W.write(self.ag1 +
@@ -96,7 +88,7 @@ class MapKinetics(object):
 
 
     def compute_weighted_densities(self):
-        if not os.path.exists(self.trajname):
+        if not os.path.exists(self.fulltraj):
             self._create_traj()
 
         resid = int(self.gibbs.residue[1:])
@@ -108,22 +100,23 @@ class MapKinetics(object):
         # comp_inds = [np.where(filter_inds[1] == i)[0] for i in
         #              range(self.gibbs.processed_results.ncomp)]
 
-        u_red = mda.Universe(self.topname, self.trajname)
+        u_red = mda.Universe(self.topname, self.fulltraj)
         chol_red = u_red.select_atoms('not protein')
 
         sortinds = [wi[:, i].argsort()[::-1] for i in
                     range(self.gibbs.processed_results.ncomp)]
-        for i in range(self.gibbs.processed_results.ncomp):
-            d = WDensityAnalysis(chol_red, wi[sortinds[i], i],
+
+        for k in range(self.gibbs.processed_results.ncomp):
+            d = WDensityAnalysis(chol_red, wi[sortinds[k], k],
                                  gridcenter=u_red.select_atoms(f'protein and '
                                                                f'resid {resid}')
                                  .center_of_geometry(), xdim=40, ydim=40,
                                  zdim=40)
-            d.run(verbose=True, frames=sortinds[i])
+            d.run(verbose=True, frames=sortinds[k, :self.N])
             if self.N is not None:
-                outname = f'{self.gibbs.residue}/wcomp{i}_top{self.N}.dx'
+                outname = f'{self.gibbs.residue}/wcomp{k}_top{self.N}.dx'
             else:
-                outname = f'{self.gibbs.residue}/wcomp{i}_all.dx'
+                outname = f'{self.gibbs.residue}/wcomp{k}_all.dx'
 
             d.results.density.export(outname)
 
