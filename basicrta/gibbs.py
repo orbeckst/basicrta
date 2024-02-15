@@ -248,7 +248,7 @@ class Gibbs(object):
             pickle.dump(self, f)
 
 
-    def load_self(filename):
+    def load_self(self, filename):
         with open(filename, 'w+b') as f:
             g = pickle.load(f)
         return g
