@@ -90,7 +90,7 @@ class MapKinetics(object):
         if not os.path.exists(self.trajname):
             with mda.Writer(self.trajname, len(write_ag.atoms)) as W:
                 for i, ts in tqdm(enumerate(self.u.trajectory[wf]),
-                                  total=self.N, desc='writing trajectory'):
+                                  total=len(wf), desc='writing trajectory'):
                     W.write(self.ag1 +
                             self.ag2.select_atoms(f'resid {wl[i]}').atoms)
 
