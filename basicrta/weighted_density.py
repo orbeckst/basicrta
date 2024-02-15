@@ -71,7 +71,7 @@ class MapKinetics(object):
                         range(self.gibbs.processed_results.ncomp)]
             for k in range(self.gibbs.processed_results.ncomp):
                 swf, swl = wf[sortinds[k]], wl[sortinds[k]]
-                with mda.Writer(f'chol_traj_comp{k}_top{self.N}',
+                with mda.Writer(f'chol_traj_comp{k}_top{self.N}.xtc',
                                 len(write_ag.atoms)) as W:
                     for i, ts in tqdm(enumerate(self.u.trajectory[swf]),
                                       total=len(swf),
