@@ -249,7 +249,7 @@ class Gibbs(object):
 
 
     def load_self(self, filename):
-        with open(filename, 'w+b') as f:
+        with open(filename, 'r+b') as f:
             g = pickle.load(f)
         return g
 
