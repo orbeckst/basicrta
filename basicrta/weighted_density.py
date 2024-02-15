@@ -33,7 +33,7 @@ class MapKinetics(object):
 
     def _create_data(self):
         if os.path.exists(f'{self.gibbs.residue}/den_write_data_all.npy') and \
-            self.N is not None:
+         self.N is not None:
             tmp = np.load(f'{self.gibbs.residue}/den_write_data_all.npy')
             wf, wl, wi = (tmp[:, 0].astype(int), tmp[:, 1].astype(int),
                           tmp[:, 2:])
@@ -91,8 +91,8 @@ class MapKinetics(object):
             with mda.Writer(self.trajname, len(write_ag.atoms)) as W:
                 for i, ts in tqdm(enumerate(self.u.trajectory[wf]),
                                   total=self.N, desc='writing trajectory'):
-                    W.write(self.ag1.atoms +
-                            self.ag2.residues[wl[i]].atoms)
+                    W.write(self.ag1 +
+                            self.ag2.select_atoms(f'resid {wl[i]}').atoms)
 
 
     def compute_weighted_densities(self):
