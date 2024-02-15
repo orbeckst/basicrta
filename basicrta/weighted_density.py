@@ -56,7 +56,7 @@ class MapKinetics(object):
             np.save(self.dataname, darray)
 
 
-    def _create_traj(self):
+    def create_traj(self):
         write_ag = self.ag1.atoms + self.ag2.residues[0].atoms
         write_ag.atoms.write(self.topname)
 
@@ -87,9 +87,9 @@ class MapKinetics(object):
                             self.ag2.select_atoms(f'resid {wl[i]}').atoms)
 
 
-    def compute_weighted_densities(self):
+    def weighted_densities(self):
         if not os.path.exists(self.fulltraj):
-            self._create_traj()
+            self.create_traj()
 
         resid = int(self.gibbs.residue[1:])
         tmp = np.load(self.dataname)
