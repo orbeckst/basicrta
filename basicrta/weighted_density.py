@@ -112,7 +112,7 @@ class MapKinetics(object):
                                                                f'resid {resid}')
                                  .center_of_geometry(), xdim=40, ydim=40,
                                  zdim=40)
-            d.run(verbose=True, frames=sortinds[k, :self.N])
+            d.run(verbose=True, frames=sortinds[k][:self.N])
             if self.N is not None:
                 outname = f'{self.gibbs.residue}/wcomp{k}_top{self.N}.dx'
             else:
