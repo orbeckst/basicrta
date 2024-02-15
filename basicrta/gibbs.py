@@ -127,7 +127,7 @@ class Gibbs(object):
             self.ts = None
 
         self.keys = {'times', 'residue', 'loc', 'ncomp', 'niter', 'g', 'burnin',
-                     'processed_results', 'ts'}
+                     'processed_results', 'ts', 'mcweights', 'mcrates'}
 
 
     def __getitem__(self, item):
@@ -271,13 +271,13 @@ class Gibbs(object):
             with open(results, 'r+b') as f:
                 r = pickle.load(f)
 
-            for attr in list(r.keys()):
+            for attr in list(r.keys):
                 setattr(self.processed_results, attr, r[f'{attr}'])
         else:
             with open(results, 'r+b') as f:
                 r = pickle.load(f)
 
-            for attr in list(r.keys()):
+            for attr in list(r.keys):
                 setattr(self, attr, r[f'{attr}'])
 
             self._process_gibbs()
