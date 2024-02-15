@@ -248,8 +248,8 @@ class Gibbs(object):
             pickle.dump(self, f)
 
 
-    def load_self(self):
-        with open(f'{self.residue}/gibbs_{self.niter}.pkl', 'w+b') as f:
+    def load_self(filename):
+        with open(filename, 'w+b') as f:
             g = pickle.load(f)
         return g
 
