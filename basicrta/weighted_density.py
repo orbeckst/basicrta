@@ -108,7 +108,7 @@ class MapKinetics(object):
 
         for k in range(self.gibbs.processed_results.ncomp):
             frames = np.where(wi[sortinds[k], k] > 0)[0]
-            tmpwi = wi[frames]
+            tmpwi = wi[frames, k]
             d = WDensityAnalysis(chol_red, tmpwi,
                                  gridcenter=u_red.select_atoms(f'protein and '
                                                                f'resid {resid}')
