@@ -675,14 +675,22 @@ def mixture_and_plot(gibbs, method, **kwargs):
                      dtype=object)
     pinds = np.array([np.where(predict_labels == i)[0] for i in uniq_labels],
                      dtype=object)
-    tinds = tinds[sorts]
-    pinds = pinds[sorts]
+
+    # tinds = tinds[sorts]
+    # pinds = pinds[sorts]
+
+    # for i in uniq_labels:
+    #     labels[tinds[i]] =
 
     train_data_inds = np.array([np.where(data == col)[0][0] for col in
                                 train_data])
     predict_data_inds = np.array([np.where(data == col)[0][0] for col in
                                   predict_data])
     all_labels = r.predict(np.log(data))
+
+    labels = sorts[labels]
+    predict_labels = sorts[predict_labels]
+    all_labels = sorts[all_labels]
 
     cmap = mpl.colormaps['tab10']
     cmap.set_under()
@@ -753,5 +761,5 @@ def mixture_and_plot(gibbs, method, **kwargs):
     plt.savefig(f"{gibbs.residue}/results_{method}_{kwarg_str}.png",
                 bbox_inches='tight')
     plt.show()
-    return r, all_labels
+    return all_labels
 

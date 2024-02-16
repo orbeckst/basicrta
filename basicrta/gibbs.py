@@ -222,9 +222,9 @@ class Gibbs(object):
                                      self.times.shape[0]),
                               mode='r', dtype=np.uint8)
 
-        gm, labels = mixture_and_plot(self, 'GaussianMixture', n_init=17,
-                                      n_components=lmode,
-                                      covariance_type='spherical')
+        labels = mixture_and_plot(self, 'GaussianMixture', n_init=17,
+                                  n_components=lmode,
+                                  covariance_type='spherical')
         indicator = indicator[burnin_ind:]
         for j in np.unique(inds[0]):
             mapinds = labels[inds[0] == j]
