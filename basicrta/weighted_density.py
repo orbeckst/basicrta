@@ -87,7 +87,7 @@ class MapKinetics(object):
                             self.ag2.select_atoms(f'resid {wl[i]}').atoms)
 
 
-    def weighted_densities(self):
+    def weighted_densities(self, step=1):
         if not os.path.exists(self.fulltraj):
             self.create_traj()
 
@@ -107,12 +107,14 @@ class MapKinetics(object):
                     range(self.gibbs.processed_results.ncomp)]
 
         for k in range(self.gibbs.processed_results.ncomp):
-            d = WDensityAnalysis(chol_red, wi[sortinds[k], k],
+            frames = np.where(wi[sortinds[k], k] > 0)[0]
+            tmpwi = wi[frames]
+            d = WDensityAnalysis(chol_red, tmpwi,
                                  gridcenter=u_red.select_atoms(f'protein and '
                                                                f'resid {resid}')
                                  .center_of_geometry(), xdim=40, ydim=40,
                                  zdim=40)
-            d.run(verbose=True, frames=sortinds[k][:self.N])
+            d.run(verbose=True, frames=frames[:self.N])
             if self.N is not None:
                 outname = f'{self.gibbs.residue}/wcomp{k}_top{self.N}.dx'
             else:
