@@ -642,6 +642,7 @@ def mixture_and_plot(gibbs, method, **kwargs):
     kwarg_str = '_'.join(keyvalpairs)
 
     burnin_ind = gibbs.burnin // gibbs.g
+
     weights, rates = gibbs.mcweights[burnin_ind:], gibbs.mcrates[burnin_ind:]
     lens = np.array([len(row[row > 1e-4]) for row in weights])
     lmin, lmode, lmax = lens.min(), stats.mode(lens).mode, lens.max()
@@ -671,13 +672,14 @@ def mixture_and_plot(gibbs, method, **kwargs):
     predict_labels = r.predict(np.log(predict_data))
 
     sorts = r.precisions_.argsort()[::-1]
-    tinds = np.array([np.where(labels == i)[0] for i in uniq_labels],
-                     dtype=object)
-    pinds = np.array([np.where(predict_labels == i)[0] for i in uniq_labels],
-                     dtype=object)
-
-    # tinds = tinds[sorts]
-    # pinds = pinds[sorts]
+    sorts = np.array([np.where(sorts == i)[0][0] for i in uniq_labels])
+    # tinds = np.array([np.where(labels == i)[0] for i in uniq_labels],
+    #                  dtype=object)
+    # pinds = np.array([np.where(predict_labels == i)[0] for i in uniq_labels],
+    #                  dtype=object)
+    #
+    # tindsi = tinds[sorts]
+    # pindsi = pinds[sorts]
 
     # for i in uniq_labels:
     #     labels[tinds[i]] =
@@ -691,6 +693,11 @@ def mixture_and_plot(gibbs, method, **kwargs):
     labels = sorts[labels]
     predict_labels = sorts[predict_labels]
     all_labels = sorts[all_labels]
+
+    tinds = np.array([np.where(labels == i)[0] for i in uniq_labels],
+                     dtype=object)
+    pinds = np.array([np.where(predict_labels == i)[0] for i in uniq_labels],
+                     dtype=object)
 
     cmap = mpl.colormaps['tab10']
     cmap.set_under()
