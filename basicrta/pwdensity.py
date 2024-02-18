@@ -247,11 +247,12 @@ class WDensityAnalysis(AnalysisBase):
         # create empty grid with the right dimensions (and get the edges)
         grid, edges = np.histogramdd(np.zeros((1, 3)), bins=bins, range=arange)
         grid *= 0.0
-        # self._grid = grid
+        self._grid = grid
         self._edges = edges
         self._arange = arange
         self._bins = bins
-        self._grids = np.array([grid.copy() for _ in range(self._weights.shape[1])])
+        self._grids = np.array([grid.copy() for _ in
+                                range(self._weights.shape[1])])
 
     def _single_frame(self):
         h, _ = np.histogramdd(self._atomgroup.positions,
@@ -261,22 +262,22 @@ class WDensityAnalysis(AnalysisBase):
         #
         # serial code can simply do
         self._grids += np.array([w*h for w in self._weights[self._frame_index]])
-        # self._grid += h*self._weights[self._frame_index]
 
     def _conclude(self):
         # average:
-        self._grid /= float(self.n_frames)
-        density = Density(grid=self._grid, edges=self._edges,
-                          units={'length': "Angstrom"},
-                          parameters={'isDensity': False})
-        density.make_density()
-        self.results.density = density
-        #self._grids /= float(self.n_frames)
-        #densities = [Density(grid=grid, edges=self._edges,
-        #                  units={'length': "Angstrom"},
-        #                  parameters={'isDensity': False}) for grid in self._grids]
-        #[d.make_density() for d in densities]
-        #self.results.densities = densities
+        # self._grid /= float(self.n_frames)
+        # density = Density(grid=self._grid, edges=self._edges,
+        #                   units={'length': "Angstrom"},
+        #                   parameters={'isDensity': False})
+        # density.make_density()
+        # self.results.density = density
+        self._grids /= float(self.n_frames)
+        densities = [Density(grid=grid, edges=self._edges,
+                             units={'length': "Angstrom"},
+                             parameters={'isDensity': False})
+                     for grid in self._grids]
+        [d.make_density() for d in densities]
+        self.results.densities = densities
 
     @property
     def density(self):
