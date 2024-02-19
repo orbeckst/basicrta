@@ -127,7 +127,7 @@ class MapKinetics(object):
                         range(self.gibbs.processed_results.ncomp)]
 
             for k in range(self.gibbs.processed_results.ncomp):
-                frames = np.where(wi[sortinds[k], k] > 0)[0][::step]
+                frames = np.where(wi[sortinds[k], k] > 0)[0][:top_n:step]
                 tmpwi = wi[frames, k]
                 d = WDensityAnalysis(chol_red, tmpwi,
                                      gridcenter=u_red.select_atoms(f'protein '
@@ -135,7 +135,7 @@ class MapKinetics(object):
                                                                    f'{resid}')
                                      .center_of_geometry(), xdim=40, ydim=40,
                                      zdim=40)
-                d.run(verbose=True, frames=sortinds[k][frames][::step])
+                d.run(verbose=True, frames=sortinds[k][frames])
                 if step > 1:
                     outname = (f'{self.gibbs.residue}/wcomp{k}_top{top_n}_step'
                                f'{step}.dx')
