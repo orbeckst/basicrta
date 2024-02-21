@@ -49,8 +49,11 @@ class MapContacts(object):
         lens = np.array(lens)
         mapsize = sum(lens)
         bounds = np.concatenate([[0], np.cumsum(lens)])
-        dtype = np.dtype(np.float64, metadata={'u': self.u, 'ag1': ag1,
-                                               'ag2': ag2})
+        dtype = np.dtype(np.float64,
+                         metadata={'top': self.u.topology.filename,
+                                   'traj': self.u.trajectory.filename,
+                                   'ag1': ag1, 'ag2': ag2,
+                                   'ts': self.u.trajectory.dt/1000})
 
         contact_map = np.memmap('.tmpmap', mode='w+',
                                 shape=(mapsize, 5), dtype=dtype)
@@ -122,7 +125,7 @@ class ProcessContacts(object):
                                     'contacts file using the "map_name" '
                                     'argument')
 
-        self.ts = dtype.metadata['u'].trajectory.dt/1000  # convert to ns
+        self.ts = dtype.metadata['ts']
         lresids = np.unique(memmap[:, 2])
         params = [[res, memmap[memmap[:, 2] == res], i] for i, res in
                   enumerate(lresids)]
@@ -201,10 +204,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     u = mda.Universe(args.top)
+    utop = mda.Universe(args.top)
     [u.load_new(traj) for traj in args.traj]
     cutoff, nproc, nslices = args.cutoff, args.nproc, args.nslices
-    ag1 = u.select_atoms(args.sel1)
-    ag2 = u.select_atoms(args.sel2)
+    ag1 = utop.select_atoms(args.sel1)
+    ag2 = utop.select_atoms(args.sel2)
 
     MapContacts(u, ag1, ag2, nproc=nproc, nslices=nslices).run()
     ProcessContacts(cutoff, nproc).run()

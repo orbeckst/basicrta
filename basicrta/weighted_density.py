@@ -20,7 +20,7 @@ class MapKinetics(object):
         metadata = self.contacts.dtype.metadata
         self.ag1 = metadata['ag1']
         self.ag2 = metadata['ag2']
-        self.u = metadata['u']
+        self.ts = metadata['ts']
 
         self.dataname = f'{self.gibbs.residue}/den_write_data_all.npy'
         self.topname = f'{self.gibbs.residue}/reduced.pdb'
