@@ -49,13 +49,11 @@ class MapContacts(object):
         lens = np.array(lens)
         mapsize = sum(lens)
         bounds = np.concatenate([[0], np.cumsum(lens)])
-        dtype = np.dtype(np.float64,
-                         metadata={'top': self.u.filename,
-                                   'traj': self.u.trajectory.filename,
-                                   'ag1': ag1, 'ag2': ag2})
+        dtype = np.dtype(np.float64, metadata={'u': self.u, 'ag1': ag1,
+                                               'ag2': ag2})
 
         contact_map = np.memmap('.tmpmap', mode='w+',
-                                shape=(mapsize, 5), dtype=np.float64)
+                                shape=(mapsize, 5), dtype=dtype)
         for i in range(self.nslices):
             contact_map[bounds[i]:bounds[i+1]] = np.genfromtxt(f'.contacts_'
                                                                f'{i:04}',
@@ -131,7 +129,7 @@ class ProcessContacts(object):
         pool = Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),))
 
         try:
-            lens = pool.istarmap(self._lipswap, params)
+            lens = pool.starmap(self._lipswap, params)
         except KeyboardInterrupt:
             pool.terminate()
         pool.close()
