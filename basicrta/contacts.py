@@ -50,7 +50,7 @@ class MapContacts(object):
         mapsize = sum(lens)
         bounds = np.concatenate([[0], np.cumsum(lens)])
         dtype = np.dtype(np.float64,
-                         metadata={'top': self.u.topology.filename,
+                         metadata={'top': self.u.filename,
                                    'traj': self.u.trajectory.filename,
                                    'ag1': ag1, 'ag2': ag2,
                                    'ts': self.u.trajectory.dt/1000})
