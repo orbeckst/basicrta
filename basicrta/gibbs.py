@@ -99,6 +99,7 @@ class ParallelGibbs(object):
                                 self.ncomp, self.niter] for i in
                                range(len(residues))], dtype=object)
 
+        self.contacts = []
         os.chdir(f'basicrta-{self.cutoff}')
         if len(run_resids) > 1:
             with (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as
@@ -122,9 +123,13 @@ class Gibbs(object):
     """
 
     def __init__(self, times=None, residue=None, loc=0, ncomp=15, niter=50000):
-        self.times, self.residue = times, residue
-        self.niter, self.loc, self.ncomp = niter, loc, ncomp
-        self.g, self.burnin = 100, 10000
+        self.times = times
+        self.residue = residue
+        self.niter = niter
+        self.loc = loc
+        self.ncomp = ncomp
+        self.g = 100
+        self.burnin = 10000
         self.processed_results = Results()
 
         if times is not None:
@@ -136,10 +141,8 @@ class Gibbs(object):
         self.keys = {'times', 'residue', 'loc', 'ncomp', 'niter', 'g', 'burnin',
                      'processed_results', 'ts', 'mcweights', 'mcrates'}
 
-
     def __getitem__(self, item):
         return getattr(self, item)
-
 
     def _prepare(self):
         from basicrta.util import get_s
