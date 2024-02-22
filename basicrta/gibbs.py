@@ -63,9 +63,7 @@ class ParallelGibbs(object):
             self.contacts = pickle.load(f)
         self.cutoff = float(contacts.strip('.pkl').split('/')[-1].split('_')[-1])
         self.niter, self.nproc, self.ncomp = niter, nproc, ncomp
-        os.chdir(f'basicrta-{self.cutoff}')
-
-
+        # os.chdir(f'basicrta-{self.cutoff}')
 
     def run(self, run_resids=None):
         from basicrta.util import run_residue
@@ -98,17 +96,19 @@ class ParallelGibbs(object):
         input_list = np.array([[residues[i], times[i], i % self.nproc,
                                 self.ncomp, self.niter] for i in
                                range(len(residues))], dtype=object)
-        #
-        # with (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as
-        #       p):
-        #     try:
-        #         for _ in tqdm(p.istarmap(run_residue, input_list),
-        #                       total=len(residues), position=0,
-        #                       desc='overall progress'):
-        #             pass
-        #     except KeyboardInterrupt:
-        #         pass
-        Pool(self.nproc).starmap(run_residue, input_list)
+
+        if len(run_resids > 1):
+            with (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as
+                  p):
+                try:
+                    for _ in tqdm(p.istarmap(run_residue, input_list),
+                                  total=len(residues), position=0,
+                                  desc='overall progress'):
+                        pass
+                except KeyboardInterrupt:
+                    pass
+        else:
+            Pool(1).starmap(run_residue, input_list)
 
 
 class Gibbs(object):
