@@ -58,7 +58,7 @@ class ParallelGibbs(object):
     A module to take a contact map and run Gibbs samplers for each residue
     """
 
-    def __init__(self, contacts, nproc=1, ncomp=15, niter=50000):
+    def __init__(self, contacts, nproc=1, ncomp=15, niter=110000):
         self.cutoff = float(contacts.strip('.pkl').split('/')[-1].split('_')
                             [-1])
         with open(contacts, 'r+b') as f:
