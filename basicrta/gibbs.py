@@ -98,16 +98,17 @@ class ParallelGibbs(object):
         input_list = np.array([[residues[i], times[i], i % self.nproc,
                                 self.ncomp, self.niter] for i in
                                range(len(residues))], dtype=object)
-
-        with (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as
-              p):
-            try:
-                for _ in tqdm(p.istarmap(run_residue, input_list),
-                              total=len(residues), position=0,
-                              desc='overall progress'):
-                    pass
-            except KeyboardInterrupt:
-                pass
+        #
+        # with (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as
+        #       p):
+        #     try:
+        #         for _ in tqdm(p.istarmap(run_residue, input_list),
+        #                       total=len(residues), position=0,
+        #                       desc='overall progress'):
+        #             pass
+        #     except KeyboardInterrupt:
+        #         pass
+        Pool(self.nproc).starmap(run_residue, input_list)
 
 
 class Gibbs(object):
