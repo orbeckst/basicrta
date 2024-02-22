@@ -99,7 +99,8 @@ class ParallelGibbs(object):
                                 self.ncomp, self.niter] for i in
                                range(len(residues))], dtype=object)
 
-        with Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
+        with (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as
+              p):
             try:
                 for _ in tqdm(p.istarmap(run_residue, input_list),
                               total=len(residues), position=0,
