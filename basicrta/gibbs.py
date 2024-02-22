@@ -100,7 +100,7 @@ class ParallelGibbs(object):
                                range(len(residues))], dtype=object)
 
         os.chdir(f'basicrta-{self.cutoff}')
-        if len(run_resids > 1):
+        if len(run_resids) > 1:
             with (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as
                   p):
                 try:
