@@ -63,7 +63,7 @@ class ParallelGibbs(object):
             self.contacts = pickle.load(f)
         self.cutoff = float(contacts.strip('.pkl').split('/')[-1].split('_')[-1])
         self.niter, self.nproc, self.ncomp = niter, nproc, ncomp
-        os.chdir(f'basicrta-{cutoff}')
+        os.chdir(f'basicrta-{self.cutoff}')
 
 
 
