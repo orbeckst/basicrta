@@ -108,7 +108,7 @@ class ParallelGibbs(object):
 
 
 class Gibbs(object):
-    """Gibbs sampler to estimate parameters of an exponential mixture for a set 
+    """Gibbs sampler to estimate parameters of an exponential mixture for a set
     of data. Results are stored in gibbs.results, which uses /home/ricky
     MDAnalysis.analysis.base.Results(). If 'results=None' the gibbs sampler has
     not been executed, which requires calling '.run()'
@@ -375,4 +375,11 @@ class Gibbs(object):
 
 
 if __name__ == '__main__':
-    print('do nothing')
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--contacts')
+    parser.add_argument('--nproc', type=int)
+    parser.add_argument('--resid', type=int)
+    args = parser.parse_args()
+
+    ParallelGibbs(args.contacts).run(run_resids=args.resid)
