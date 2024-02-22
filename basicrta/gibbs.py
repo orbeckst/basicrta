@@ -59,11 +59,13 @@ class ParallelGibbs(object):
     """
 
     def __init__(self, contacts, nproc=1, ncomp=15, niter=50000):
+        self.cutoff = float(contacts.strip('.pkl').split('/')[-1].split('_')
+                            [-1])
         with open(contacts, 'r+b') as f:
             self.contacts = pickle.load(f)
-        self.cutoff = float(contacts.strip('.pkl').split('/')[-1].split('_')[-1])
-        self.niter, self.nproc, self.ncomp = niter, nproc, ncomp
-        # os.chdir(f'basicrta-{self.cutoff}')
+        self.niter = niter
+        self.nproc = nproc
+        self.ncomp = ncomp
 
     def run(self, run_resids=None):
         from basicrta.util import run_residue
@@ -97,6 +99,7 @@ class ParallelGibbs(object):
                                 self.ncomp, self.niter] for i in
                                range(len(residues))], dtype=object)
 
+        os.chdir(f'basicrta-{self.cutoff}')
         if len(run_resids > 1):
             with (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as
                   p):
