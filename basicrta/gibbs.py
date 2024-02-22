@@ -99,8 +99,6 @@ class ParallelGibbs(object):
                                 self.ncomp, self.niter] for i in
                                range(len(residues))], dtype=object)
 
-        self.contacts = []
-        os.chdir(f'basicrta-{self.cutoff}')
         if len(run_resids) > 1:
             with (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as
                   p):
@@ -394,4 +392,6 @@ if __name__ == '__main__':
 
     contact_path = os.path.abspath(args.contacts)
     cutoff = args.contacts.split('/')[-1].strip('.pkl').split('_')[-1]
+    os.chdir(f'basicrta-{cutoff}')
+
     ParallelGibbs(contact_path).run(run_resids=args.resid)
