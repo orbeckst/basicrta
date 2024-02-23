@@ -21,13 +21,13 @@ rng = default_rng()
 
 
 class ProcessProtein(object):
-    def __init__(self, niter):
-        self.residues, self.niter = {}, niter
-
+    def __init__(self, niter, prot):
+        self.residues = {}
+        self.niter = niter
+        self.prot = prot
 
     def __getitem__(self, item):
         return getattr(self, item)
-
 
     def collect_results(self):
         from glob import glob
@@ -51,6 +51,23 @@ class ProcessProtein(object):
             else:
                 print(f'results for {adir} do not exist')
                 # raise FileNotFoundError(f'results for {adir} do not exist')
+
+    def _get_taus(self):
+        from basicrta.util import get_bars
+
+        taus = []
+        for res in self.residues:
+            gib = self.residues[res]
+            taus.append(gib.estimate_tau())
+        taus = np.array(taus)
+        bars = get_bars(taus)
+        return taus[:, 1], bars
+
+    def plot_protein(self):
+        from basicrta.util import plot_protein
+        taus, bars = self._get_taus()
+        residues = list(self.residues.keys())
+        plot_protein(residues, taus, bars, self.prot)
 
 
 class ParallelGibbs(object):
@@ -386,7 +403,6 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--contacts')
-    parser.add_argument('--nproc', type=int)
     parser.add_argument('--resid', type=int)
     args = parser.parse_args()
 
