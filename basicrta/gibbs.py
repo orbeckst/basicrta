@@ -78,29 +78,30 @@ class ParallelGibbs(object):
     def __init__(self, contacts, nproc=1, ncomp=15, niter=110000):
         self.cutoff = float(contacts.strip('.pkl').split('/')[-1].split('_')
                             [-1])
-        with open(contacts, 'r+b') as f:
-            self.contacts = pickle.load(f)
         self.niter = niter
         self.nproc = nproc
         self.ncomp = ncomp
+        self.contacts = contacts
 
     def run(self, run_resids=None):
         from basicrta.util import run_residue
+        with open(self.contacts, 'r+b') as f:
+            contacts = pickle.load(f)
 
-        protids = np.unique(self.contacts[:, 0])
+        protids = np.unique(contacts[:, 0])
         if not run_resids:
             run_resids = protids
 
-        if (type(run_resids) != list) and (type(run_resids) != np.ndarray):
+        if not isinstance(run_resids, (list, np.ndarray)):
             run_resids = [run_resids]
 
-        rg = self.contacts.dtype.metadata['ag1'].residues
+        rg = contacts.dtype.metadata['ag1'].residues
         resids = rg.resids
         reslets = np.array([mda.lib.util.convert_aa_code(name) for name in
                             rg.resnames])
         residues = np.array([f'{reslet}{resid}' for reslet, resid in
                              zip(reslets, resids)])
-        times = [self.contacts[self.contacts[:, 0] == i][:, 3] for i in
+        times = [contacts[contacts[:, 0] == i][:, 3] for i in
                  run_resids]
         inds = np.array([np.where(resids == resid)[0][0] for resid in
                          run_resids])
@@ -112,22 +113,18 @@ class ParallelGibbs(object):
         protids, residues = protids[validinds], residues[validinds]
         [times.pop(zind) for zind in zeroinds]
 
-        input_list = np.array([[residues[i], times[i], i % self.nproc,
-                                self.ncomp, self.niter] for i in
-                               range(len(residues))], dtype=object)
+        input_list = [[residues[i].copy(), times[i].copy(), i % self.nproc,
+                       self.ncomp, self.niter] for i in range(len(residues))]
 
-        if len(run_resids) > 1:
-            with (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as
-                  p):
-                try:
-                    for _ in tqdm(p.istarmap(run_residue, input_list),
-                                  total=len(residues), position=0,
-                                  desc='overall progress'):
-                        pass
-                except KeyboardInterrupt:
+        with (Pool(self.nproc, initializer=tqdm.set_lock,
+                   initargs=(Lock(),)) as p):
+            try:
+                for _ in tqdm(p.istarmap(run_residue, input_list),
+                              total=len(residues), position=0,
+                              desc='overall progress'):
                     pass
-        else:
-            Pool(1).starmap(run_residue, input_list)
+            except KeyboardInterrupt:
+                    pass
 
 
 class Gibbs(object):
@@ -225,7 +222,6 @@ class Gibbs(object):
         self._save_results(attrs, values)
         self._process_gibbs()
 
-
     def _process_gibbs(self, cutoff=1e-4):
         from basicrta.util import mixture_and_plot
         from scipy import stats
@@ -267,17 +263,14 @@ class Gibbs(object):
         self._estimate_params()
         self._pickle_self()
 
-
     def _pickle_self(self):
         with open(f'{self.residue}/gibbs_{self.niter}.pkl', 'w+b') as f:
             pickle.dump(self, f)
-
 
     def load_self(self, filename):
         with open(filename, 'r+b') as f:
             g = pickle.load(f)
         return g
-
 
     def _save_results(self, attrs, values, processed=False):
         if processed:
@@ -296,7 +289,6 @@ class Gibbs(object):
             with open(f'{r.residue}/results_{r.niter}.pkl', 'wb') as W:
                 pickle.dump(r, W)
 
-
     def load_results(self, results, processed=False):
         if processed:
             with open(results, 'r+b') as f:
@@ -313,7 +305,6 @@ class Gibbs(object):
 
             self._process_gibbs()
         return self
-
 
     def hist_results(self, scale=1.5, save=False):
         cmap = mpl.colormaps['tab20']
@@ -349,7 +340,6 @@ class Gibbs(object):
             plt.savefig('hist_results.pdf', bbox_inches='tight')
         plt.show()
 
-
     def plot_results(self, scale=1.5, sparse=1, save=False):
             cmap = mpl.colormaps['tab10']
             rp = self.processed_results
@@ -375,17 +365,16 @@ class Gibbs(object):
                 plt.savefig('plot_results.pdf', bbox_inches='tight')
             plt.show()
 
-
     def _estimate_params(self):
         rp = self.processed_results
 
-        ds = [rp.rates[rp.labels == i] for i in range(rp.ncomp)]
-        bounds = np.array([confidence_interval(d) for d in ds])
-        params = np.array([np.mean(d) for d in ds])
+        rs = [rp.rates[rp.labels == i] for i in range(rp.ncomp)]
+        ws = [rp.weights[rp.labels == i] for i in range(rp.ncomp)]
+        bounds = np.array([confidence_interval(d) for d in rs])
+        params = np.array([[np.mean(w), np.mean(r)] for w,r in zip(ws, rs)])
 
         setattr(rp, 'parameters', params)
         setattr(rp, 'intervals', bounds)
-
 
     def estimate_tau(self):
         rp = self.processed_results
@@ -397,6 +386,26 @@ class Gibbs(object):
         indmax = np.where(H[0] == H[0].max())[0]
         val = 0.5 * (H[1][:-1][indmax] + H[1][1:][indmax])[0]
         return [ci[0], val, ci[1]]
+
+    def plot_surv(self, scale=1.5, sparse=1, save=False):
+        cmap = mpl.colormaps['tab10']
+        rp = self.processed_results
+
+        ws, rs = rp.parameters[:, 0], rp.parameters[:, 1]
+        fig, ax = plt.subplots(1, figsize=(4 * scale, 3 * scale))
+        ax.plot(self.t, self.s, '.')
+        [ax.plot(self.t, ws[i]*np.exp(-rs[i]*self.t), label=f'{i}',
+                 color=cmap(i)) for i in np.unique(rp.labels)]
+        ax.set_ylim(1e-6, 5)
+        ax.set_yscale('log')
+        ax.set_ylabel('s').set_rotation(0)
+        ax.set_xlabel(r't ($ns$)')
+        ax.legend(title='component')
+        plt.tight_layout()
+        if save:
+            plt.savefig('s_vs_t.png', bbox_inches='tight')
+            plt.savefig('s_vs_t.pdf', bbox_inches='tight')
+        plt.show()
 
 
 if __name__ == '__main__':
