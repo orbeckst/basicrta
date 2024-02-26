@@ -116,6 +116,9 @@ class ParallelGibbs(object):
         input_list = [[residues[i].copy(), times[i].copy(), i % self.nproc,
                        self.ncomp, self.niter] for i in range(len(residues))]
 
+        del contacts, times
+        gc.collect()
+
         with (Pool(self.nproc, initializer=tqdm.set_lock,
                    initargs=(Lock(),)) as p):
             try:
