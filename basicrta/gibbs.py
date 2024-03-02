@@ -32,7 +32,6 @@ class ProcessProtein(object):
     def collect_results(self, nproc=1):
         from glob import glob
         def collect_res(adir):
-        # for adir in tqdm(dirs):
             if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
                 with open(f'{adir}/gibbs_{self.niter}.pkl', 'rb') as r:
                     self.residues[adir] = pickle.load(r)
@@ -42,7 +41,6 @@ class ProcessProtein(object):
                                                            f'_{self.niter}.pkl')
                 except ValueError:
                     print(f'{adir} does not contain a valid dataset')
-                    continue
             else:
                 print(f'results for {adir} do not exist')
                 # raise FileNotFoundError(f'results for {adir} do not exist')
