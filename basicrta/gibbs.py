@@ -52,6 +52,7 @@ class ProcessProtein(object):
         dirs = np.array(glob('?[0-9]*'))
         sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
         dirs = dirs[sorted_inds]
+        print(dirs)
         with (Pool(nproc, initializer=tqdm.set_lock,
                    initargs=(Lock(),)) as p):
             try:
