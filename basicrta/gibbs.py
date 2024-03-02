@@ -31,6 +31,7 @@ class ProcessProtein(object):
 
     def collect_results(self, nproc=1):
         from glob import glob
+        global collect_res
         def collect_res(adir):
             if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
                 with open(f'{adir}/gibbs_{self.niter}.pkl', 'rb') as r:
