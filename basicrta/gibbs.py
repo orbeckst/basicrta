@@ -52,11 +52,10 @@ class ProcessProtein(object):
         dirs = np.array(glob('?[0-9]*'))
         sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
         dirs = dirs[sorted_inds]
-        print(dirs)
-        with (Pool(nproc, initializer=tqdm.set_lock,
-                   initargs=(Lock(),)) as p):
+        print(len(dirs))
+        with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
             try:
-                for _ in tqdm(p.starmap(self._collect_res, dirs),
+                for _ in tqdm(p.map(self._collect_res, dirs),
                               total=len(dirs), position=0,
                               desc='overall progress'):
                     pass
