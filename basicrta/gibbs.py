@@ -29,22 +29,22 @@ class ProcessProtein(object):
     def __getitem__(self, item):
         return getattr(self, item)
 
+    def _collect_res(self, adir):
+        if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
+            with open(f'{adir}/gibbs_{self.niter}.pkl', 'rb') as r:
+                self.residues[adir] = pickle.load(r)
+        elif os.path.exists(f'{adir}/results_{self.niter}.pkl'):
+            try:
+                self.residues[adir] = Gibbs().load_results(f'{adir}/results'
+                                                       f'_{self.niter}.pkl')
+            except ValueError:
+                print(f'{adir} does not contain a valid dataset')
+        else:
+            print(f'results for {adir} do not exist')
+                # raise FileNotFoundError(f'results for {adir} do not exist')
+
     def collect_results(self, nproc=1):
         from glob import glob
-        global collect_res
-        def collect_res(adir):
-            if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
-                with open(f'{adir}/gibbs_{self.niter}.pkl', 'rb') as r:
-                    self.residues[adir] = pickle.load(r)
-            elif os.path.exists(f'{adir}/results_{self.niter}.pkl'):
-                try:
-                    self.residues[adir] = Gibbs().load_results(f'{adir}/results'
-                                                           f'_{self.niter}.pkl')
-                except ValueError:
-                    print(f'{adir} does not contain a valid dataset')
-            else:
-                print(f'results for {adir} do not exist')
-                # raise FileNotFoundError(f'results for {adir} do not exist')
 
         if not os.getcwd().split('/')[-1][:8] == 'basicrta':
             raise NotImplementedError('navigate to basicrta-{cutoff} directory'
@@ -55,7 +55,7 @@ class ProcessProtein(object):
         with (Pool(nproc, initializer=tqdm.set_lock,
                    initargs=(Lock(),)) as p):
             try:
-                for _ in tqdm(p.istarmap(collect_res, dirs),
+                for _ in tqdm(p.istarmap(self._collect_res, dirs),
                               total=len(dirs), position=0,
                               desc='overall progress'):
                     pass
