@@ -105,7 +105,7 @@ class ParallelGibbs(object):
                              zip(reslets, resids)])
         times = [contacts[contacts[:, 0] == i][:, 3] for i in
                  run_resids]
-        inds = np.array([np.where(resids == resid)[0][0] for resid in
+        inds = np.array([np.where(resids == resid)[0] for resid in
                          run_resids])
         residues = residues[inds]
 
@@ -231,50 +231,58 @@ class Gibbs(object):
         self._save_results(attrs, values)
         self._process_gibbs()
 
-    def _process_gibbs(self, cutoff=1e-4):
+    def _process_gibbs(self):
         from basicrta.util import mixture_and_plot
         from scipy import stats
 
-        burnin_ind = self.burnin // self.g
-        inds = np.where(self.mcweights[burnin_ind:] > cutoff)
+        data_len = len(self.times)
+        wcutoff = 10/data_len
+        burnin_ind = self.burnin//self.g
+        inds = np.where(self.mcweights[burnin_ind:] > wcutoff)
         indices = (np.arange(self.burnin, self.niter + 1, self.g)[inds[0]] //
                    self.g)
         weights, rates = self.mcweights[burnin_ind:], self.mcrates[burnin_ind:]
         fweights, frates = weights[inds], rates[inds]
 
-        lens = [len(row[row > cutoff]) for row in self.mcweights[burnin_ind:]]
+        lens = [len(row[row > wcutoff]) for row in self.mcweights[burnin_ind:]]
         lmin, lmode, lmax = np.min(lens), stats.mode(lens).mode, np.max(lens)
         train_param = lmode
 
-        Indicator = np.zeros((self.times.shape[0], train_param))
-        indicator = np.memmap(f'{self.residue}/.indicator_{self.niter}.npy',
-                              shape=((self.niter + 1) // self.g,
-                                     self.times.shape[0]),
-                              mode='r', dtype=np.uint8)
-
+        pindicator = np.zeros((self.times.shape[0], train_param))
+        indicator = self._sample_indicator()
         labels = mixture_and_plot(self, 'GaussianMixture', n_init=17,
                                   n_components=lmode,
                                   covariance_type='spherical')
-        indicator = indicator[burnin_ind:]
         for j in np.unique(inds[0]):
             mapinds = labels[inds[0] == j]
             for i, indx in enumerate(inds[1][inds[0] == j]):
                 tmpind = np.where(indicator[j] == indx)[0]
-                Indicator[tmpind, mapinds[i]] += 1
+                pindicator[tmpind, mapinds[i]] += 1
 
-        Indicator = (Indicator.T / Indicator.sum(axis=1)).T
+        pindicator = (pindicator.T / pindicator.sum(axis=1)).T
 
         attrs = ["weights", "rates", "ncomp", "residue", "indicator", "labels",
                  "iteration", "niter"]
-        values = [fweights, frates, lmode, self.residue, Indicator,
+        values = [fweights, frates, lmode, self.residue, pindicator,
                   labels, indices, self.niter]
         self._save_results(attrs, values, processed=True)
         self._estimate_params()
         self._pickle_self()
 
-    # def _sample_indicator(self):
-    #
-    #
+    def _sample_indicator(self):
+        indicator = np.zeros(((self.niter+1)//self.g, self.times.shape[0]),
+                             dtype=np.uint8)
+        burnin_ind = self.burnin//self.g
+        for i, (w, r) in enumerate(zip(self.mcweights, self.mcrates)):
+            # compute probabilities
+            probs = w*r*np.exp(np.outer(-r, self.times)).T
+            z = (probs.T/probs.sum(axis=1)).T
+
+            # sample indicator
+            s = np.argmax(rng.multinomial(1, z), axis=1)
+            indicator[i] = s
+        return indicator[burnin_ind:]
+
     def _pickle_self(self):
         with open(f'{self.residue}/gibbs_{self.niter}.pkl', 'w+b') as f:
             pickle.dump(self, f)
@@ -390,7 +398,7 @@ class Gibbs(object):
 
     def estimate_tau(self):
         rp = self.processed_results
-        index = np.argmin(rp.parameters)
+        index = np.argmin(rp.parameters[:, 1])
         taus = 1 / rp.rates[rp.labels == index]
         ci = confidence_interval(taus)
         bins = np.exp(np.linspace(np.log(taus.min()), np.log(taus.max()), 100))

@@ -374,7 +374,7 @@ def collect_n_plot(resids, comps):
                 tmp_res = pickle.load(W)
 
             make_residue_plots(tmp_res, comps)
-            all_post_hist(tmp_res, save=True, rlims=[[1e-3,10],[1e-2, 1e3]], \
+            all_post_hist(tmp_res, save=True, rlims=[[1e-3,10],[1e-2, 1e3]],
                           wlims=[[1e-4, 1.1],[1e-1, 1e4]])
             plot_r_vs_w(tmp_res, rrange=[1e-3, 10], wrange=[1e-4, 5])
 
@@ -642,27 +642,30 @@ def mixture_and_plot(gibbs, method, **kwargs):
     kwarg_str = '_'.join(keyvalpairs)
 
     burnin_ind = gibbs.burnin // gibbs.g
+    data_len = len(gibbs.times)
+    wcutoff = 10 / data_len
 
     weights, rates = gibbs.mcweights[burnin_ind:], gibbs.mcrates[burnin_ind:]
-    lens = np.array([len(row[row > 1e-4]) for row in weights])
+    lens = np.array([len(row[row > wcutoff]) for row in weights])
     lmin, lmode, lmax = lens.min(), stats.mode(lens).mode, lens.max()
     train_param = lmode
 
     train_inds = np.where(lens == train_param)[0]
-    train_weights = (weights[train_inds][weights[train_inds]>1e-4].
+    train_weights = (weights[train_inds][weights[train_inds]>wcutoff].
                      reshape(-1, train_param))
-    train_rates = (rates[train_inds][weights[train_inds]>1e-4].
+    train_rates = (rates[train_inds][weights[train_inds]>wcutoff].
                    reshape(-1, train_param))
 
-    inds = np.where(weights > 1e-4)
+    inds = np.where(weights > wcutoff)
     aweights, arates = weights[inds], rates[inds]
+    rcutoff = arates.min()
     data = np.stack((aweights, arates), axis=1)
 
     tweights, trates = train_weights.flatten(), train_rates.flatten()
     train_data = np.stack((tweights, trates), axis=1)
 
     tmpw, tmpr = np.delete(weights, train_inds), np.delete(rates, train_inds)
-    pweights, prates = tmpw[tmpw > 1e-4], tmpr[tmpw > 1e-4]
+    pweights, prates = tmpw[tmpw > wcutoff], tmpr[tmpw > wcutoff]
     predict_data = np.stack((pweights, prates), axis=1)
 
     r = clu(**kwargs)
@@ -671,7 +674,8 @@ def mixture_and_plot(gibbs, method, **kwargs):
     leg_labels = np.array([f'{i}' for i in uniq_labels])
     predict_labels = r.predict(np.log(predict_data))
 
-    sorts = r.precisions_.argsort()[::-1]
+    #sorts = r.precisions_.argsort()[::-1]
+    sorts = r.means_[:, 0].argsort()[::-1]
     sorts = np.array([np.where(sorts == i)[0][0] for i in uniq_labels])
     # tinds = np.array([np.where(labels == i)[0] for i in uniq_labels],
     #                  dtype=object)
@@ -716,7 +720,7 @@ def mixture_and_plot(gibbs, method, **kwargs):
     ax[0, 0].set_xscale('log')
     ax[0, 0].set_xlabel(r'rate ($ns^{-1}$)')
     ax[0, 0].set_ylabel('count')
-    ax[0, 0].set_xlim(1e-3, 10)
+    ax[0, 0].set_xlim(rcutoff, 10)
 
     row, col = gibbs.mcweights[burnin_ind:].shape
     iter_arr = np.mgrid[:row, :col][0]
@@ -740,9 +744,9 @@ def mixture_and_plot(gibbs, method, **kwargs):
     ax[1, 1].set_ylabel(r'rate ($ns^{-1}$)')
     ax[1, 1].set_xlabel('sample')
     ax[0, 1].set_xlabel('sample')
-    ax[0, 1].set_ylim(1e-4, 1)
+    ax[0, 1].set_ylim(wcutoff, 1)
     ax[1, 1].set_xlabel('sample')
-    ax[1, 1].set_ylim(1e-3, 10)
+    ax[1, 1].set_ylim(rcutoff, 10)
 
     for i in uniq_labels:
         ax[1, 0].plot(prates[pinds[i]], pweights[pinds[i]], '.',
@@ -757,8 +761,8 @@ def mixture_and_plot(gibbs, method, **kwargs):
     ax[1, 0].set_xscale('log')
     ax[1, 0].set_ylabel('weight')
     ax[1, 0].set_xlabel(r'rate ($ns^{-1}$)')
-    ax[1, 0].set_xlim(1e-3, 10)
-    ax[1, 0].set_ylim(1e-4, 1)
+    ax[1, 0].set_xlim(rcutoff, 10)
+    ax[1, 0].set_ylim(wcutoff, 1)
 
     handles, plot_labels = ax[0, 0].get_legend_handles_labels()
     fig.legend(handles, plot_labels, loc='lower center',
