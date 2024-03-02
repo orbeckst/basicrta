@@ -55,7 +55,7 @@ class ProcessProtein(object):
         with (Pool(nproc, initializer=tqdm.set_lock,
                    initargs=(Lock(),)) as p):
             try:
-                for _ in tqdm(p.istarmap(self._collect_res, dirs),
+                for _ in tqdm(p.starmap(self._collect_res, dirs),
                               total=len(dirs), position=0,
                               desc='overall progress'):
                     pass
