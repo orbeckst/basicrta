@@ -698,10 +698,8 @@ def mixture_and_plot(gibbs, method, **kwargs):
     predict_labels = sorts[predict_labels]
     all_labels = sorts[all_labels]
 
-    tinds = np.array([np.where(labels == i)[0] for i in uniq_labels],
-                     dtype=object)
-    pinds = np.array([np.where(predict_labels == i)[0] for i in uniq_labels],
-                     dtype=object)
+    tinds = [np.where(labels == i)[0] for i in uniq_labels]
+    pinds = [np.where(predict_labels == i)[0] for i in uniq_labels]
 
     cmap = mpl.colormaps['tab10']
     cmap.set_under()

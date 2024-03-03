@@ -12,8 +12,7 @@ def istarmap(self, func, iterable, chunksize=1):
     self._check_running()
     if chunksize < 1:
         raise ValueError(
-            "Chunksize must be 1+, not {0:n}".format(
-                chunksize))
+            "Chunksize must be 1+, not {0:n}".format(chunksize))
 
     task_batches = mpp.Pool._get_tasks(func, iterable, chunksize)
     result = mpp.IMapIterator(self)
