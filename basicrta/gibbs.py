@@ -60,7 +60,8 @@ class ProcessProtein(object):
                     pass
             except KeyboardInterrupt:
                     pass
-
+        for adir in dirs:
+            self._collect_res(adir)
 
     def _get_taus(self):
         from basicrta.util import get_bars
