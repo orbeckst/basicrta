@@ -167,7 +167,10 @@ class Gibbs(object):
 
         if times is not None:
             diff = (np.sort(times)[1:]-np.sort(times)[:-1])
-            self.ts = diff[diff != 0][0]
+            try:
+                self.ts = diff[diff != 0][0]
+            except IndexError:
+                self.ts = times.min()
         else:
             self.ts = None
 
