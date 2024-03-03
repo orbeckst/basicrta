@@ -70,6 +70,7 @@ class ProcessProtein(object):
             gib = self.residues[res]
             taus.append(gib.estimate_tau())
         taus = np.array(taus)
+        print(taus.shape)
         bars = get_bars(taus)
         return taus[:, 1], bars
 
@@ -119,17 +120,17 @@ class ParallelGibbs(object):
                          run_resids])
         residues = residues[inds]
 
-        lens = np.array([len(np.unique(time)) for time in times])
-        validinds, zeroinds = (np.where(lens > 50)[0],
-                               np.where(lens <= 50)[0][::-1])
+        # lens = np.array([len(np.unique(time)) for time in times])
+        # validinds, zeroinds = (np.where(lens > 50)[0],
+        #                        np.where(lens <= 50)[0][::-1])
+        #
+        # for ind in zeroinds:
+        #     Path(f'{residues[ind]}/.dataset_too_small').touch()
+        #
+        # protids, residues = protids[validinds], residues[validinds]
+        # [times.pop(zind) for zind in zeroinds]
 
-        for ind in zeroinds:
-            Path(f'{residues[ind]}/.dataset_too_small').touch()
-
-        protids, residues = protids[validinds], residues[validinds]
-        [times.pop(zind) for zind in zeroinds]
-
-        input_list = [[residues[i].copy(), times[i].copy(), i % self.nproc,
+        input_list = [[residues[i], times[i].copy(), i % self.nproc,
                        self.ncomp, self.niter] for i in range(len(residues))]
 
         del contacts, times
