@@ -97,7 +97,6 @@ class ParallelGibbs(object):
 
     def run(self, run_resids=None):
         from basicrta.util import run_residue
-        from pathlib import Path
 
         with open(self.contacts, 'r+b') as f:
             contacts = pickle.load(f)
@@ -117,20 +116,9 @@ class ParallelGibbs(object):
                              zip(reslets, resids)])
         times = [contacts[contacts[:, 0] == i][:, 3] for i in
                  run_resids]
-        inds = np.array([np.where(resids == resid)[0] for resid in
+        inds = np.array([np.where(resids == resid)[0][0] for resid in
                          run_resids])
         residues = residues[inds]
-
-        # lens = np.array([len(np.unique(time)) for time in times])
-        # validinds, zeroinds = (np.where(lens > 50)[0],
-        #                        np.where(lens <= 50)[0][::-1])
-        #
-        # for ind in zeroinds:
-        #     Path(f'{residues[ind]}/.dataset_too_small').touch()
-        #
-        # protids, residues = protids[validinds], residues[validinds]
-        # [times.pop(zind) for zind in zeroinds]
-
         input_list = [[residues[i], times[i].copy(), i % self.nproc,
                        self.ncomp, self.niter] for i in range(len(residues))]
 
