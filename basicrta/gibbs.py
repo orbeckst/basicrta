@@ -29,13 +29,12 @@ class ProcessProtein(object):
     def __getitem__(self, item):
         return getattr(self, item)
 
-    def _collect_res(self, adir):
+    def _pre_collect(self, adir):
         if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
-            # result = Gibbs().load_self(f'{adir}/gibbs_{self.niter}.pkl')
             result = f'{adir}/gibbs_{self.niter}.pkl'
         elif os.path.exists(f'{adir}/results_{self.niter}.pkl'):
             try:
-                # result = Gibbs().load_results(f'{adir}/results_{self.niter}.pkl')
+                Gibbs().load_results(f'{adir}/results_{self.niter}.pkl')
                 result = f'{adir}/results_{self.niter}.pkl'
             except ValueError:
                 print(f'{adir} does not contain a valid dataset')
@@ -57,9 +56,9 @@ class ProcessProtein(object):
         dirs = dirs[sorted_inds]
         with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
             try:
-                for residue, result in tqdm(p.imap(self._collect_res, dirs),
-                              total=len(dirs), position=0,
-                              desc='overall progress'):
+                for residue, result in tqdm(p.imap(self._pre_collect, dirs),
+                                            total=len(dirs), position=0,
+                                            desc='overall progress'):
                     self.residues[residue] = result
             except KeyboardInterrupt:
                 pass
@@ -86,6 +85,9 @@ class ProcessProtein(object):
 
     def plot_protein(self):
         from basicrta.util import plot_protein
+        if len(self.residues) == 0:
+            print('run `collect_residues` then rerun')
+
         taus, bars = self._get_taus()
         residues = list(self.residues.keys())
         plot_protein(residues, taus, bars, self.prot)
