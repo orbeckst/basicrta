@@ -70,6 +70,8 @@ class ProcessProtein(object):
 
         taus = []
         for res in tqdm(self.residues, total=len(self.residues)):
+            if res is None:
+                pass
             gib = Gibbs().load_self(self.residues[res])
             taus.append(gib.estimate_tau())
         taus = np.array(taus)
