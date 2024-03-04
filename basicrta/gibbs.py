@@ -324,7 +324,7 @@ class Gibbs(object):
             with open(results, 'r+b') as f:
                 r = pickle.load(f)
 
-            for attr in list(r.keys()):
+            for attr in list(r.keys):
                 setattr(self, attr, r[f'{attr}'])
 
             self._process_gibbs()
