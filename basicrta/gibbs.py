@@ -31,10 +31,12 @@ class ProcessProtein(object):
 
     def _collect_res(self, adir):
         if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
-            result = Gibbs().load_self(f'{adir}/gibbs_{self.niter}.pkl')
+            # result = Gibbs().load_self(f'{adir}/gibbs_{self.niter}.pkl')
+            result = f'{adir}/gibbs_{self.niter}.pkl'
         elif os.path.exists(f'{adir}/results_{self.niter}.pkl'):
             try:
-                result = Gibbs().load_results(f'{adir}/results_{self.niter}.pkl')
+                # result = Gibbs().load_results(f'{adir}/results_{self.niter}.pkl')
+                result = f'{adir}/results_{self.niter}.pkl'
             except ValueError:
                 print(f'{adir} does not contain a valid dataset')
                 result = None
@@ -67,7 +69,7 @@ class ProcessProtein(object):
 
         taus = []
         for res in self.residues:
-            gib = self.residues[res]
+            gib = Gibbs().load_self(res)
             taus.append(gib.estimate_tau())
         taus = np.array(taus)
         print(taus.shape)
