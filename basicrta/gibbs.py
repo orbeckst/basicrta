@@ -68,8 +68,8 @@ class ProcessProtein(object):
         from basicrta.util import get_bars
 
         taus = []
-        for res in self.residues:
-            gib = Gibbs().load_self(res)
+        for res in tqdm(self.residues, total=len(self.residues)):
+            gib = Gibbs().load_self(self.residues[res])
             taus.append(gib.estimate_tau())
         taus = np.array(taus)
         print(taus.shape)
