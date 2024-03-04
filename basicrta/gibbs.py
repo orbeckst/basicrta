@@ -31,17 +31,18 @@ class ProcessProtein(object):
 
     def _collect_res(self, adir):
         if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
-            self.residues[adir] = Gibbs().load_self(f'{adir}/gibbs_{self.niter}'
-                                                    f'.pkl')
+            result = Gibbs().load_self(f'{adir}/gibbs_{self.niter}.pkl')
         elif os.path.exists(f'{adir}/results_{self.niter}.pkl'):
             try:
-                self.residues[adir] = Gibbs().load_results(f'{adir}/results'
-                                                       f'_{self.niter}.pkl')
+                result = Gibbs().load_results(f'{adir}/results_{self.niter}.pkl')
             except ValueError:
                 print(f'{adir} does not contain a valid dataset')
+                result = None
         else:
             print(f'results for {adir} do not exist')
-                # raise FileNotFoundError(f'results for {adir} do not exist')
+            result = None
+            # raise FileNotFoundError(f'results for {adir} do not exist')
+        return adir, result
 
     def collect_results(self, nproc=1):
         from glob import glob
@@ -54,14 +55,12 @@ class ProcessProtein(object):
         dirs = dirs[sorted_inds]
         with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
             try:
-                for _ in tqdm(p.imap(self._collect_res, dirs),
+                for residue, result in tqdm(p.imap(self._collect_res, dirs),
                               total=len(dirs), position=0,
                               desc='overall progress'):
-                    pass
+                    self.residues[residue] = result
             except KeyboardInterrupt:
-                    pass
-        for adir in dirs:
-            self._collect_res(adir)
+                pass
 
     def _get_taus(self):
         from basicrta.util import get_bars
