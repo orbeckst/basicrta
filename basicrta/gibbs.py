@@ -32,8 +32,10 @@ class ProcessProtein(object):
     def _collect_res(self, adir):
         if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
             result = Gibbs().load_self(f'{adir}/gibbs_{self.niter}.pkl')
+            print('loading Gibbs')
         elif os.path.exists(f'{adir}/results_{self.niter}.pkl'):
             try:
+                print('loading results')
                 result = Gibbs().load_results(f'{adir}/results_{self.niter}.pkl')
             except ValueError:
                 print(f'{adir} does not contain a valid dataset')
