@@ -69,15 +69,13 @@ class ProcessProtein(object):
         taus = []
         for res in tqdm(self.residues, total=len(self.residues)):
             if self.residues[res] is None:
-                continue
+                result = [0, 0, 0]
             elif self.residues[res] == f'{res}/results_{self.niter}.pkl':
-                try:
-                    gib = Gibbs().load_results(self.residues[res])
-                except:
-                    continue
+                result = [0, 0, 0]
             else:
                 gib = Gibbs().load_self(self.residues[res])
-            taus.append(gib.estimate_tau())
+                result = gib.estimate_tau()
+            taus.append(result)
         taus = np.array(taus)
         print(taus.shape)
         bars = get_bars(taus)
