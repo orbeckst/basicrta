@@ -169,7 +169,8 @@ class Gibbs(object):
             self.ts = None
 
         self.keys = {'times', 'residue', 'loc', 'ncomp', 'niter', 'g', 'burnin',
-                     'processed_results', 'ts', 'mcweights', 'mcrates'}
+                     'processed_results', 'ts', 'mcweights', 'mcrates', 't',
+                     's'}
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -332,6 +333,8 @@ class Gibbs(object):
             for attr in list(r.keys):
                 setattr(self, attr, r[f'{attr}'])
 
+            if isinstance(self.residue, np.ndarray):
+                self.residue = self.residue[0]
             self._process_gibbs()
         return self
 
