@@ -30,10 +30,9 @@ class ProcessProtein(object):
         return getattr(self, item)
 
     def _collect_res(self, adir):
-        print(adir)
         if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
-            with open(f'{adir}/gibbs_{self.niter}.pkl', 'rb') as r:
-                self.residues[adir] = pickle.load(r)
+            self.residues[adir] = Gibbs().load_self(f'{adir}/gibbs_{self.niter}'
+                                                    f'.pkl')
         elif os.path.exists(f'{adir}/results_{self.niter}.pkl'):
             try:
                 self.residues[adir] = Gibbs().load_results(f'{adir}/results'
