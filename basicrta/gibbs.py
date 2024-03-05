@@ -86,7 +86,9 @@ class ProcessProtein(object):
         if len(self.residues) == 0:
             print('run `collect_residues` then rerun')
 
-        taus, bars = self._get_taus()
+        try:
+            taus, bars = self._get_taus()
+        except KeyboardInterrupt('Interrupted')
         residues = list(self.residues.keys())
         plot_protein(residues, taus, bars, self.prot)
 
