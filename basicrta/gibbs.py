@@ -88,7 +88,8 @@ class ProcessProtein(object):
 
         try:
             taus, bars = self._get_taus()
-        except KeyboardInterrupt('Interrupted')
+        except KeyboardInterrupt('Interrupted'):
+            pass
         residues = list(self.residues.keys())
         plot_protein(residues, taus, bars, self.prot)
 
