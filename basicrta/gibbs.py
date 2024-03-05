@@ -81,14 +81,14 @@ class ProcessProtein(object):
         bars = get_bars(taus)
         return taus[:, 1], bars
 
-    def plot_protein(self):
+    def plot_protein(self, **kwargs):
         from basicrta.util import plot_protein
         if len(self.residues) == 0:
             print('run `collect_residues` then rerun')
 
         taus, bars = self._get_taus()
         residues = list(self.residues.keys())
-        plot_protein(residues, taus, bars, self.prot)
+        plot_protein(residues, taus, bars, self.prot, **kwargs)
 
 
 class ParallelGibbs(object):
