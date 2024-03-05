@@ -86,10 +86,7 @@ class ProcessProtein(object):
         if len(self.residues) == 0:
             print('run `collect_residues` then rerun')
 
-        try:
-            taus, bars = self._get_taus()
-        except KeyboardInterrupt('Interrupted'):
-            pass
+        taus, bars = self._get_taus()
         residues = list(self.residues.keys())
         plot_protein(residues, taus, bars, self.prot)
 
@@ -304,8 +301,10 @@ class Gibbs(object):
             pickle.dump(self, f)
 
     def load_self(self, filename):
+        from basicrta.util import get_s
         with open(filename, 'r+b') as f:
             g = pickle.load(f)
+            g.t, g.s = get_s(g.times, g.ts)
         return g
 
     def _save_results(self, attrs, values, processed=False):
@@ -326,6 +325,7 @@ class Gibbs(object):
                 pickle.dump(r, W)
 
     def load_results(self, results, processed=False):
+        from basicrta.util import get_s
         if processed:
             with open(results, 'r+b') as f:
                 r = pickle.load(f)
@@ -341,6 +341,8 @@ class Gibbs(object):
 
             if isinstance(self.residue, np.ndarray):
                 self.residue = self.residue[0]
+
+            # self.t, self.s = get_s(r.times, r.ts)
             self._process_gibbs()
         return self
 
