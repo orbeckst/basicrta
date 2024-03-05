@@ -393,7 +393,7 @@ def make_residue_plots(results, comps=None, show=False):
     plot_trace(r, 'rates', comp=comps, save=True, show=show, yrange=[-0.1,6])
 
 
-def plot_protein(residues, t_slow, bars, prot):
+def plot_protein(residues, t_slow, bars, prot, label_cutoff=3):
     with open('../../../../tm_dict.txt', 'r') as f:
         contents = f.read()
         prots = ast.literal_eval(contents)
@@ -403,15 +403,16 @@ def plot_protein(residues, t_slow, bars, prot):
 
     height, width = 3, 4
     fig, axs = plt.subplots(2,1,figsize=(width, height),sharex=True)
-    p =[Rectangle((tm(prots[prot]['helices'],i+1)[0][0],0),\
-            tm(prots[prot]['helices'],i+1)[1],1,fill=True) for i in range(7)]
+    p =[Rectangle((tm(prots[prot]['helices'], i+1)[0][0], 0),
+        tm(prots[prot]['helices'], i+1)[1], 1, fill=True) for i in range(7)]
     patches = PatchCollection(p)
     patches.set_color('C0')
     resids = np.array([int(res[1:]) for res in residues])
-    max_inds = np.where(t_slow > 3 * t_slow.mean())
+    max_inds = np.where(t_slow > label_cutoff * t_slow.mean())
     axs[0].plot(resids, t_slow, '.', color='C0')
     axs[0].errorbar(resids, t_slow, yerr=bars, fmt='none', color='C0')
-    [axs[0].text(resids[ind], t_slow[ind], residues[ind]) for ind in max_inds[0]]
+    [axs[0].text(resids[ind], t_slow[ind], residues[ind]) for ind in
+     max_inds[0]]
     axs[1].add_collection(patches)
     #if (prot=='cck1r') or (prot=='cck2r'):
     #    axs[0].set_ylim(0, 1300)
