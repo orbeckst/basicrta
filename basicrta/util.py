@@ -403,8 +403,8 @@ def plot_protein(residues, t_slow, bars, prot, label_cutoff=3, ylim=None):
 
     height, width = 3, 4
     fig, axs = plt.subplots(2,1,figsize=(width, height),sharex=True)
-    axs[0].tick_params(axis='both', which='major', labelsize=18)
-    axs[1].tick_params(axis='both', which='major', labelsize=18)
+    axs[0].tick_params(axis='both', which='major', labelsize=12)
+    axs[1].tick_params(axis='both', which='major', labelsize=12)
     p =[Rectangle((tm(prots[prot]['helices'], i+1)[0][0], 0),
         tm(prots[prot]['helices'], i+1)[1], 1, fill=True) for i in range(7)]
     patches = PatchCollection(p)
