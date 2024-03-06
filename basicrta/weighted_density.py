@@ -44,12 +44,11 @@ class MapKinetics(object):
         times = np.array(contacts[contacts[:, 0] == resid][:, 3])
         trajtimes = np.array(contacts[contacts[:, 0] == resid][:, 2])
         lipinds = np.array(contacts[contacts[:, 0] == resid][:, 1])
-        dt = self.ts/1000  # covert to nanoseconds
         del contacts
 
         indicators = self.gibbs.processed_results.indicator
 
-        bframes, eframes = get_start_stop_frames(trajtimes, times, dt)
+        bframes, eframes = get_start_stop_frames(trajtimes, times, self.ts)
         tmplens = [len(np.arange(b, e)) for b, e in zip(bframes, eframes)]
         totlen = sum(tmplens)
         write_data = open_memmap(self.dataname, mode='w+', dtype=np.float64,
