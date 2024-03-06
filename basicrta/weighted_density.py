@@ -10,13 +10,11 @@ import pickle
 
 class MapKinetics(object):
     def __init__(self, gibbs, contacts):
-        self.gibbs= gibbs
+        self.gibbs = gibbs
         self.cutoff = float(contacts.split('/')[-1].strip('.pkl').
                             split('_')[-1])
         self.write_sel = None
-        with open(contacts, 'rb') as f:
-            self.contacts = pickle.load(f)
-
+        self.contacts = contacts
         metadata = self.contacts.dtype.metadata
         self.ag1 = metadata['ag1']
         self.ag2 = metadata['ag2']
@@ -27,7 +25,9 @@ class MapKinetics(object):
         self.fulltraj = f'{self.gibbs.residue}/chol_traj_all.xtc'
 
     def _create_data(self):
-        contacts = self.contacts
+        with open(self.contacts, 'rb') as f:
+            contacts = pickle.load(f)
+
         resid = int(self.gibbs.residue[1:])
         ncomp = self.gibbs.processed_results.ncomp
 
@@ -35,6 +35,7 @@ class MapKinetics(object):
         trajtimes = np.array(contacts[contacts[:, 0] == resid][:, 2])
         lipinds = np.array(contacts[contacts[:, 0] == resid][:, 1])
         dt = self.ts/1000  # covert to nanoseconds
+        del contacts
 
         indicators = self.gibbs.processed_results.indicator
 
