@@ -55,7 +55,8 @@ class MapKinetics(object):
                                  shape=(totlen, ncomp+2))
 
         j = 0
-        for b, e, l, i in zip(bframes, eframes, lipinds, indicators):
+        for b, e, l, i in tqdm(zip(bframes, eframes, lipinds, indicators),
+                               total=len(bframes)):
             tmp = np.arange(b, e)
             tmpl = np.ones_like(np.arange(b, e)) * l
             tmpi = i * np.ones((len(np.arange(b, e)), ncomp))
