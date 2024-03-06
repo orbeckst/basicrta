@@ -34,7 +34,7 @@ class MapKinetics(object):
         times = np.array(contacts[contacts[:, 0] == resid][:, 3])
         trajtimes = np.array(contacts[contacts[:, 0] == resid][:, 2])
         lipinds = np.array(contacts[contacts[:, 0] == resid][:, 1])
-        dt = self.u.trajectory.ts.dt/1000  # covert to nanoseconds
+        dt = self.ts/1000  # covert to nanoseconds
 
         indicators = self.gibbs.processed_results.indicator
 
@@ -65,7 +65,7 @@ class MapKinetics(object):
         tmp = np.load(self.dataname)
         wf, wl, wi = tmp[:, 0].astype(int), tmp[:, 1].astype(int), tmp[:, 2:]
 
-        if self.N is not None:
+        if top_n is not None:
             sortinds = [wi[:, i].argsort()[::-1][:self.N] for i in
                         range(self.gibbs.processed_results.ncomp)]
             for k in range(self.gibbs.processed_results.ncomp):
