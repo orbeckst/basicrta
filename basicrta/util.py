@@ -78,12 +78,12 @@ def confidence_interval(data, percentage=95):
     lower, upper = (100-percentage)/200, (percentage+(100-percentage)/2)/100
 
     try:
-        l = ds[np.where(perc<=lower)[0][-1]]
+        l = ds[np.where(perc <= lower)[0][-1]]
     except IndexError:
         l = ds[0]
     
     try:
-        u = ds[np.where(perc>=upper)[0][0]]
+        u = ds[np.where(perc >= upper)[0][0]]
     except IndexError:
         u = ds[-1]
 

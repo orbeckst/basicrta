@@ -421,10 +421,12 @@ class Gibbs(object):
         index = np.argmin(rp.parameters[:, 1])
         taus = 1 / rp.rates[rp.labels == index]
         ci = confidence_interval(taus)
-        bins = np.exp(np.linspace(np.log(taus.min()), np.log(taus.max()), 100))
-        H = np.histogram(taus, bins=bins)
-        indmax = np.where(H[0] == H[0].max())[0]
-        val = 0.5 * (H[1][:-1][indmax] + H[1][1:][indmax])[0]
+        citaus = taus[(taus > ci[0]) & (taus < ci[1])]
+        bins = np.exp(np.linspace(np.log(citaus.min()), np.log(citaus.max()),
+                                  20))
+        h = np.histogram(taus, bins=bins)
+        indmax = np.where(h[0] == h[0].max())[0]
+        val = 0.5 * (h[1][:-1][indmax] + h[1][1:][indmax])[0]
         return [ci[0], val, ci[1]]
 
     def plot_surv(self, scale=1.5, sparse=1, save=False):
