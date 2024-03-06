@@ -26,9 +26,12 @@ class MapKinetics(object):
         self.utraj = metadata['traj']
         del tmpcontacts
 
-        self.dataname = f'{self.gibbs.residue}/den_write_data.npy'
-        self.topname = f'{self.gibbs.residue}/reduced.pdb'
-        self.fulltraj = f'{self.gibbs.residue}/chol_traj_all.xtc'
+        self.dataname = (f'basicrta-{self.cutoff}/{self.gibbs.residue}/'
+                         f'den_write_data.npy')
+        self.topname = (f'basicrta-{self.cutoff}/{self.gibbs.residue}/'
+                        f'reduced.pdb')
+        self.fulltraj = (f'basicrta-{self.cutoff}/{self.gibbs.residue}/'
+                         f'chol_traj_all.xtc')
 
     def _create_data(self):
         from numpy.lib.format import open_memmap
@@ -80,8 +83,9 @@ class MapKinetics(object):
             for k in range(self.gibbs.processed_results.ncomp):
                 swf = tmp[sortinds[k], 0].astype(int)
                 swl = tmp[sortinds[k], 1].astype(int)
-                with mda.Writer(f'{self.gibbs.residue}/chol_traj_comp{k}_top'
-                                f'{top_n}.xtc', len(write_ag.atoms)) as W:
+                with mda.Writer(f'basicrta-{self.cutoff}/{self.gibbs.residue}/'
+                                f'chol_traj_comp{k}_top{top_n}.xtc',
+                                len(write_ag.atoms)) as W:
                     for i, ts in tqdm(enumerate(u.trajectory[swf]),
                                       total=len(swf),
                                       desc=f'writing component {k}'):
