@@ -410,7 +410,8 @@ def plot_protein(residues, t_slow, bars, prot, label_cutoff=3, ylim=None):
     resids = np.array([int(res[1:]) for res in residues])
     max_inds = np.where(t_slow > label_cutoff * t_slow.mean())
     axs[0].plot(resids, t_slow, '.', color='C0')
-    axs[0].errorbar(resids, t_slow, yerr=bars, fmt='none', color='C0')
+    axs[0].errorbar(resids, t_slow, yerr=bars, fmt='none', color='C0',
+                    alpha=0.5)
     [axs[0].text(resids[ind], t_slow[ind], residues[ind]) for ind in
      max_inds[0]]
     axs[1].add_collection(patches)
