@@ -393,7 +393,7 @@ def make_residue_plots(results, comps=None, show=False):
     plot_trace(r, 'rates', comp=comps, save=True, show=show, yrange=[-0.1,6])
 
 
-def plot_protein(residues, t_slow, bars, prot, label_cutoff=3):
+def plot_protein(residues, t_slow, bars, prot, label_cutoff=3, ylim=None):
     with open('../../../../tm_dict.txt', 'r') as f:
         contents = f.read()
         prots = ast.literal_eval(contents)
@@ -426,9 +426,10 @@ def plot_protein(residues, t_slow, bars, prot, label_cutoff=3):
     axs[1].xaxis.set_minor_locator(MultipleLocator(10)) 
     axs[1].set_aspect(7)
     axs[0].margins(x=0)
-    plt.subplots_adjust(hspace=-0.45,top=0.92)
-    sns.despine(offset=10,ax=axs[0],bottom=True)
-    sns.despine(ax=axs[1],top=True,bottom=False,left=True)
+    axs[1].set_ylim(ylim)
+    plt.subplots_adjust(hspace=-0.45, top=0.92)
+    sns.despine(offset=10, ax=axs[0], bottom=True)
+    sns.despine(ax=axs[1], top=True, bottom=False, left=True)
     plt.savefig('figs/t_slow.png', bbox_inches='tight')
     plt.savefig('figs/t_slow.pdf', bbox_inches='tight')
 
