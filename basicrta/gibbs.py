@@ -77,7 +77,6 @@ class ProcessProtein(object):
                 result = gib.estimate_tau()
             taus.append(result)
         taus = np.array(taus)
-        print(taus.shape)
         bars = get_bars(taus)
         return taus[:, 1], bars
 
