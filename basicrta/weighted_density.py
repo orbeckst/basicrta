@@ -15,16 +15,23 @@ class MapKinetics(object):
                             split('_')[-1])
         self.write_sel = None
         self.contacts = contacts
-        metadata = self.contacts.dtype.metadata
+
+        with open(contacts, 'rb') as f:
+            tmpcontacts = pickle.load(f)
+        metadata = tmpcontacts.dtype.metadata
         self.ag1 = metadata['ag1']
         self.ag2 = metadata['ag2']
         self.ts = metadata['ts']
+        self.utop = metadata['top']
+        self.utraj = metadata['traj']
+        del tmpcontacts
 
-        self.dataname = f'{self.gibbs.residue}/den_write_data_all.npy'
+        self.dataname = f'{self.gibbs.residue}/den_write_data.npy'
         self.topname = f'{self.gibbs.residue}/reduced.pdb'
         self.fulltraj = f'{self.gibbs.residue}/chol_traj_all.xtc'
 
     def _create_data(self):
+        from numpy.lib.format import open_memmap
         with open(self.contacts, 'rb') as f:
             contacts = pickle.load(f)
 
@@ -40,21 +47,21 @@ class MapKinetics(object):
         indicators = self.gibbs.processed_results.indicator
 
         bframes, eframes = get_start_stop_frames(trajtimes, times, dt)
-        tmp = [np.arange(b, e) for b, e in zip(bframes, eframes)]
-        tmpL = [np.ones_like(np.arange(b, e)) * l for b, e, l in
-                zip(bframes, eframes, lipinds)]
-        tmpI = [indic * np.ones((len(np.arange(b, e)), ncomp))
-                for b, e, indic in zip(bframes, eframes, indicators)]
+        tmplens = [len(np.arange(b, e)) for b, e in zip(bframes, eframes)]
+        totlen = sum(tmplens)
+        write_data = open_memmap(self.dataname, mode='w+', dtype=np.float64,
+                                 shape=(totlen, ncomp+2))
 
-        write_frames = np.concatenate([*tmp]).astype(int)
-        write_linds = np.concatenate([*tmpL]).astype(int)
-        write_indics = np.concatenate([*tmpI])
+        j = 0
+        for b, e, l, i in zip(bframes, eframes, lipinds, indicators):
+            tmp = np.arange(b, e)
+            tmpl = np.ones_like(np.arange(b, e)) * l
+            tmpi = i * np.ones((len(np.arange(b, e)), ncomp))
 
-        darray = np.zeros((len(write_frames), ncomp + 2))
-        darray[:, 0], darray[:, 1], darray[:, 2:] = (write_frames,
-                                                     write_linds,
-                                                     write_indics)
-        np.save(self.dataname, darray)
+            write_data[j:j+len(tmp), 0] = tmp
+            write_data[j:j+len(tmp), 1] = tmpl
+            write_data[j:j+len(tmp), 2:] = tmpi
+            j += len(tmp)
 
     def create_traj(self, top_n=None):
         write_ag = self.ag1.atoms + self.ag2.residues[0].atoms
@@ -63,17 +70,19 @@ class MapKinetics(object):
         if not os.path.exists(self.dataname):
             self._create_data()
 
-        tmp = np.load(self.dataname)
-        wf, wl, wi = tmp[:, 0].astype(int), tmp[:, 1].astype(int), tmp[:, 2:]
+        tmp = np.load(self.dataname, mmap_mode='r')
+        u = mda.Universe(f'{self.utop}', f'{self.utraj}')
+        # wf, wl, wi = tmp[:, 0].astype(int), tmp[:, 1].astype(int), tmp[:, 2:]
 
         if top_n is not None:
-            sortinds = [wi[:, i].argsort()[::-1][:self.N] for i in
+            sortinds = [tmp[:, i].argsort()[::-1][:top_n] for i in
                         range(self.gibbs.processed_results.ncomp)]
             for k in range(self.gibbs.processed_results.ncomp):
-                swf, swl = wf[sortinds[k]], wl[sortinds[k]]
+                swf = tmp[sortinds[k], 0].astype(int)
+                swl = tmp[sortinds[k], 1].astype(int)
                 with mda.Writer(f'{self.gibbs.residue}/chol_traj_comp{k}_top'
-                                f'{self.N}.xtc', len(write_ag.atoms)) as W:
-                    for i, ts in tqdm(enumerate(self.u.trajectory[swf]),
+                                f'{top_n}.xtc', len(write_ag.atoms)) as W:
+                    for i, ts in tqdm(enumerate(u.trajectory[swf]),
                                       total=len(swf),
                                       desc=f'writing component {k}'):
                         W.write(self.ag1 +
@@ -81,10 +90,12 @@ class MapKinetics(object):
 
         else:
             with mda.Writer(self.fulltraj, len(write_ag.atoms)) as W:
-                for i, ts in tqdm(enumerate(self.u.trajectory[wf]),
-                                  total=len(wf), desc='writing trajectory'):
+                for i, ts in tqdm(enumerate(u.trajectory[tmp[:, 0].
+                                  astype(int)]), total=len(tmp),
+                                  desc='writing trajectory'):
                     W.write(self.ag1 +
-                            self.ag2.select_atoms(f'resid {wl[i]}').atoms)
+                            self.ag2.select_atoms(f'resid {int(tmp[i, 1])}').
+                            atoms)
 
     def weighted_densities(self, step=1, top_n=None):
         if not os.path.exists(self.fulltraj):
