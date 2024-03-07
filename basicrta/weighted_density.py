@@ -134,7 +134,8 @@ class MapKinetics(object):
                              f'wcomp{k}_all_step{step}.dx')
                             for k in range(self.gibbs.processed_results.ncomp)]
             else:
-                outnames = [f'{self.gibbs.residue}/wcomp{k}_all.dx' for k in
+                outnames = [(f'basicrta-{self.cutoff}/{self.gibbs.residue}/'
+                             f'wcomp{k}_all.dx') for k in
                             range(self.gibbs.processed_results.ncomp)]
 
             [den.export(outnames[k]) for k, den in

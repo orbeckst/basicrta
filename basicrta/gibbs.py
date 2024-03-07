@@ -89,6 +89,29 @@ class ProcessProtein(object):
         residues = list(self.residues.keys())
         plot_protein(residues, taus, bars, self.prot, **kwargs)
 
+    def b_color_structure(self, structure):
+        taus, bars = self._get_taus()
+        residues = list(self.residues.keys())
+        u = mda.Universe(structure)
+        prot = u.select_atoms('protein and name BB or name CA')
+        resids = prot.residues.resids
+
+        data = np.zeros(len(resids))
+        for res, t in zip(residues, taus):
+            ind = np.where(resids == int(res[1:]))[0]
+            data[ind] = t
+
+        u.add_TopologyAttr('tempfactors')
+        for k in tqdm(range(len(data))):
+            res = u.select_atoms(f'protein and resid {prot.residues.resids[k]}')
+            temp = data[k]
+            res.tempfactors = np.round(temp, 2)
+
+        if not outname:
+            prot.write('result_check/{0}_bcolored_{1}.pdb'.format(pdb, data))
+        else:
+            prot.write('result_check/{0}'.format(outname))
+
 
 class ParallelGibbs(object):
     """
