@@ -128,7 +128,8 @@ class MapKinetics(object):
                                  zdim=40)
             d.run(verbose=True, step=step)
             if step > 1:
-                outnames = [f'{self.gibbs.residue}/wcomp{k}_all_step{step}.dx'
+                outnames = [(f'basicrta-{self.cutoff}/{self.gibbs.residue}/'
+                             f'wcomp{k}_all_step{step}.dx')
                             for k in range(self.gibbs.processed_results.ncomp)]
             else:
                 outnames = [f'{self.gibbs.residue}/wcomp{k}_all.dx' for k in
@@ -153,10 +154,11 @@ class MapKinetics(object):
                                      zdim=40)
                 d.run(verbose=True, frames=sortinds[k][frames])
                 if step > 1:
-                    outname = (f'{self.gibbs.residue}/wcomp{k}_top{top_n}_step'
-                               f'{step}.dx')
+                    outname = (f'basicrta-{self.cutoff}/{self.gibbs.residue}/'
+                               f'wcomp{k}_top{top_n}_step{step}.dx')
                 else:
-                    outname = f'{self.gibbs.residue}/wcomp{k}_top{top_n}.dx'
+                    outname = (f'basicrta-{self.cutoff}/{self.gibbs.residue}/'
+                               f'wcomp{k}_top{top_n}.dx')
 
                 d.results.density.export(outname)
 
