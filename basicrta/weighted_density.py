@@ -67,9 +67,11 @@ class MapKinetics(object):
             j += len(tmp)
 
     def create_traj(self, top_n=None):
+        if os.path.exists(self.fulltraj):
+            raise FileExistsError(f'{self.fulltraj} exists, remove then rerun')
+
         write_ag = self.ag1.atoms + self.ag2.residues[0].atoms
         write_ag.atoms.write(self.topname)
-
         if not os.path.exists(self.dataname):
             self._create_data()
 
