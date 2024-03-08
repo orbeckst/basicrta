@@ -91,7 +91,7 @@ class ProcessProtein(object):
 
     def b_color_structure(self, structure):
         taus, bars = self._get_taus()
-        cis = bars[1]-bars[0]
+        cis = bars[1]+bars[0]
         residues = list(self.residues.keys())
         u = mda.Universe(structure)
 
@@ -100,7 +100,7 @@ class ProcessProtein(object):
         for tau, ci, residue in tqdm(zip(taus, cis, residues)):
             res = u.select_atoms(f'protein and resid {residue[1:]}')
             res.tempfactors = np.round(tau, 2)
-            res.occupancies = np.round(1/ci, 2)
+            res.occupancies = np.round(tau/ci, 2)
 
         u.select_atoms('protein').write('tau_bcolored.pdb')
 
