@@ -431,7 +431,7 @@ def plot_protein(residues, t_slow, bars, prot, label_cutoff=3, ylim=None):
     # axs[1].xaxis.set_minor_locator(MultipleLocator(10))
     axs[1].set_aspect(7)
     axs[0].margins(x=0)
-    axs[1].set_ylim(ylim)
+    axs[0].set_ylim(ylim)
     plt.subplots_adjust(hspace=-0.45, top=0.92)
     sns.despine(offset=10, ax=axs[0], bottom=True)
     sns.despine(ax=axs[1], top=True, bottom=False, left=True)
