@@ -92,7 +92,7 @@ class ProcessProtein(object):
     def b_color_structure(self, structure):
         taus, bars = self._get_taus()
         cis = bars[1]+bars[0]
-        errs = cis/taus
+        errs = taus/cis
         errs[errs != errs] = 0
         residues = list(self.residues.keys())
         u = mda.Universe(structure)
