@@ -99,10 +99,10 @@ class ProcessProtein(object):
 
         u.add_TopologyAttr('tempfactors')
         u.add_TopologyAttr('occupancies')
-        for tau, ci, residue in tqdm(zip(taus, cis, residues)):
+        for tau, err, residue in tqdm(zip(taus, errs, residues)):
             res = u.select_atoms(f'protein and resid {residue[1:]}')
             res.tempfactors = np.round(tau, 2)
-            res.occupancies = np.round(errs, 2)
+            res.occupancies = np.round(err, 2)
 
         u.select_atoms('protein').write('tau_bcolored.pdb')
 
