@@ -393,7 +393,8 @@ def make_residue_plots(results, comps=None, show=False):
     plot_trace(r, 'rates', comp=comps, save=True, show=show, yrange=[-0.1,6])
 
 
-def plot_protein(residues, t_slow, bars, prot, label_cutoff=3, ylim=None):
+def plot_protein(residues, t_slow, bars, prot, label_cutoff=3, ylim=None,
+                 major_tick=None, minor_tick=None):
     with open('../../../../tm_dict.txt', 'r') as f:
         contents = f.read()
         prots = ast.literal_eval(contents)
@@ -426,8 +427,8 @@ def plot_protein(residues, t_slow, bars, prot, label_cutoff=3, ylim=None):
     axs[0].get_xaxis().set_visible(False)
     axs[1].get_yaxis().set_visible(False)
     axs[1].xaxis.set_major_locator(MultipleLocator(100))
-    axs[0].yaxis.set_major_locator(MultipleLocator(400))
-    axs[0].yaxis.set_minor_locator(MultipleLocator(100))
+    axs[0].yaxis.set_major_locator(MultipleLocator(major_tick))
+    axs[0].yaxis.set_minor_locator(MultipleLocator(minor_tick))
     # axs[1].xaxis.set_minor_locator(MultipleLocator(10))
     axs[1].set_aspect(7)
     axs[0].margins(x=0)
