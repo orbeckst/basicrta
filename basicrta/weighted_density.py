@@ -29,7 +29,7 @@ class MapKinetics(object):
         self.dataname = (f'basicrta-{self.cutoff}/{self.gibbs.residue}/'
                          f'den_write_data.npy')
         self.topname = (f'basicrta-{self.cutoff}/{self.gibbs.residue}/'
-                        f'reduced.pdb')
+                        f'reduced.gro')
         self.fulltraj = (f'basicrta-{self.cutoff}/{self.gibbs.residue}/'
                          f'chol_traj_all.xtc')
 
