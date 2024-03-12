@@ -79,7 +79,7 @@ class MapKinetics(object):
         u = mda.Universe(f'{self.utop}', f'{self.utraj}')
 
         if top_n is not None:
-            sortinds = [tmp[:, i].argsort()[::-1][:top_n] for i in
+            sortinds = [tmp[:, i+2].argsort()[::-1][:top_n] for i in
                         range(self.gibbs.processed_results.ncomp)]
             for k in range(self.gibbs.processed_results.ncomp):
                 swf = tmp[sortinds[k], 0].astype(int)
