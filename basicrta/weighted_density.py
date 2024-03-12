@@ -99,8 +99,7 @@ class MapKinetics(object):
                                   astype(int)]), total=len(tmp),
                                   desc='writing trajectory'):
                     W.write(self.ag1 +
-                            self.ag2.select_atoms(f'resid {int(tmp[i, 1])}').
-                            atoms)
+                            self.ag2.select_atoms(f'resid {int(tmp[i, 1])}'))
 
     def weighted_densities(self, step=1, top_n=None):
         if not os.path.exists(self.fulltraj):
