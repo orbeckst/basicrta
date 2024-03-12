@@ -207,8 +207,8 @@ if __name__ == '__main__':
     utop = mda.Universe(args.top)
     [u.load_new(traj) for traj in args.traj]
     cutoff, nproc, nslices = args.cutoff, args.nproc, args.nslices
-    ag1 = utop.select_atoms(args.sel1)
-    ag2 = utop.select_atoms(args.sel2)
+    ag1 = utop.select_atoms(args.sel1, updating=True)
+    ag2 = utop.select_atoms(args.sel2, updating=True)
 
     MapContacts(u, ag1, ag2, nproc=nproc, nslices=nslices).run()
     ProcessContacts(cutoff, nproc).run()
