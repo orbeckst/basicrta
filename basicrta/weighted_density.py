@@ -77,7 +77,8 @@ class MapKinetics(object):
 
         tmp = np.load(self.dataname, mmap_mode='r')
         u = mda.Universe(f'{self.utop}', f'{self.utraj}')
-
+        ag1 = u.atoms[self.ag1.indices]
+        ag2 = u.atoms[self.ag2.indices]
         if top_n is not None:
             sortinds = [tmp[:, i+2].argsort()[::-1][:top_n] for i in
                         range(self.gibbs.processed_results.ncomp)]
@@ -90,16 +91,14 @@ class MapKinetics(object):
                     for i, ts in tqdm(enumerate(u.trajectory[swf]),
                                       total=len(swf),
                                       desc=f'writing component {k}'):
-                        W.write(self.ag1 +
-                                self.ag2.select_atoms(f'resid {swl[i]}'))
+                        W.write(ag1 + ag2.select_atoms(f'resid {swl[i]}'))
 
         else:
             with mda.Writer(self.fulltraj, len(write_ag.atoms)) as W:
                 for i, ts in tqdm(enumerate(u.trajectory[tmp[:, 0].
                                   astype(int)]), total=len(tmp),
                                   desc='writing trajectory'):
-                    W.write(self.ag1 +
-                            self.ag2.select_atoms(f'resid {int(tmp[i, 1])}'))
+                    W.write(ag1 + ag2.select_atoms(f'resid {int(tmp[i, 1])}'))
 
     def weighted_densities(self, step=1, top_n=None):
         if not os.path.exists(self.fulltraj):
