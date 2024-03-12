@@ -67,7 +67,7 @@ class MapKinetics(object):
             j += len(tmp)
 
     def create_traj(self, top_n=None):
-        if os.path.exists(self.fulltraj):
+        if os.path.exists(self.fulltraj) and top_n is None:
             raise FileExistsError(f'{self.fulltraj} exists, remove then rerun')
 
         write_ag = self.ag1.atoms + self.ag2.residues[0].atoms
@@ -77,7 +77,6 @@ class MapKinetics(object):
 
         tmp = np.load(self.dataname, mmap_mode='r')
         u = mda.Universe(f'{self.utop}', f'{self.utraj}')
-        # wf, wl, wi = tmp[:, 0].astype(int), tmp[:, 1].astype(int), tmp[:, 2:]
 
         if top_n is not None:
             sortinds = [tmp[:, i].argsort()[::-1][:top_n] for i in
