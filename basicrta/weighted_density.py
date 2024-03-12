@@ -91,7 +91,7 @@ class MapKinetics(object):
                                       total=len(swf),
                                       desc=f'writing component {k}'):
                         W.write(self.ag1 +
-                                self.ag2.select_atoms(f'resid {swl[i]}').atoms)
+                                self.ag2.select_atoms(f'resid {swl[i]}'))
 
         else:
             with mda.Writer(self.fulltraj, len(write_ag.atoms)) as W:
