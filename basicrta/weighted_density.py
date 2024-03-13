@@ -105,7 +105,7 @@ class MapKinetics(object):
             self.create_traj()
 
         resid = int(self.gibbs.residue[1:])
-        tmp = np.load(self.dataname, mmap_mode='r')
+        tmp = np.load(self.dataname, mmap_mode='r+')
         wi = tmp[:, 2:]
 
         # filter anything less than 50% certain
