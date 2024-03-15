@@ -100,7 +100,7 @@ class MapKinetics(object):
                                   desc='writing trajectory'):
                     W.write(ag1 + ag2.select_atoms(f'resid {int(tmp[i, 1])}'))
 
-    def weighted_densities(self, step=1, top_n=None):
+    def weighted_densities(self, step=1, top_n=None, filterP=0):
         if not os.path.exists(self.fulltraj):
             self.create_traj()
 
@@ -109,7 +109,8 @@ class MapKinetics(object):
         wi = tmp[:, 2:]
 
         # filter anything less than 50% certain
-        wi[wi < 0.5] = 0
+        if filterP > 0:
+            wi[wi < filterP] = 0
 
         # filter_inds = np.where(wi > filterP)
         # wi = wi[filter_inds[0]][::self.step]
