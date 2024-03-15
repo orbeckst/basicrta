@@ -1038,7 +1038,7 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
     ax1p.set_ylim(wcutoff, 2)
 
     for suffix in ['pdf', 'png']:
-        basename = (f'basicrta-{gibbs.cutoff}/{gibbs.residue}/"weight_vs_rate_'
+        basename = (f'basicrta-{gibbs.cutoff}/{gibbs.residue}/weight_vs_rate_'
                     f'results')
         if remove_noise:
             fig1a.savefig(f"{basename}_all_noiserm.{suffix}",
