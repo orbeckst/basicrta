@@ -168,7 +168,8 @@ class Gibbs(object):
     not been executed, which requires calling '.run()'
     """
 
-    def __init__(self, times=None, residue=None, loc=0, ncomp=15, niter=50000):
+    def __init__(self, times=None, residue=None, loc=0, ncomp=15, niter=50000,
+                 cutoff=None):
         self.times = times
         self.residue = residue
         self.niter = niter
@@ -176,6 +177,7 @@ class Gibbs(object):
         self.ncomp = ncomp
         self.g = 100
         self.burnin = 10000
+        self.cutoff = cutoff
         self.processed_results = Results()
 
         if times is not None:
@@ -189,7 +191,7 @@ class Gibbs(object):
 
         self.keys = {'times', 'residue', 'loc', 'ncomp', 'niter', 'g', 'burnin',
                      'processed_results', 'ts', 'mcweights', 'mcrates', 't',
-                     's'}
+                     's', 'cutoff'}
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -202,8 +204,8 @@ class Gibbs(object):
             os.mkdir(f'{self.residue}')
 
         # initialize arrays
-        self.indicator = np.memmap(f'{self.residue}/.indicator_{self.niter}.'
-                                   f'npy',
+        self.indicator = np.memmap(f'basicrta-{self.cutoff}/{self.residue}/'
+                                   f'.indicator_{self.niter}.npy',
                                    shape=((self.niter + 1) // self.g,
                                           self.times.shape[0]),
                                    mode='w+', dtype=np.uint8)
@@ -251,13 +253,6 @@ class Gibbs(object):
                 self.mcweights[ind], self.mcrates[ind] = weights, rates
                 self.indicator[ind] = s
 
-        # attributes to save
-        attrs = ["mcweights", "mcrates", "ncomp", "niter", "s", "t", "residue",
-                 "times"]
-        values = [self.mcweights, self.mcrates, self.ncomp, self.niter, self.s,
-                  self.t, self.residue, self.times]
-        
-        self._save_results(attrs, values)
         self._process_gibbs()
 
     def _process_gibbs(self):
@@ -279,7 +274,7 @@ class Gibbs(object):
 
         pindicator = np.zeros((self.times.shape[0], train_param))
         indicator = self._sample_indicator()
-        labels = mixture_and_plot(self, 'GaussianMixture', n_init=17,
+        labels = mixture_and_plot(self, 'GaussianMixture', n_init=101,
                                   n_components=lmode,
                                   covariance_type='spherical')
         for j in np.unique(inds[0]):
@@ -290,13 +285,21 @@ class Gibbs(object):
 
         pindicator = (pindicator.T / pindicator.sum(axis=1)).T
 
-        attrs = ["weights", "rates", "ncomp", "residue", "indicator", "labels",
-                 "iteration", "niter"]
+        attrs = ["weights", "rates", "ncomp", "residue", "indicator",
+                 "labels", "iteration", "niter"]
         values = [fweights, frates, lmode, self.residue, pindicator,
                   labels, indices, self.niter]
-        self._save_results(attrs, values, processed=True)
+        for attr, val in zip(attrs, values):
+            setattr(self, attr, val)
+
         self._estimate_params()
-        self._pickle_self()
+        self.save()
+
+    def result_plot(self, remove_noise=False):
+        from basicrta.util import mixture_and_plot
+        mixture_and_plot(self, 'GaussianMixture', n_init=101,
+                         n_components=self.processed_results.ncomp,
+                         covariance_type='spherical', remove_noise=remove_noise)
 
     def _sample_indicator(self):
         indicator = np.zeros(((self.niter+1)//self.g, self.times.shape[0]),
@@ -312,55 +315,46 @@ class Gibbs(object):
             indicator[i] = s
         return indicator[burnin_ind:]
 
-    def _pickle_self(self):
-        with open(f'{self.residue}/gibbs_{self.niter}.pkl', 'w+b') as f:
-            pickle.dump(self, f)
+    def save(self):
+        # keys = ['times', 'residue', 'loc', 'ncomp', 'niter', 'g', 'burnin',
+        #         'processed_results', 'ts', 'mcweights', 'mcrates', 't',
+        #         's', 'cutoff']
+        savedir = f'basicrta-{self.cutoff}/{self.residue}/'
+        filename = f'gibbs_{self.niter}.pkl'
+        if os.path.exists(savedir):
+            if os.path.exists(savedir+filename):
+                os.rename(savedir+filename, savedir+filename+'.bak')
+            with open(f'basicrta-{self.cutoff}/{self.residue}/gibbs_'
+                      f'{self.niter}.pkl', 'w+b') as f:
+                pickle.dump(self, f)
+        else:
+            raise OSError(f'No such directory: {savedir}')
 
-    def load_self(self, filename):
+    @staticmethod
+    def load(file):
         from basicrta.util import get_s
-        with open(filename, 'r+b') as f:
-            g = pickle.load(f)
+        keys = ['times', 'residue', 'loc', 'ncomp', 'niter', 'g', 'burnin',
+                'processed_results', 'ts', 'mcweights', 'mcrates', 't',
+                's', 'cutoff']
+        with open(file, 'r+b') as f:
+            r = pickle.load(f)
+
+        g = Gibbs()
+        for attr in keys:
+            try:
+                setattr(g, attr, r[f'{attr}'])
+            except AttributeError:
+                setattr(g, attr, None)
+
+        if isinstance(g.residue, np.ndarray):
+            g.residue = g.residue[0]
+
+        if g.t is None:
             g.t, g.s = get_s(g.times, g.ts)
+
+        if g.processed_results is None:
+            g._process_gibbs()
         return g
-
-    def _save_results(self, attrs, values, processed=False):
-        if processed:
-            r = self.processed_results
-        else:
-            r = self
-
-        for attr, value in zip(attrs, values):
-            setattr(r, attr, value)
-
-        if processed:
-            with (open(f'{r.residue}/processed_results_{r.niter}.pkl', 'wb')
-                  as W):
-                pickle.dump(r, W)
-        else:
-            with open(f'{r.residue}/results_{r.niter}.pkl', 'wb') as W:
-                pickle.dump(r, W)
-
-    def load_results(self, results, processed=False):
-        from basicrta.util import get_s
-        if processed:
-            with open(results, 'r+b') as f:
-                r = pickle.load(f)
-
-            for attr in list(r.keys):
-                setattr(self.processed_results, attr, r[f'{attr}'])
-        else:
-            with open(results, 'r+b') as f:
-                r = pickle.load(f)
-
-            for attr in list(r.keys):
-                setattr(self, attr, r[f'{attr}'])
-
-            if isinstance(self.residue, np.ndarray):
-                self.residue = self.residue[0]
-
-            # self.t, self.s = get_s(r.times, r.ts)
-            self._process_gibbs()
-        return self
 
     def hist_results(self, scale=1.5, save=False):
         cmap = mpl.colormaps['tab20']
@@ -392,8 +386,10 @@ class Gibbs(object):
         ax[1].set_xlim(1e-3, 10)
         plt.tight_layout()
         if save:
-            plt.savefig('hist_results.png', bbox_inches='tight')
-            plt.savefig('hist_results.pdf', bbox_inches='tight')
+            plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'
+                        'hist_results.png', bbox_inches='tight')
+            plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'
+                        'hist_results.pdf', bbox_inches='tight')
         plt.show()
 
     def plot_results(self, scale=1.5, sparse=1, save=False):
@@ -417,8 +413,10 @@ class Gibbs(object):
             ax[1].legend(title='component')
             plt.tight_layout()
             if save:
-                plt.savefig('plot_results.png', bbox_inches='tight')
-                plt.savefig('plot_results.pdf', bbox_inches='tight')
+                plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'
+                            'plot_results.png', bbox_inches='tight')
+                plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'
+                            'plot_results.pdf', bbox_inches='tight')
             plt.show()
 
     def _estimate_params(self):
@@ -427,7 +425,7 @@ class Gibbs(object):
         rs = [rp.rates[rp.labels == i] for i in range(rp.ncomp)]
         ws = [rp.weights[rp.labels == i] for i in range(rp.ncomp)]
         bounds = np.array([confidence_interval(d) for d in rs])
-        params = np.array([[np.mean(w), np.mean(r)] for w,r in zip(ws, rs)])
+        params = np.array([[np.mean(w), np.mean(r)] for w, r in zip(ws, rs)])
 
         setattr(rp, 'parameters', params)
         setattr(rp, 'intervals', bounds)
@@ -461,8 +459,10 @@ class Gibbs(object):
         ax.legend(title='component')
         plt.tight_layout()
         if save:
-            plt.savefig('s_vs_t.png', bbox_inches='tight')
-            plt.savefig('s_vs_t.pdf', bbox_inches='tight')
+            plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'
+                        's_vs_t.png', bbox_inches='tight')
+            plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'
+                        's_vs_t.pdf', bbox_inches='tight')
         plt.show()
 
 

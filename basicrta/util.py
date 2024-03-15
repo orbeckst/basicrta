@@ -394,7 +394,7 @@ def make_residue_plots(results, comps=None, show=False):
 
 
 def plot_protein(residues, t_slow, bars, prot, label_cutoff=3, ylim=None,
-                 major_tick=None, minor_tick=None):
+                 major_tick=None, minor_tick=None, scale=1):
     with open('../../../../tm_dict.txt', 'r') as f:
         contents = f.read()
         prots = ast.literal_eval(contents)
@@ -402,8 +402,8 @@ def plot_protein(residues, t_slow, bars, prot, label_cutoff=3, ylim=None,
     if not os.path.exists('figs'):
         os.mkdir('figs')
 
-    height, width = 3, 4
-    fig, axs = plt.subplots(2,1,figsize=(width, height),sharex=True)
+    height, width = 3*scale, 4*scale
+    fig, axs = plt.subplots(2, 1, figsize=(width, height), sharex=True)
     axs[0].tick_params(axis='both', which='major', labelsize=10)
     axs[1].tick_params(axis='both', which='major', labelsize=10)
     p =[Rectangle((tm(prots[prot]['helices'], i+1)[0][0], 0),
@@ -640,9 +640,11 @@ def get_bins(x, ts):
     return np.arange(1, int(x.max()//ts)+3)*ts
 
 
-def mixture_and_plot(gibbs, method, **kwargs):
+def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
+                     **kwargs):
     from sklearn import mixture
     from scipy import stats
+    from basicrta.util import confidence_interval
 
     clu = getattr(mixture, method)
     keyvalpairs = [f'{key}_{val}' for key,val in zip(kwargs.keys(),
@@ -659,9 +661,9 @@ def mixture_and_plot(gibbs, method, **kwargs):
     train_param = lmode
 
     train_inds = np.where(lens == train_param)[0]
-    train_weights = (weights[train_inds][weights[train_inds]>wcutoff].
+    train_weights = (weights[train_inds][weights[train_inds] > wcutoff].
                      reshape(-1, train_param))
-    train_rates = (rates[train_inds][weights[train_inds]>wcutoff].
+    train_rates = (rates[train_inds][weights[train_inds] > wcutoff].
                    reshape(-1, train_param))
 
     inds = np.where(weights > wcutoff)
@@ -679,104 +681,445 @@ def mixture_and_plot(gibbs, method, **kwargs):
     r = clu(**kwargs)
     labels = r.fit_predict(np.log(train_data))
     uniq_labels = np.unique(labels)
-    leg_labels = np.array([f'{i}' for i in uniq_labels])
+    leg_labels = np.array([' ' for i in uniq_labels])
     predict_labels = r.predict(np.log(predict_data))
+    all_labels = r.predict(np.log(data))
 
-    #sorts = r.precisions_.argsort()[::-1]
-    sorts = r.means_[:, 0].argsort()[::-1]
+    ainds = [np.where(all_labels == i)[0] for i in uniq_labels]
+    cis = np.array([confidence_interval(arates[ainds[i]]) for i in uniq_labels])
+    lns = np.log(cis[:, 1] / cis[:, 0])
+    noise_inds = np.where(lns > 1)[0]
+
+    vsorts = r.means_[np.delete(uniq_labels, noise_inds), 0].argsort()[::-1]
+    nsorts = r.means_[noise_inds, 0].argsort()[::-1]
+    sorts = np.concatenate([np.delete(uniq_labels, noise_inds)[vsorts],
+                            noise_inds[nsorts]])
     sorts = np.array([np.where(sorts == i)[0][0] for i in uniq_labels])
-    # tinds = np.array([np.where(labels == i)[0] for i in uniq_labels],
-    #                  dtype=object)
-    # pinds = np.array([np.where(predict_labels == i)[0] for i in uniq_labels],
-    #                  dtype=object)
-    #
-    # tindsi = tinds[sorts]
-    # pindsi = pinds[sorts]
 
-    # for i in uniq_labels:
-    #     labels[tinds[i]] =
+    labels = sorts[labels]
+    predict_labels = sorts[predict_labels]
+    all_labels = sorts[all_labels]
+    uniq_vlabels = uniq_labels[:-len(noise_inds)]
+    if remove_noise:
+        uniq_labels = uniq_vlabels
+
+    tinds = [np.where(labels == i)[0] for i in uniq_labels]
+    pinds = [np.where(predict_labels == i)[0] for i in uniq_labels]
 
     train_data_inds = np.array([np.where(data == col)[0][0] for col in
                                 train_data])
     predict_data_inds = np.array([np.where(data == col)[0][0] for col in
                                   predict_data])
-    all_labels = r.predict(np.log(data))
-
-    labels = sorts[labels]
-    predict_labels = sorts[predict_labels]
-    all_labels = sorts[all_labels]
-
-    tinds = [np.where(labels == i)[0] for i in uniq_labels]
-    pinds = [np.where(predict_labels == i)[0] for i in uniq_labels]
 
     cmap = mpl.colormaps['tab10']
     cmap.set_under()
-    scale, sparse = 3, 1
 
-    fig, ax = plt.subplots(2, 2, figsize=(4*scale, 3*scale))
-    for i in uniq_labels:
-        bins = np.exp(np.linspace(np.log(trates[tinds[i]].min()),
-                                  np.log(trates[tinds[i]].max()), 50))
-        ax[0, 0].hist(prates[pinds[i]], bins=bins, label=leg_labels[i],
-                      color=cmap(get_color(i)), zorder=1)
-        ax[0, 0].hist(trates[tinds[i]], bins=bins, label=leg_labels[i],
+    figa, axa = plt.subplots(2, 2, figsize=(4*scale, 3*scale))
+    figt, axt = plt.subplots(2, 2, figsize=(4*scale, 3*scale))
+    figp, axp = plt.subplots(2, 2, figsize=(4*scale, 3*scale))
+
+    # create histogram
+    fig1a, ax1a = plt.subplots(1, figsize=(4, 3))
+    fig1t, ax1t = plt.subplots(1, figsize=(4, 3))
+    fig1p, ax1p = plt.subplots(1, figsize=(4, 3))
+    for i in uniq_labels[::-1]:
+        # bins = np.exp(np.linspace(np.log(trates[tinds[i]].min()),
+        #                           np.log(trates[tinds[i]].max()), 50))
+        bins = np.linspace(trates[tinds[i]].min(), trates[tinds[i]].max(), 50)
+        axa[0, 0].hist(prates[pinds[i]], bins=bins, label=leg_labels[i],
+                      color=cmap(get_color(i)), zorder=1, alpha=0.5)
+        axa[0, 0].hist(trates[tinds[i]], bins=bins, label=leg_labels[i],
                       color=cmap(get_color(i)), zorder=2, alpha=0.5,
                       edgecolor='k')
+        axt[0, 0].hist(trates[tinds[i]], bins=bins, label=leg_labels[i],
+                      color=cmap(get_color(i)), zorder=2, alpha=0.5,
+                      edgecolor='k')
+        axp[0, 0].hist(prates[pinds[i]], bins=bins, label=leg_labels[i],
+                      color=cmap(get_color(i)), zorder=1, alpha=0.5)
 
-    ax[0, 0].set_xscale('log')
-    ax[0, 0].set_xlabel(r'rate ($ns^{-1}$)')
-    ax[0, 0].set_ylabel('count')
-    ax[0, 0].set_xlim(rcutoff, 10)
+
+        ax1a.hist(prates[pinds[i]], bins=bins, label=leg_labels[i],
+                 color=cmap(get_color(i)), zorder=1, alpha=0.5)
+        ax1a.hist(trates[tinds[i]], bins=bins, label=leg_labels[i],
+                 color=cmap(get_color(i)), zorder=2, alpha=0.5,
+                 edgecolor='k')
+        ax1p.hist(prates[pinds[i]], bins=bins, label=leg_labels[i],
+                 color=cmap(get_color(i)), zorder=1, alpha=0.5)
+        ax1t.hist(trates[tinds[i]], bins=bins, label=leg_labels[i],
+                 color=cmap(get_color(i)), zorder=2, alpha=0.5,
+                 edgecolor='k')
+
+
+    # for combined plot
+    axa[0, 0].set_xscale('log')
+    axa[0, 0].set_xlabel(r'rate ($ns^{-1}$)')
+    axa[0, 0].set_ylabel('count')
+    axa[0, 0].set_xlim(rcutoff, 10)
+    axa[0, 0].set_ylim(bottom=wcutoff)
+
+    axt[0, 0].set_xscale('log')
+    axt[0, 0].set_xlabel(r'rate ($ns^{-1}$)')
+    axt[0, 0].set_ylabel('count')
+    axt[0, 0].set_xlim(rcutoff, 10)
+    axt[0, 0].set_ylim(bottom=wcutoff)
+
+    axp[0, 0].set_xscale('log')
+    axp[0, 0].set_xlabel(r'rate ($ns^{-1}$)')
+    axp[0, 0].set_ylabel('count')
+    axp[0, 0].set_xlim(rcutoff, 10)
+    axp[0, 0].set_ylim(bottom=wcutoff)
+
+    # for individual plot
+    ax1a.set_xscale('log')
+    ax1a.set_xlabel(r'rate ($ns^{a-1}$)')
+    ax1a.set_ylabel('count')
+    ax1a.set_xlim(rcutoff, 10)
+    ax1a.set_ylim(bottom=wcutoff)
+
+    ax1t.set_xscale('log')
+    ax1t.set_xlabel(r'rate ($ns^{-1}$)')
+    ax1t.set_ylabel('count')
+    ax1t.set_xlim(rcutoff, 10)
+    ax1t.set_ylim(bottom=wcutoff)
+
+    ax1p.set_xscale('log')
+    ax1p.set_xlabel(r'rate ($ns^{-1}$)')
+    ax1p.set_ylabel('count')
+    ax1p.set_xlim(rcutoff, 10)
+    ax1p.set_ylim(bottom=wcutoff)
+    for suffix in ['png', 'pdf']:
+        basename = f"basicrta-{gibbs.cutoff}/{gibbs.residue}/result_hist"
+        if remove_noise:
+            fig1a.savefig(f"{basename}_all_noiserm.{suffix}",
+                          bbox_inches='tight')
+            fig1t.savefig(f"{basename}_train_noiserm.{suffix}",
+                          bbox_inches='tight')
+            fig1p.savefig(f"{basename}_validate_noiserm.{suffix}",
+                          bbox_inches='tight')
+        else:
+            fig1a.savefig(f"{basename}_all.{suffix}",
+                          bbox_inches='tight')
+            fig1t.savefig(f"{basename}_train.{suffix}",
+                          bbox_inches='tight')
+            fig1p.savefig(f"{basename}_validate.{suffix}",
+                          bbox_inches='tight')
+
+    #create weight, rate vs sample plots
+    fig1a, ax1a = plt.subplots(1, figsize=(4, 3))
+    fig1t, ax1t = plt.subplots(1, figsize=(4, 3))
+    fig1p, ax1p = plt.subplots(1, figsize=(4, 3))
+    fig2a, ax2a = plt.subplots(1, figsize=(4, 3))
+    fig2t, ax2t = plt.subplots(1, figsize=(4, 3))
+    fig2p, ax2p = plt.subplots(1, figsize=(4, 3))
 
     row, col = gibbs.mcweights[burnin_ind:].shape
     iter_arr = np.mgrid[:row, :col][0]
     iters = iter_arr[inds]
     titer, piter = iters[train_data_inds], iters[predict_data_inds]
-    for i in uniq_labels:
-        ax[0, 1].plot(piter[pinds[i]], pweights[pinds[i]][::sparse], '.',
-                      label=leg_labels[i], color=cmap(get_color(i)), zorder=1)
-        ax[1, 1].plot(piter[pinds[i]], prates[pinds[i]][::sparse], '.',
-                      label=leg_labels[i], color=cmap(get_color(i)), zorder=1)
-        ax[0, 1].plot(titer[tinds[i]], tweights[tinds[i]][::sparse], '.',
-                      label=leg_labels[i], color=cmap(get_color(i)), zorder=2,
-                      alpha=0.5, mec='k', mew=1)
-        ax[1, 1].plot(titer[tinds[i]], trates[tinds[i]][::sparse], '.',
-                      label=leg_labels[i], color=cmap(get_color(i)), zorder=2,
-                      alpha=0.5, mec='k', mew=1)
 
-    ax[0, 1].set_yscale('log')
-    ax[0, 1].set_ylabel(r'weight')
-    ax[1, 1].set_yscale('log')
-    ax[1, 1].set_ylabel(r'rate ($ns^{-1}$)')
-    ax[1, 1].set_xlabel('sample')
-    ax[0, 1].set_xlabel('sample')
-    ax[0, 1].set_ylim(wcutoff, 1)
-    ax[1, 1].set_xlabel('sample')
-    ax[1, 1].set_ylim(rcutoff, 10)
+    for i in uniq_labels[::-1]:
+        axa[0, 1].plot(piter[pinds[i]], pweights[pinds[i]][::sparse], '.',
+                       label=leg_labels[i], color=cmap(get_color(i)), zorder=1)
+        axa[1, 1].plot(piter[pinds[i]], prates[pinds[i]][::sparse], '.',
+                       label=leg_labels[i], color=cmap(get_color(i)), zorder=1)
+        axa[0, 1].plot(titer[tinds[i]], tweights[tinds[i]][::sparse], '.',
+                       label=leg_labels[i], color=cmap(get_color(i)), zorder=2,
+                       alpha=0.5, mec='k', mew=0.5)
+        axa[1, 1].plot(titer[tinds[i]], trates[tinds[i]][::sparse], '.',
+                       label=leg_labels[i], color=cmap(get_color(i)), zorder=2,
+                       alpha=0.5, mec='k', mew=0.5)
+        axt[0, 1].plot(titer[tinds[i]], tweights[tinds[i]][::sparse], '.',
+                       label=leg_labels[i], color=cmap(get_color(i)), zorder=2,
+                       alpha=0.9, mec='k', mew=0.5)
+        axt[1, 1].plot(titer[tinds[i]], trates[tinds[i]][::sparse], '.',
+                       label=leg_labels[i], color=cmap(get_color(i)), zorder=2,
+                       alpha=0.9, mec='k', mew=0.5)
+        axp[0, 1].plot(piter[pinds[i]], pweights[pinds[i]][::sparse], '.',
+                       alpha=0.5, label=leg_labels[i], color=cmap(get_color(i)),
+                       zorder=1)
+        axp[1, 1].plot(piter[pinds[i]], prates[pinds[i]][::sparse], '.',
+                       alpha=0.5, label=leg_labels[i], color=cmap(get_color(i)),
+                       zorder=1)
 
-    for i in uniq_labels:
-        ax[1, 0].plot(prates[pinds[i]], pweights[pinds[i]], '.',
-                      label=leg_labels[i],
-                      color=cmap(get_color(i)), zorder=1)
-        ax[1, 0].plot(trates[tinds[i]], tweights[tinds[i]], '.',
-                      label=leg_labels[i],
-                      color=cmap(get_color(i)), zorder=2, alpha=0.5,
-                      mec='k', mew=1)
+        ax1a.plot(piter[pinds[i]], pweights[pinds[i]][::sparse], '.',
+                  label=leg_labels[i], color=cmap(get_color(i)), zorder=1)
+        ax1a.plot(titer[tinds[i]], tweights[tinds[i]][::sparse], '.',
+                  label=leg_labels[i], color=cmap(get_color(i)), zorder=2,
+                  alpha=0.5, mec='k', mew=0.5)
+        ax2a.plot(piter[pinds[i]], prates[pinds[i]][::sparse], '.',
+                  label=leg_labels[i], color=cmap(get_color(i)), zorder=1)
+        ax2a.plot(titer[tinds[i]], trates[tinds[i]][::sparse], '.',
+                  label=leg_labels[i], color=cmap(get_color(i)), zorder=2,
+                  alpha=0.5, mec='k', mew=0.5)
 
-    ax[1, 0].set_yscale('log')
-    ax[1, 0].set_xscale('log')
-    ax[1, 0].set_ylabel('weight')
-    ax[1, 0].set_xlabel(r'rate ($ns^{-1}$)')
-    ax[1, 0].set_xlim(rcutoff, 10)
-    ax[1, 0].set_ylim(wcutoff, 1)
+        ax1t.plot(titer[tinds[i]], tweights[tinds[i]][::sparse], '.',
+                  label=leg_labels[i], color=cmap(get_color(i)), zorder=2,
+                  alpha=0.9, mec='k', mew=0.5)
+        ax1p.plot(piter[pinds[i]], pweights[pinds[i]][::sparse], '.',
+                  alpha=0.7, label=leg_labels[i], color=cmap(get_color(i)),
+                  zorder=1)
 
-    handles, plot_labels = ax[0, 0].get_legend_handles_labels()
-    fig.legend(handles, plot_labels, loc='lower center',
-               ncols=len(plot_labels)/2, title='cluster')
-    fig.suptitle(f'{method} '+' '.join(keyvalpairs), fontsize=16)
-    plt.tight_layout(rect=(0, 0.05, 1, 1))
-    plt.savefig(f"{gibbs.residue}/results_{method}_{kwarg_str}.png",
-                bbox_inches='tight')
-    plt.show()
+        ax2t.plot(titer[tinds[i]], trates[tinds[i]][::sparse], '.',
+                  label=leg_labels[i], color=cmap(get_color(i)), zorder=2,
+                  alpha=0.9, mec='k', mew=0.5)
+        ax2p.plot(piter[pinds[i]], prates[pinds[i]][::sparse], '.',
+                  alpha=0.7, label=leg_labels[i], color=cmap(get_color(i)), zorder=1)
+
+    # for combined plots
+    axa[0, 1].set_yscale('log')
+    axa[0, 1].set_ylabel(r'weight')
+    axa[1, 1].set_yscale('log')
+    axa[1, 1].set_ylabel(r'rate ($ns^{-1}$)')
+    axa[1, 1].set_xlabel('sample')
+    axa[0, 1].set_xlabel('sample')
+    axa[0, 1].set_ylim(wcutoff, 2)
+    axa[1, 1].set_xlabel('sample')
+    axa[1, 1].set_ylim(rcutoff, 10)
+
+    axt[0, 1].set_yscale('log')
+    axt[0, 1].set_ylabel(r'weight')
+    axt[1, 1].set_yscale('log')
+    axt[1, 1].set_ylabel(r'rate ($ns^{-1}$)')
+    axt[1, 1].set_xlabel('sample')
+    axt[0, 1].set_xlabel('sample')
+    axt[0, 1].set_ylim(wcutoff, 2)
+    axt[1, 1].set_xlabel('sample')
+    axt[1, 1].set_ylim(rcutoff, 10)
+
+    axp[0, 1].set_yscale('log')
+    axp[0, 1].set_ylabel(r'weight')
+    axp[1, 1].set_yscale('log')
+    axp[1, 1].set_ylabel(r'rate ($ns^{-1}$)')
+    axp[1, 1].set_xlabel('sample')
+    axp[0, 1].set_xlabel('sample')
+    axp[0, 1].set_ylim(wcutoff, 2)
+    axp[1, 1].set_xlabel('sample')
+    axp[1, 1].set_ylim(rcutoff, 10)
+
+    # for individual plots
+    ax1a.set_yscale('log')
+    ax1a.set_ylabel(r'weight')
+    ax1a.set_ylim(wcutoff, 2)
+    ax1a.set_xlabel('sample')
+
+    ax2a.set_yscale('log')
+    ax2a.set_ylabel(r'rate ($ns^{-1}$)')
+    ax2a.set_ylim(rcutoff, 10)
+    ax2a.set_xlabel('sample')
+
+    ax1t.set_yscale('log')
+    ax1t.set_ylabel(r'weight')
+    ax1t.set_ylim(wcutoff, 2)
+    ax1t.set_xlabel('sample')
+
+    ax2t.set_yscale('log')
+    ax2t.set_ylabel(r'rate ($ns^{-1}$)')
+    ax2t.set_ylim(rcutoff, 10)
+    ax2t.set_xlabel('sample')
+
+    ax1p.set_yscale('log')
+    ax1p.set_ylabel(r'weight')
+    ax1p.set_ylim(wcutoff, 2)
+    ax1p.set_xlabel('sample')
+
+    ax2p.set_yscale('log')
+    ax2p.set_ylabel(r'rate ($ns^{-1}$)')
+    ax2p.set_ylim(rcutoff, 10)
+    ax2p.set_xlabel('sample')
+
+    for suffix in ['png', 'pdf']:
+        wbasename = f"basicrta-{gibbs.cutoff}/{gibbs.residue}/weight_results"
+        rbasename = f"basicrta-{gibbs.cutoff}/{gibbs.residue}/rate_results"
+        if remove_noise:
+            fig1a.savefig(f"{wbasename}_all_noiserm.{suffix}",
+                         bbox_inches='tight')
+            fig1t.savefig(f"{wbasename}_train_noiserm.{suffix}",
+                         bbox_inches='tight')
+            fig1p.savefig(f"{wbasename}_validate_noiserm.{suffix}",
+                         bbox_inches='tight')
+            fig2a.savefig(f"{rbasename}_all_noiserm.{suffix}",
+                         bbox_inches='tight')
+            fig2t.savefig(f"{rbasename}_train_noiserm.{suffix}",
+                         bbox_inches='tight')
+            fig2p.savefig(f"{rbasename}_validate_noiserm.{suffix}",
+                         bbox_inches='tight')
+        else:
+            fig1a.savefig(f"{wbasename}_all.{suffix}",
+                         bbox_inches='tight')
+            fig1t.savefig(f"{wbasename}_train.{suffix}",
+                         bbox_inches='tight')
+            fig1p.savefig(f"{wbasename}_validate.{suffix}",
+                         bbox_inches='tight')
+            fig2a.savefig(f"{rbasename}_all.{suffix}",
+                         bbox_inches='tight')
+            fig2t.savefig(f"{rbasename}_train.{suffix}",
+                         bbox_inches='tight')
+            fig2p.savefig(f"{rbasename}_validate.{suffix}",
+                         bbox_inches='tight')
+
+    # create weight vs rate plot
+    fig1a, ax1a = plt.subplots(1, figsize=(4, 3))
+    fig1t, ax1t = plt.subplots(1, figsize=(4, 3))
+    fig1p, ax1p = plt.subplots(1, figsize=(4, 3))
+    for i in uniq_labels[::-1]:
+        axa[1, 0].plot(prates[pinds[i]], pweights[pinds[i]], '.',
+                       alpha=0.7, label=leg_labels[i],
+                       color=cmap(get_color(i)), zorder=1)
+        axa[1, 0].plot(trates[tinds[i]], tweights[tinds[i]], '.',
+                       label=leg_labels[i],
+                       color=cmap(get_color(i)), zorder=2, alpha=0.5,
+                       mec='k', mew=0.5)
+        axt[1, 0].plot(trates[tinds[i]], tweights[tinds[i]], '.',
+                       label=leg_labels[i],
+                       color=cmap(get_color(i)), zorder=2, alpha=0.5,
+                       mec='k', mew=0.5)
+        axp[1, 0].plot(prates[pinds[i]], pweights[pinds[i]], '.',
+                       alpha=0.7, label=leg_labels[i],
+                       color=cmap(get_color(i)), zorder=1)
+
+        ax1a.plot(prates[pinds[i]], pweights[pinds[i]], '.', alpha=0.7,
+                  label=leg_labels[i], color=cmap(get_color(i)), zorder=1)
+        ax1a.plot(trates[tinds[i]], tweights[tinds[i]], '.',
+                  label=leg_labels[i], color=cmap(get_color(i)), zorder=2,
+                  alpha=0.5, mec='k', mew=0.5)
+        ax1t.plot(trates[tinds[i]], tweights[tinds[i]], '.',
+                  label=leg_labels[i], color=cmap(get_color(i)), zorder=2,
+                  alpha=0.5, mec='k', mew=0.5)
+        ax1p.plot(prates[pinds[i]], pweights[pinds[i]], '.', alpha=0.7,
+                  label=leg_labels[i], color=cmap(get_color(i)), zorder=1)
+
+    # for combined plots
+    axa[1, 0].set_yscale('log')
+    axa[1, 0].set_xscale('log')
+    axa[1, 0].set_ylabel('weight')
+    axa[1, 0].set_xlabel(r'rate ($ns^{-1}$)')
+    axa[1, 0].set_xlim(rcutoff, 10)
+    axa[1, 0].set_ylim(wcutoff, 2)
+
+    axt[1, 0].set_yscale('log')
+    axt[1, 0].set_xscale('log')
+    axt[1, 0].set_ylabel('weight')
+    axt[1, 0].set_xlabel(r'rate ($ns^{-1}$)')
+    axt[1, 0].set_xlim(rcutoff, 10)
+    axt[1, 0].set_ylim(wcutoff, 2)
+
+    axp[1, 0].set_yscale('log')
+    axp[1, 0].set_xscale('log')
+    axp[1, 0].set_ylabel('weight')
+    axp[1, 0].set_xlabel(r'rate ($ns^{-1}$)')
+    axp[1, 0].set_xlim(rcutoff, 10)
+    axp[1, 0].set_ylim(wcutoff, 2)
+
+    # for individual plots
+    ax1a.set_yscale('log')
+    ax1a.set_xscale('log')
+    ax1a.set_ylabel('weight')
+    ax1a.set_xlabel(r'rate ($ns^{-1}$)')
+    ax1a.set_xlim(rcutoff, 10)
+    ax1a.set_ylim(wcutoff, 2)
+
+    ax1t.set_yscale('log')
+    ax1t.set_xscale('log')
+    ax1t.set_ylabel('weight')
+    ax1t.set_xlabel(r'rate ($ns^{-1}$)')
+    ax1t.set_xlim(rcutoff, 10)
+    ax1t.set_ylim(wcutoff, 2)
+
+    ax1p.set_yscale('log')
+    ax1p.set_xscale('log')
+    ax1p.set_ylabel('weight')
+    ax1p.set_xlabel(r'rate ($ns^{-1}$)')
+    ax1p.set_xlim(rcutoff, 10)
+    ax1p.set_ylim(wcutoff, 2)
+
+    for suffix in ['pdf', 'png']:
+        basename = (f'basicrta-{gibbs.cutoff}/{gibbs.residue}/"weight_vs_rate_'
+                    f'results')
+        if remove_noise:
+            fig1a.savefig(f"{basename}_all_noiserm.{suffix}",
+                         bbox_inches='tight')
+            fig1t.savefig(f"{basename}_train_noiserm.{suffix}",
+                         bbox_inches='tight')
+            fig1p.savefig(f"{basename}_validate_noiserm.{suffix}",
+                         bbox_inches='tight')
+        else:
+            fig1a.savefig(f"{basename}_all.{suffix}",
+                         bbox_inches='tight')
+            fig1t.savefig(f"{basename}_train.{suffix}",
+                         bbox_inches='tight')
+            fig1p.savefig(f"{basename}_validate.{suffix}",
+                         bbox_inches='tight')
+
+    # finish legend for combined plots
+    ahandles, aplot_labels = axa[0, 0].get_legend_handles_labels()
+    thandles, tplot_labels = axt[0, 0].get_legend_handles_labels()
+    phandles, pplot_labels = axp[0, 0].get_legend_handles_labels()
+
+    phs = [plt.plot([], marker="", ls="")[0]]
+    pa, pt, pp, pha, pht, php = [], [], [], [], [], []
+    for k in range(len(uniq_labels)):
+        [pa.append(labl) for labl in aplot_labels[2*k:2*(k+1)]]
+        [pt.append(labl) for labl in tplot_labels[k:k+1]]
+        [pp.append(labl) for labl in pplot_labels[k:k+1]]
+        pa.append(f'{len(uniq_labels)-k-1}')
+        pt.append(f'{len(uniq_labels)-k-1}')
+        pp.append(f'{len(uniq_labels)-k-1}')
+        [pha.append(hand) for hand in ahandles[2*k:2*k+2]]
+        [pht.append(hand) for hand in thandles[k:k+1]]
+        [php.append(hand) for hand in phandles[k:k+1]]
+        pha.append(phs[0])
+        pht.append(phs[0])
+        php.append(phs[0])
+
+    ahandles = phs*3 + pha[::-1]
+    thandles = phs*2 + pht[::-1]
+    phandles = phs*2 + php[::-1]
+    aplot_labels = (['Cluster', 'Validation', 'Training'] + pa[::-1])
+    tplot_labels = (['Cluster', 'Training'] + pt[::-1])
+    pplot_labels = (['Cluster', 'Validation'] + pp[::-1])
+
+    la = figa.legend(ahandles, aplot_labels, loc='lower center',
+                     ncols=len(uniq_labels)+1)
+    lt = figt.legend(thandles, tplot_labels, loc='lower center',
+                     ncols=len(uniq_labels)+1)
+    lp = figp.legend(phandles, pplot_labels, loc='lower center',
+                     ncols=len(uniq_labels)+1)
+
+    for vpack in la._legend_handle_box.get_children()[1:]:
+        for hpack in vpack.get_children()[:1]:
+            hpack.get_children()[0].set_width(0)
+    for vpack in lt._legend_handle_box.get_children()[1:]:
+        for hpack in vpack.get_children()[:1]:
+            hpack.get_children()[0].set_width(0)
+    for vpack in lp._legend_handle_box.get_children()[1:]:
+        for hpack in vpack.get_children()[:1]:
+            hpack.get_children()[0].set_width(0)
+
+    figa.tight_layout(rect=(0, 0.1, 1, 1))
+    figt.tight_layout(rect=(0, 0.1, 1, 1))
+    figp.tight_layout(rect=(0, 0.1, 1, 1))
+
+    figa.subplots_adjust(wspace=0.3, hspace=0.3)
+    figt.subplots_adjust(wspace=0.3, hspace=0.3)
+    figp.subplots_adjust(wspace=0.3, hspace=0.3)
+    for suffix in ['pdf', 'png']:
+        basename = f'basicrta-{gibbs.cutoff}/{gibbs.residue}/combined_results'
+        if remove_noise:
+            figa.savefig(f"{basename}_all_noiserm.{suffix}",
+                         bbox_inches='tight')
+            figt.savefig(f"{basename}_train_noiserm.{suffix}",
+                         bbox_inches='tight')
+            figp.savefig(f"{basename}_validate_noiserm.{suffix}",
+                         bbox_inches='tight')
+        else:
+            figa.savefig(f"{basename}_all.{suffix}",
+                         bbox_inches='tight')
+            figt.savefig(f"{basename}_train.{suffix}",
+                         bbox_inches='tight')
+            figp.savefig(f"{basename}_validate.{suffix}",
+                         bbox_inches='tight')
+
+    figa.show()
+    figt.show()
+    figp.show()
     return all_labels
-
