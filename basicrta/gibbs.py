@@ -290,7 +290,7 @@ class Gibbs(object):
         values = [fweights, frates, lmode, self.residue, pindicator,
                   labels, indices, self.niter]
         for attr, val in zip(attrs, values):
-            setattr(self, attr, val)
+            setattr(self.processed_results, attr, val)
 
         self._estimate_params()
         self.save()
@@ -316,9 +316,6 @@ class Gibbs(object):
         return indicator[burnin_ind:]
 
     def save(self):
-        # keys = ['times', 'residue', 'loc', 'ncomp', 'niter', 'g', 'burnin',
-        #         'processed_results', 'ts', 'mcweights', 'mcrates', 't',
-        #         's', 'cutoff']
         savedir = f'basicrta-{self.cutoff}/{self.residue}/'
         filename = f'gibbs_{self.niter}.pkl'
         if os.path.exists(savedir):
@@ -352,8 +349,8 @@ class Gibbs(object):
         if g.t is None:
             g.t, g.s = get_s(g.times, g.ts)
 
-        if g.processed_results is None:
-            g._process_gibbs()
+        # if len(g.processed_results) == 0:
+        #     g._process_gibbs()
         return g
 
     def hist_results(self, scale=1.5, save=False):
@@ -443,15 +440,20 @@ class Gibbs(object):
         val = 0.5 * (h[1][:-1][indmax] + h[1][1:][indmax])[0]
         return [ci[0], val, ci[1]]
 
-    def plot_surv(self, scale=1.5, sparse=1, save=False):
+    def plot_surv(self, scale=1.5, remove_noise=False, save=False):
         cmap = mpl.colormaps['tab10']
         rp = self.processed_results
+        lns = np.log(rp.intervals[:, 1] / rp.intervals[:, 0])
+        noise_inds = np.where(lns > 1)[0]
+        uniq_labels = np.unique(rp.labels)
+        if remove_noise:
+            uniq_labels = np.delete(uniq_labels, noise_inds)
 
         ws, rs = rp.parameters[:, 0], rp.parameters[:, 1]
-        fig, ax = plt.subplots(1, figsize=(4 * scale, 3 * scale))
+        fig, ax = plt.subplots(1, figsize=(4*scale, 3*scale))
         ax.plot(self.t, self.s, '.')
         [ax.plot(self.t, ws[i]*np.exp(-rs[i]*self.t), label=f'{i}',
-                 color=cmap(i)) for i in np.unique(rp.labels)]
+                 color=cmap(i)) for i in np.unique(uniq_labels)]
         ax.set_ylim(1e-6, 5)
         ax.set_yscale('log')
         ax.set_ylabel('s').set_rotation(0)

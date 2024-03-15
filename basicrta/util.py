@@ -803,6 +803,8 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
                           bbox_inches='tight')
             fig1p.savefig(f"{basename}_validate.{suffix}",
                           bbox_inches='tight')
+    for fig in [fig1a, fig1t, fig1p]:
+        plt.close(fig)
 
     #create weight, rate vs sample plots
     fig1a, ax1a = plt.subplots(1, figsize=(4, 3))
@@ -957,6 +959,9 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
             fig2p.savefig(f"{rbasename}_validate.{suffix}",
                          bbox_inches='tight')
 
+    for fig in [fig1a, fig1t, fig1p, fig2a, fig2t, fig2p]:
+        plt.close(fig)
+
     # create weight vs rate plot
     fig1a, ax1a = plt.subplots(1, figsize=(4, 3))
     fig1t, ax1t = plt.subplots(1, figsize=(4, 3))
@@ -1049,6 +1054,9 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
                          bbox_inches='tight')
             fig1p.savefig(f"{basename}_validate.{suffix}",
                          bbox_inches='tight')
+
+    for fig in [fig1a, fig1t, fig1p]:
+        plt.close(fig)
 
     # finish legend for combined plots
     ahandles, aplot_labels = axa[0, 0].get_legend_handles_labels()
