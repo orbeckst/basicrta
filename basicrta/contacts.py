@@ -107,10 +107,10 @@ class MapContacts(object):
 
 
 class ProcessContacts(object):
-    def __init__(self, cutoff, nproc, map_name='contacts.pkl'):
-        self.cutoff, self.nproc = cutoff, nproc
+    def __init__(self, nproc, map_name='contacts.pkl'):
+        self.nproc = nproc
         self.map_name = map_name
-
+        self.cutoff = None
 
     def run(self):
         from basicrta.util import siground
@@ -119,8 +119,9 @@ class ProcessContacts(object):
             with open(self.map_name, 'r+b') as f:
                 memmap = pickle.load(f)
             # memmap = np.load(self.map_name, mmap_mode='r')
-            memmap = memmap[memmap[:, -2] <= self.cutoff]
             dtype = memmap.dtype
+            self.cutoff = dtype.metadata['cutoff']
+            memmap = memmap[memmap[:, -2] <= cutoff]
         else:
             raise FileNotFoundError(f'{self.map_name} not found. Specify the '
                                     'contacts file using the "map_name" '
