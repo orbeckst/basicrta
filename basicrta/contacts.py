@@ -212,4 +212,4 @@ if __name__ == '__main__':
     ag2 = utop.select_atoms(args.sel2)
 
     MapContacts(u, ag1, ag2, nproc=nproc, nslices=nslices).run()
-    ProcessContacts(cutoff, nproc).run()
+    ProcessContacts(nproc).run()
