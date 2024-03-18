@@ -35,7 +35,7 @@ class ProcessProtein(object):
             result = f'{adir}/gibbs_{self.niter}.pkl'
         elif os.path.exists(f'{adir}/results_{self.niter}.pkl'):
             try:
-                Gibbs().load_results(f'{adir}/results_{self.niter}.pkl')
+                Gibbs().load(f'{adir}/results_{self.niter}.pkl')
                 result = f'{adir}/results_{self.niter}.pkl'
             except ValueError:
                 print(f'{adir} does not contain a valid dataset')
@@ -50,7 +50,8 @@ class ProcessProtein(object):
         from glob import glob
 
         dirs = np.array(glob(f'basicrta-{self.cutoff}/?[0-9]*'))
-        sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
+        sorted_inds = (np.array([int(adir.split('/')[-1][1:]) for adir in dirs])
+                       .argsort())
         dirs = dirs[sorted_inds]
         with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
             try:
