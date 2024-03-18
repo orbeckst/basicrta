@@ -49,10 +49,7 @@ class ProcessProtein(object):
     def collect_results(self, nproc=1):
         from glob import glob
 
-        if not os.getcwd().split('/')[-1][:8] == 'basicrta':
-            raise NotImplementedError('navigate to basicrta-{cutoff} directory'
-                                      'and rerun')
-        dirs = np.array(glob(f'basicrta-{cutoff}?[0-9]*'))
+        dirs = np.array(glob(f'basicrta-{self.cutoff}/?[0-9]*'))
         sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
         dirs = dirs[sorted_inds]
         with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
