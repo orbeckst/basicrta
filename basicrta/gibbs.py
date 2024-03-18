@@ -72,7 +72,7 @@ class ProcessProtein(object):
             elif self.residues[res] == f'{res}/results_{self.niter}.pkl':
                 result = [0, 0, 0]
             else:
-                gib = Gibbs().load_self(self.residues[res])
+                gib = Gibbs().load(self.residues[res])
                 result = gib.estimate_tau()
             taus.append(result)
         taus = np.array(taus)
