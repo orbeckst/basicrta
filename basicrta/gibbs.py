@@ -21,10 +21,11 @@ rng = default_rng()
 
 
 class ProcessProtein(object):
-    def __init__(self, niter, prot):
+    def __init__(self, niter, prot, cutoff):
         self.residues = {}
         self.niter = niter
         self.prot = prot
+        self.cutoff = cutoff
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -51,7 +52,7 @@ class ProcessProtein(object):
         if not os.getcwd().split('/')[-1][:8] == 'basicrta':
             raise NotImplementedError('navigate to basicrta-{cutoff} directory'
                                       'and rerun')
-        dirs = np.array(glob('?[0-9]*'))
+        dirs = np.array(glob(f'basicrta-{cutoff}?[0-9]*'))
         sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
         dirs = dirs[sorted_inds]
         with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
