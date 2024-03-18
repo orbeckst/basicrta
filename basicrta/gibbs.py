@@ -30,9 +30,12 @@ class ProcessProtein(object):
     def __getitem__(self, item):
         return getattr(self, item)
 
-    def _pre_collect(self, adir):
+    def _pre_collect(self, adir, process=False):
         if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
             result = f'{adir}/gibbs_{self.niter}.pkl'
+            if process:
+                g = Gibbs().load(result)
+                g._process_gibbs()
         elif os.path.exists(f'{adir}/results_{self.niter}.pkl'):
             try:
                 g = Gibbs().load(f'{adir}/results_{self.niter}.pkl')
