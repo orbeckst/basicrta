@@ -121,7 +121,7 @@ class ProcessContacts(object):
             # memmap = np.load(self.map_name, mmap_mode='r')
             dtype = memmap.dtype
             self.cutoff = dtype.metadata['cutoff']
-            memmap = memmap[memmap[:, -2] <= cutoff]
+            memmap = memmap[memmap[:, -2] <= self.cutoff]
         else:
             raise FileNotFoundError(f'{self.map_name} not found. Specify the '
                                     'contacts file using the "map_name" '
