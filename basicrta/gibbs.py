@@ -44,7 +44,7 @@ class ProcessProtein(object):
             print(f'results for {adir} do not exist')
             result = None
             # raise FileNotFoundError(f'results for {adir} do not exist')
-        return adir, result
+        return adir.split('/')[-1], result
 
     def collect_results(self, nproc=1):
         from glob import glob
