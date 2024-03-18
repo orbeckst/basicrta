@@ -60,7 +60,7 @@ def KL_resort(r):
             for k in range(ncomp):
                 tmpsum[k] = np.sum(z[:,k]*np.log(z[:,k]/Z.T), axis=1)
 
-            tmpsum[tmpsum!=tmpsum] = 1e20
+            tmpsum[tmpsum != tmpsum] = 1e20
             sorts = lsa(tmpsum)[1]
             mcweights[j] = mcweights[j][sorts]
             mcrates[j] = mcrates[j][sorts]

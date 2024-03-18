@@ -295,6 +295,12 @@ class Gibbs(object):
         self._estimate_params()
         self.save()
 
+    def raw_plot(self):
+        plt.plot(self.mcrates)
+        plt.yscale('log')
+        plt.ylim(1e-4, 10)
+
+
     def result_plot(self, remove_noise=False):
         from basicrta.util import mixture_and_plot
         mixture_and_plot(self, 'GaussianMixture', n_init=101,
@@ -422,7 +428,11 @@ class Gibbs(object):
         rs = [rp.rates[rp.labels == i] for i in range(rp.ncomp)]
         ws = [rp.weights[rp.labels == i] for i in range(rp.ncomp)]
         bounds = np.array([confidence_interval(d) for d in rs])
-        params = np.array([[np.mean(w), np.mean(r)] for w, r in zip(ws, rs)])
+        whists = [np.histogram(r) for r in ws]
+        rhists = [np.histogram(r) for r in rs]
+
+        params = np.array([[wh[1][np.argmax(wh[0])], rh[1][np.argmax(rh[0])]]
+                           for wh, rh in zip(whists, rhists)])
 
         setattr(rp, 'parameters', params)
         setattr(rp, 'intervals', bounds)
@@ -472,7 +482,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--contacts')
-    parser.add_argument('--resid', type=int)
+    parser.add_argument('--resid', type=int, default=None)
     args = parser.parse_args()
 
     contact_path = os.path.abspath(args.contacts)
