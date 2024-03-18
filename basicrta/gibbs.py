@@ -52,14 +52,20 @@ class ProcessProtein(object):
 
     def collect_results(self, nproc=1):
         from glob import glob
+        if nproc > 1:
+            process = True
+        else:
+            process = False
 
         dirs = np.array(glob(f'basicrta-{self.cutoff}/?[0-9]*'))
         sorted_inds = (np.array([int(adir.split('/')[-1][1:]) for adir in dirs])
                        .argsort())
         dirs = dirs[sorted_inds]
+        inlist = [[dir, process] for dir in dirs]
         with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
             try:
-                for residue, result in tqdm(p.imap(self._pre_collect, dirs),
+                for residue, result in tqdm(p.istarmap(self._pre_collect,
+                                                       inlist),
                                             total=len(dirs), position=0,
                                             desc='overall progress'):
                     self.residues[residue] = result
