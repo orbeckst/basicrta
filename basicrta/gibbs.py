@@ -244,7 +244,7 @@ class Gibbs(object):
         
             # sample indicator
             s = np.argmax(rng.multinomial(1, z), axis=1)
-            
+
             # get indicator for each data point
             inds = [np.where(s == i)[0] for i in range(self.ncomp)]
 
@@ -257,12 +257,12 @@ class Gibbs(object):
             rates = rng.gamma(self.rhypers[:, 0]+Ns, 1/(self.rhypers[:, 1]+Ts))
 
             # save every g steps
-            if j%self.g == 0:
+            if j % self.g == 0:
                 ind = j//self.g-1
                 self.mcweights[ind], self.mcrates[ind] = weights, rates
-                self.indicator[ind] = s
 
-        self._process_gibbs()
+        self.save()
+        # self._process_gibbs()
 
     def _process_gibbs(self):
         from basicrta.util import mixture_and_plot
@@ -436,9 +436,16 @@ class Gibbs(object):
 
         rs = [rp.rates[rp.labels == i] for i in range(rp.ncomp)]
         ws = [rp.weights[rp.labels == i] for i in range(rp.ncomp)]
+        wbins = [np.exp(np.linspace(np.log(rp.weights[rp.labels == i].min()),
+                                    np.log(rp.weights[rp.labels == i].max()),
+                                    20))
+                 for i in range(rp.ncomp)]
+        rbins = [np.exp(np.linspace(np.log(rp.rates[rp.labels == i].min()),
+                                    np.log(rp.rates[rp.labels == i].max()), 20))
+                 for i in range(rp.ncomp)]
         bounds = np.array([confidence_interval(d) for d in rs])
-        whists = [np.histogram(r) for r in ws]
-        rhists = [np.histogram(r) for r in rs]
+        whists = [np.histogram(w, bins=bins) for w, bins in zip(ws, wbins)]
+        rhists = [np.histogram(r, bins=bins) for r, bins in zip(rs, rbins)]
 
         params = np.array([[wh[1][np.argmax(wh[0])], rh[1][np.argmax(rh[0])]]
                            for wh, rh in zip(whists, rhists)])
