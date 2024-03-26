@@ -458,7 +458,7 @@ def plot_protein(residues, t_slow, bars, prot, label_cutoff=3, ylim=None,
 #     gib.run()
 
 
-def run_residue(residue, time, proc, ncomp, niter):
+def run_residue(residue, time, proc, ncomp, niter, cutoff):
     from basicrta.gibbs import Gibbs
     x = np.array(time)
     if len(x) != 0:
@@ -467,7 +467,7 @@ def run_residue(residue, time, proc, ncomp, niter):
         except ValueError:
             proc = 1
 
-    gib = Gibbs(x, residue, proc, ncomp=ncomp, niter=niter)
+    gib = Gibbs(x, residue, proc, ncomp=ncomp, niter=niter, cutoff=cutoff)
     gib.run()
 
 

@@ -154,7 +154,8 @@ class ParallelGibbs(object):
                          run_resids])
         residues = residues[inds]
         input_list = [[residues[i], times[i].copy(), i % self.nproc,
-                       self.ncomp, self.niter] for i in range(len(residues))]
+                       self.ncomp, self.niter, self.cutoff] for i in
+                      range(len(residues))]
 
         del contacts, times
         gc.collect()
