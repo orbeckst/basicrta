@@ -506,7 +506,6 @@ if __name__ == '__main__':
 
     contact_path = os.path.abspath(args.contacts)
     cutoff = args.contacts.split('/')[-1].strip('.pkl').split('_')[-1]
-    os.chdir(f'basicrta-{cutoff}')
 
     (ParallelGibbs(contact_path, nproc=args.nproc, niter=args.niter).
      run(run_resids=args.resid))
