@@ -28,7 +28,6 @@ class MapContacts(object):
         self.ag1, self.ag2 = ag1, ag2
         self.cutoff, self.frames, self.nslices = cutoff, frames, nslices
 
-
     def run(self):
         if self.frames:
             sliced_frames = np.array_split(self.frames, self.nslices)
@@ -69,7 +68,6 @@ class MapContacts(object):
         cfiles = glob.glob('.contacts*')
         [os.remove(f) for f in cfiles]
         print('\nSaved contacts as "contacts.pkl"')
-
 
     def _run_contacts(self, i, sliced_traj):
         from basicrta.util import get_dec
@@ -196,7 +194,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--top', type=str)
-    parser.add_argument('--traj', type=str, nargs='+')
+    parser.add_argument('--traj', type=str)
     parser.add_argument('--sel1', type=str)
     parser.add_argument('--sel2', type=str)
     parser.add_argument('--cutoff', type=float)
@@ -204,12 +202,10 @@ if __name__ == '__main__':
     parser.add_argument('--nslices', type=int, default=100)
     args = parser.parse_args()
 
-    u = mda.Universe(args.top)
-    utop = mda.Universe(args.top)
-    [u.load_new(traj) for traj in args.traj]
+    u = mda.Universe(args.top, args.traj)
     cutoff, nproc, nslices = args.cutoff, args.nproc, args.nslices
-    ag1 = utop.select_atoms(args.sel1)
-    ag2 = utop.select_atoms(args.sel2)
+    ag1 = u.select_atoms(args.sel1)
+    ag2 = u.select_atoms(args.sel2)
 
     MapContacts(u, ag1, ag2, nproc=nproc, nslices=nslices).run()
-    ProcessContacts(nproc).run()
+    ProcessContacts(cutoff, nproc).run()
