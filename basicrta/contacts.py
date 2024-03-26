@@ -51,7 +51,7 @@ class MapContacts(object):
         dtype = np.dtype(np.float64,
                          metadata={'top': self.u.filename,
                                    'traj': self.u.trajectory.filename,
-                                   'ag1': ag1, 'ag2': ag2,
+                                   'ag1': self.ag1, 'ag2': self.ag2,
                                    'ts': self.u.trajectory.dt/1000,
                                    'cutoff': self.cutoff})
 
