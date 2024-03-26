@@ -29,7 +29,7 @@ class MapContacts(object):
         self.cutoff, self.frames, self.nslices = cutoff, frames, nslices
 
     def run(self):
-        if self.frames:
+        if self.frames is not None:
             sliced_frames = np.array_split(self.frames, self.nslices)
         else:
             sliced_frames = np.array_split(np.arange(len(self.u.trajectory)),
