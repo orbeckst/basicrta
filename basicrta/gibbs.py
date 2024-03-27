@@ -30,7 +30,7 @@ class ProcessProtein(object):
     def __getitem__(self, item):
         return getattr(self, item)
 
-    def _pre_collect(self, adir, process=False):
+    def reprocess(self, adir):
         if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
             result = f'{adir}/gibbs_{self.niter}.pkl'
             if process:
@@ -214,18 +214,17 @@ class Gibbs(object):
             os.mkdir(f'{self.residue}')
 
         # initialize arrays
-        self.indicator = np.memmap(f'basicrta-{self.cutoff}/{self.residue}/'
-                                   f'.indicator_{self.niter}.npy',
-                                   shape=((self.niter + 1) // self.g,
-                                          self.times.shape[0]),
-                                   mode='w+', dtype=np.uint8)
+        # self.indicator = np.memmap(f'basicrta-{self.cutoff}/{self.residue}/'
+        #                            f'.indicator_{self.niter}.npy',
+        #                            shape=((self.niter + 1) // self.g,
+        #                                   self.times.shape[0]),
+        #                            mode='w+', dtype=np.uint8)
         self.mcweights = np.zeros(((self.niter + 1) // self.g, self.ncomp))
         self.mcrates = np.zeros(((self.niter + 1) // self.g, self.ncomp))
 
         # guess hyperparameters
         self.whypers = np.ones(self.ncomp) / [self.ncomp]
         self.rhypers = np.ones((self.ncomp, 2)) * [1, 3]
-
 
     def run(self):
         # initialize weights and rates
@@ -309,7 +308,6 @@ class Gibbs(object):
         plt.plot(self.mcrates)
         plt.yscale('log')
         plt.ylim(1e-4, 10)
-
 
     def result_plot(self, remove_noise=False):
         from basicrta.util import mixture_and_plot
@@ -467,11 +465,12 @@ class Gibbs(object):
         val = 0.5 * (h[1][:-1][indmax] + h[1][1:][indmax])[0]
         return [ci[0], val, ci[1]]
 
-    def plot_surv(self, scale=1.5, remove_noise=False, save=False):
+    def plot_surv(self, scale=1.5, remove_noise=False, save=False,
+                  noise_cutoff=1.5):
         cmap = mpl.colormaps['tab10']
         rp = self.processed_results
         lns = np.log(rp.intervals[:, 1] / rp.intervals[:, 0])
-        noise_inds = np.where(lns > 1)[0]
+        noise_inds = np.where(lns > noise_cutoff)[0]
         uniq_labels = np.unique(rp.labels)
         if remove_noise:
             uniq_labels = np.delete(uniq_labels, noise_inds)

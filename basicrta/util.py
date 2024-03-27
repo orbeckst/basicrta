@@ -641,7 +641,7 @@ def get_bins(x, ts):
 
 
 def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
-                     **kwargs):
+                     noise_cutoff=1.5, **kwargs):
     from sklearn import mixture
     from scipy import stats
     from basicrta.util import confidence_interval
@@ -688,7 +688,7 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
     ainds = [np.where(all_labels == i)[0] for i in uniq_labels]
     cis = np.array([confidence_interval(arates[ainds[i]]) for i in uniq_labels])
     lns = np.log(cis[:, 1] / cis[:, 0])
-    noise_inds = np.where(lns > 1)[0]
+    noise_inds = np.where(lns > noise_cutoff)[0]
 
     vsorts = r.means_[np.delete(uniq_labels, noise_inds), 0].argsort()[::-1]
     nsorts = r.means_[noise_inds, 0].argsort()[::-1]
