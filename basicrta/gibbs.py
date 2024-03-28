@@ -41,7 +41,7 @@ class ProcessProtein(object):
                     g = Gibbs().load(result)
                     g._process_gibbs()
                 except ValueError:
-                    continue
+                    pass
             else:
                 print(f'results for {adir} do not exist')
 
