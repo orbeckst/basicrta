@@ -32,6 +32,7 @@ class ProcessProtein(object):
 
     def reprocess(self, nproc=1):
         from glob import glob
+        global single_residue
 
         def single_residue(adir):
             if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
