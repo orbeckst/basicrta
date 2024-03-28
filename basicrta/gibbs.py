@@ -36,9 +36,12 @@ class ProcessProtein(object):
 
         def single_residue(adir):
             if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
-                result = f'{adir}/gibbs_{self.niter}.pkl'
-                g = Gibbs().load(result)
-                g._process_gibbs()
+                try:
+                    result = f'{adir}/gibbs_{self.niter}.pkl'
+                    g = Gibbs().load(result)
+                    g._process_gibbs()
+                except ValueError:
+                    continue
             else:
                 print(f'results for {adir} do not exist')
 
@@ -53,7 +56,7 @@ class ProcessProtein(object):
                               position=0, desc='overall progress'):
                     pass
             except KeyboardInterrupt:
-                    pass
+                pass
 
     def collect_results(self):
         from glob import glob
