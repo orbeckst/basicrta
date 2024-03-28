@@ -30,47 +30,47 @@ class ProcessProtein(object):
     def __getitem__(self, item):
         return getattr(self, item)
 
-    def reprocess(self, adir):
-        if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
-            result = f'{adir}/gibbs_{self.niter}.pkl'
-            if process:
+    def reprocess(self, nproc=1):
+        from glob import glob
+
+        def single_residue(adir):
+            if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
+                result = f'{adir}/gibbs_{self.niter}.pkl'
                 g = Gibbs().load(result)
                 g._process_gibbs()
-        elif os.path.exists(f'{adir}/results_{self.niter}.pkl'):
-            try:
-                g = Gibbs().load(f'{adir}/results_{self.niter}.pkl')
-                g._process_gibbs()
-                result = f'{adir}/results_{self.niter}.pkl'
-            except ValueError:
-                print(f'{adir} does not contain a valid dataset')
-                result = None
-        else:
-            print(f'results for {adir} do not exist')
-            result = None
-            # raise FileNotFoundError(f'results for {adir} do not exist')
-        return adir.split('/')[-1], result
-
-    def collect_results(self, nproc=1):
-        from glob import glob
-        if nproc > 1:
-            process = True
-        else:
-            process = False
+            else:
+                print(f'results for {adir} do not exist')
 
         dirs = np.array(glob(f'basicrta-{self.cutoff}/?[0-9]*'))
         sorted_inds = (np.array([int(adir.split('/')[-1][1:]) for adir in dirs])
                        .argsort())
         dirs = dirs[sorted_inds]
-        inlist = [[dir, process] for dir in dirs]
-        with Pool(nproc, initializer=tqdm.set_lock, initargs=(Lock(),)) as p:
+        with (Pool(nproc, initializer=tqdm.set_lock,
+                   initargs=(Lock(),)) as p):
             try:
-                for residue, result in tqdm(p.istarmap(self._pre_collect,
-                                                       inlist),
-                                            total=len(dirs), position=0,
-                                            desc='overall progress'):
-                    self.residues[residue] = result
+                for _ in tqdm(p.imap(single_residue, dirs), total=len(dirs),
+                              position=0, desc='overall progress'):
+                    pass
             except KeyboardInterrupt:
-                pass
+                    pass
+
+    def collect_results(self):
+        from glob import glob
+
+        dirs = np.array(glob(f'basicrta-{self.cutoff}/?[0-9]*'))
+        sorted_inds = (np.array([int(adir.split('/')[-1][1:]) for adir in dirs])
+                       .argsort())
+        dirs = dirs[sorted_inds]
+        try:
+            for adir in dirs:
+                if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
+                    result = f'{adir}/gibbs_{self.niter}.pkl'
+                else:
+                    print(f'results for {adir} do not exist')
+                    result = None
+                self.residues[adir] = result
+        except KeyboardInterrupt:
+            pass
 
     def _get_taus(self):
         from basicrta.util import get_bars
