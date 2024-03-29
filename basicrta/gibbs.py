@@ -30,20 +30,19 @@ class ProcessProtein(object):
     def __getitem__(self, item):
         return getattr(self, item)
 
+    def _single_residue(self, adir):
+        if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
+            try:
+                result = f'{adir}/gibbs_{self.niter}.pkl'
+                g = Gibbs().load(result)
+                g._process_gibbs()
+            except ValueError:
+                pass
+        else:
+            print(f'results for {adir} do not exist')
+
     def reprocess(self, nproc=1):
         from glob import glob
-        global single_residue
-
-        def single_residue(adir):
-            if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
-                try:
-                    result = f'{adir}/gibbs_{self.niter}.pkl'
-                    g = Gibbs().load(result)
-                    g._process_gibbs()
-                except ValueError:
-                    pass
-            else:
-                print(f'results for {adir} do not exist')
 
         dirs = np.array(glob(f'basicrta-{self.cutoff}/?[0-9]*'))
         sorted_inds = (np.array([int(adir.split('/')[-1][1:]) for adir in dirs])
@@ -52,8 +51,9 @@ class ProcessProtein(object):
         with (Pool(nproc, initializer=tqdm.set_lock,
                    initargs=(Lock(),)) as p):
             try:
-                for _ in tqdm(p.imap(single_residue, dirs), total=len(dirs),
-                              position=0, desc='overall progress'):
+                for _ in tqdm(p.imap(self._single_residue, dirs),
+                              total=len(dirs), position=0,
+                              desc='overall progress'):
                     pass
             except KeyboardInterrupt:
                 pass
@@ -67,11 +67,7 @@ class ProcessProtein(object):
         dirs = dirs[sorted_inds]
         try:
             for adir in dirs:
-                if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
-                    result = f'{adir}/gibbs_{self.niter}.pkl'
-                else:
-                    print(f'results for {adir} do not exist')
-                    result = None
+                result = self._single_residue(adir)
                 self.residues[adir] = result
         except KeyboardInterrupt:
             pass
