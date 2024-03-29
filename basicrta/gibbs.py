@@ -37,9 +37,11 @@ class ProcessProtein(object):
                 g = Gibbs().load(result)
                 g._process_gibbs()
             except ValueError:
-                pass
+                result = None
         else:
             print(f'results for {adir} do not exist')
+            result = None
+        return result
 
     def reprocess(self, nproc=1):
         from glob import glob
