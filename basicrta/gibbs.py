@@ -30,12 +30,13 @@ class ProcessProtein(object):
     def __getitem__(self, item):
         return getattr(self, item)
 
-    def _single_residue(self, adir):
+    def _single_residue(self, adir, process=False):
         if os.path.exists(f'{adir}/gibbs_{self.niter}.pkl'):
             try:
                 result = f'{adir}/gibbs_{self.niter}.pkl'
                 g = Gibbs().load(result)
-                g._process_gibbs()
+                if process:
+                    g._process_gibbs()
             except ValueError:
                 result = None
         else:
@@ -50,10 +51,11 @@ class ProcessProtein(object):
         sorted_inds = (np.array([int(adir.split('/')[-1][1:]) for adir in dirs])
                        .argsort())
         dirs = dirs[sorted_inds]
+        inarr = np.array([[adir, True] for adir in dirs])
         with (Pool(nproc, initializer=tqdm.set_lock,
                    initargs=(Lock(),)) as p):
             try:
-                for _ in tqdm(p.imap(self._single_residue, dirs),
+                for _ in tqdm(p.istarmap(self._single_residue, inarr),
                               total=len(dirs), position=0,
                               desc='overall progress'):
                     pass
