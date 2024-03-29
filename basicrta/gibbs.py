@@ -70,7 +70,7 @@ class ProcessProtein(object):
                        .argsort())
         dirs = dirs[sorted_inds]
         try:
-            for adir in dirs:
+            for adir in tqdm(dirs, desc='collecting results'):
                 result = self._single_residue(adir)
                 self.residues[adir] = result
         except KeyboardInterrupt:
