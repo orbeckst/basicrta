@@ -414,7 +414,7 @@ def plot_protein(residues, t_slow, bars, prot, label_cutoff=3, ylim=None,
          range(7)]
     patches = PatchCollection(p)
     patches.set_color('C0')
-    resids = np.array([int(res[1:]) for res in residues])
+    resids = np.array([int(res.split('/')[-1][1:]) for res in residues])
     max_inds = np.where(t_slow > label_cutoff * t_slow.mean())
     axs[0].plot(resids, t_slow, '.', color='C0')
     axs[0].errorbar(resids, t_slow, yerr=bars, fmt='none', color='C0',
