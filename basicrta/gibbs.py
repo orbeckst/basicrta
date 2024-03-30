@@ -101,6 +101,7 @@ class ProcessProtein(object):
 
         taus, bars = self._get_taus()
         residues = list(self.residues.keys())
+        residues = [res.split('/')[-1] for res in residues]
         plot_protein(residues, taus, bars, self.prot, **kwargs)
 
     def b_color_structure(self, structure):
