@@ -87,7 +87,7 @@ class ProcessProtein(object):
                 try:
                     gib = Gibbs().load(self.residues[res])
                     result = gib.estimate_tau()
-                except ValueError:
+                except AttributeError:
                     result = [0, 0, 0]
             taus.append(result)
         taus = np.array(taus)
