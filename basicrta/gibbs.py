@@ -36,7 +36,7 @@ class ProcessProtein(object):
                 result = f'{adir}/gibbs_{self.niter}.pkl'
                 g = Gibbs().load(result)
                 if process:
-                    g._process_gibbs()
+                    g.process_gibbs()
             except ValueError:
                 result = None
         else:
@@ -195,6 +195,7 @@ class Gibbs(object):
         self.burnin = 10000
         self.cutoff = cutoff
         self.processed_results = Results()
+        self._noise_cutoff = 0.5
 
         if times is not None:
             diff = (np.sort(times)[1:]-np.sort(times)[:-1])
@@ -207,7 +208,7 @@ class Gibbs(object):
 
         self.keys = {'times', 'residue', 'loc', 'ncomp', 'niter', 'g', 'burnin',
                      'processed_results', 'ts', 'mcweights', 'mcrates', 't',
-                     's', 'cutoff'}
+                     's', 'cutoff', 'indicator'}
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -220,11 +221,8 @@ class Gibbs(object):
             os.mkdir(f'{self.residue}')
 
         # initialize arrays
-        # self.indicator = np.memmap(f'basicrta-{self.cutoff}/{self.residue}/'
-        #                            f'.indicator_{self.niter}.npy',
-        #                            shape=((self.niter + 1) // self.g,
-        #                                   self.times.shape[0]),
-        #                            mode='w+', dtype=np.uint8)
+        self.indicator = np.zeros(((self.niter + 1) // self.g,
+                                  self.times.shape[0]), dtype=np.uint8)
         self.mcweights = np.zeros(((self.niter + 1) // self.g, self.ncomp))
         self.mcrates = np.zeros(((self.niter + 1) // self.g, self.ncomp))
 
@@ -266,11 +264,58 @@ class Gibbs(object):
             if j % self.g == 0:
                 ind = j//self.g-1
                 self.mcweights[ind], self.mcrates[ind] = weights, rates
+                self.indicator[ind] = s
 
         self.save()
-        # self._process_gibbs()
 
-    def _process_gibbs(self):
+    def cluster(self, method, **kwargs):
+        from sklearn import mixture
+        from scipy import stats
+
+        clu = getattr(mixture, method)
+        burnin_ind = self.burnin // self.g
+        data_len = len(self.times)
+        wcutoff = 10 / data_len
+
+        weights, rates = self.mcweights[burnin_ind:], self.mcrates[burnin_ind:]
+        lens = np.array([len(row[row > wcutoff]) for row in weights])
+        lmin, lmode, lmax = lens.min(), stats.mode(lens).mode, lens.max()
+        train_param = lmode
+
+        train_inds = np.where(lens == train_param)[0]
+        train_weights = (weights[train_inds][weights[train_inds] > wcutoff].
+                         reshape(-1, train_param))
+        train_rates = (rates[train_inds][weights[train_inds] > wcutoff].
+                       reshape(-1, train_param))
+
+        inds = np.where(weights > wcutoff)
+        aweights, arates = weights[inds], rates[inds]
+        data = np.stack((aweights, arates), axis=1)
+
+        tweights, trates = train_weights.flatten(), train_rates.flatten()
+        train_data = np.stack((tweights, trates), axis=1)
+
+        r = clu(**kwargs)
+        r.fit(np.log(train_data))
+        all_labels = r.predict(np.log(data))
+
+        if self.indicator:
+            indicator = self.indicator[burnin_ind:]
+        else:
+            indicator = self._sample_indicator()
+
+        pindicator = np.zeros((self.times.shape[0], lmode))
+        for j in np.unique(inds[0]):
+            mapinds = all_labels[inds[0] == j]
+            for i, indx in enumerate(inds[1][inds[0] == j]):
+                tmpind = np.where(indicator[j] == indx)[0]
+                pindicator[tmpind, mapinds[i]] += 1
+
+        pindicator = (pindicator.T / pindicator.sum(axis=1)).T
+        setattr(self.processed_results, 'indicator', pindicator)
+        setattr(self.processed_results, 'labels', all_labels)
+
+    def process_gibbs(self):
         from basicrta.util import mixture_and_plot
         from scipy import stats
 
@@ -285,41 +330,24 @@ class Gibbs(object):
 
         lens = [len(row[row > wcutoff]) for row in self.mcweights[burnin_ind:]]
         lmin, lmode, lmax = np.min(lens), stats.mode(lens).mode, np.max(lens)
-        train_param = lmode
 
-        pindicator = np.zeros((self.times.shape[0], train_param))
-        indicator = self._sample_indicator()
-        labels = mixture_and_plot(self, 'GaussianMixture', n_init=101,
-                                  n_components=lmode,
-                                  covariance_type='spherical')
-        for j in np.unique(inds[0]):
-            mapinds = labels[inds[0] == j]
-            for i, indx in enumerate(inds[1][inds[0] == j]):
-                tmpind = np.where(indicator[j] == indx)[0]
-                pindicator[tmpind, mapinds[i]] += 1
+        self.cluster('GaussianMixture', n_init=117, n_components=lmode)
+        labels, presorts = mixture_and_plot(self)
+        setattr(self.processed_results, 'labels', labels)
+        setattr(self.processed_results, 'indicator',
+                self.processed_results.indicator[:, presorts])
 
-        pindicator = (pindicator.T / pindicator.sum(axis=1)).T
-
-        attrs = ["weights", "rates", "ncomp", "residue", "indicator",
-                 "labels", "iteration", "niter"]
-        values = [fweights, frates, lmode, self.residue, pindicator,
-                  labels, indices, self.niter]
+        attrs = ["weights", "rates", "ncomp", "residue", "iteration", "niter"]
+        values = [fweights, frates, lmode, self.residue, indices, self.niter]
         for attr, val in zip(attrs, values):
             setattr(self.processed_results, attr, val)
 
         self._estimate_params()
         self.save()
 
-    def raw_plot(self):
-        plt.plot(self.mcrates)
-        plt.yscale('log')
-        plt.ylim(1e-4, 10)
-
-    def result_plot(self, remove_noise=False):
+    def result_plot(self, remove_noise=False, **kwargs):
         from basicrta.util import mixture_and_plot
-        mixture_and_plot(self, 'GaussianMixture', n_init=101,
-                         n_components=self.processed_results.ncomp,
-                         covariance_type='spherical', remove_noise=remove_noise)
+        mixture_and_plot(self, remove_noise=remove_noise, **kwargs)
 
     def _sample_indicator(self):
         indicator = np.zeros(((self.niter+1)//self.g, self.times.shape[0]),
@@ -352,7 +380,7 @@ class Gibbs(object):
         from basicrta.util import get_s
         keys = ['times', 'residue', 'loc', 'ncomp', 'niter', 'g', 'burnin',
                 'processed_results', 'ts', 'mcweights', 'mcrates', 't',
-                's', 'cutoff']
+                's', 'cutoff', 'indicator']
         with open(file, 'r+b') as f:
             r = pickle.load(f)
 
@@ -373,43 +401,116 @@ class Gibbs(object):
         #     g._process_gibbs()
         return g
 
-    def hist_results(self, scale=1.5, save=False):
-        cmap = mpl.colormaps['tab20']
+    def plot_tau_hist(self, scale=1, save=False):
+        from matplotlib.ticker import MaxNLocator
+        cmap = mpl.colormaps['tab10']
         rp = self.processed_results
 
-        fig, ax = plt.subplots(1, 2, figsize=(4*scale, 3*scale))
-        [ax[0].hist(rp.weights[rp.labels == i],
-                     bins=np.exp(np.linspace(np.log(rp.weights[rp.labels == i]
-                                                    .min()),
-                                             np.log(rp.weights[rp.labels == i]
-                                                    .max()), 50)),
-                    label=f'{i}', alpha=0.5, color=cmap(i))
-         for i in range(rp.ncomp)]
-        [ax[1].hist(rp.rates[rp.labels == i],
-                    bins=np.exp(np.linspace(np.log(rp.rates[rp.labels == i]
-                                                   .min()),
-                                            np.log(rp.rates[rp.labels == i]
-                                                   .max()), 50)),
-                    label=f'{i}', alpha=0.5, color=cmap(i))
-         for i in range(rp.ncomp)]
-        ax[0].set_xscale('log')
-        ax[1].set_xscale('log')
-        ax[0].legend(title='component')
-        ax[1].legend(title='component')
-        ax[0].set_xlabel(r'weight')
-        ax[1].set_xlabel(r'rate ($ns^{-1}$)')
-        ax[0].set_ylabel('count')
-        ax[0].set_xlim(1e-4, 1)
-        ax[1].set_xlim(1e-3, 10)
+        imaxs = self.processed_results.indicator.max(axis=0)
+        noise_inds = np.where(imaxs < self._noise_cutoff)[0]
+        inds = np.delete(np.unique(rp.labels), noise_inds)
+        i = rp.parameters[inds, 1].argmin()
+
+        fig, ax = plt.subplots(1, figsize=(4*scale, 3*scale))
+        ax.hist(1/rp.rates[rp.labels == i], label=f'{i}', alpha=0.5,
+                   color=cmap(i))
+        ax.set_xlabel(r'$\tau$ [$ns$]')
+        ax.set_ylabel('count')
+
+        tmin = (1/rp.rates[rp.labels == i]).min()
+        tmax = (1/rp.rates[rp.labels == i]).max()
+        ax.set_xlim(tmin, tmax)
+        ax.xaxis.set_major_locator(MaxNLocator(3))
+        ax.xaxis.set_minor_locator(MaxNLocator(12))
+        ax.yaxis.set_major_locator(MaxNLocator(3))
+        ax.yaxis.set_minor_locator(MaxNLocator(12))
+        # ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0),
+        #                        useMathText=True)
         plt.tight_layout()
         if save:
             plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'
-                        'hist_results.png', bbox_inches='tight')
+                        f'tau_hist.png',
+                        bbox_inches='tight')
             plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'
-                        'hist_results.pdf', bbox_inches='tight')
+                        f'tau_hist.pdf',
+                        bbox_inches='tight')
         plt.show()
 
-    def plot_results(self, scale=1.5, sparse=1, save=False):
+    def plot_hist(self, scale=1, save=False, component=None):
+        from matplotlib.ticker import MaxNLocator
+        cmap = mpl.colormaps['tab10']
+        rp = self.processed_results
+
+        if component is None:
+            comps = np.arange(rp.ncomp)
+        else:
+            comps = [component]
+
+        fig, ax = plt.subplots(1, 3, figsize=(9*scale, 3*scale), sharey=True)
+        [ax[0].hist(rp.weights[rp.labels == i],
+                    # bins=np.linspace(rp.weights[rp.labels == i].min(),
+                    #                  rp.weights[rp.labels == i].max(), 15),
+                    label=f'{i}', alpha=0.5, color=cmap(i))
+              for i in comps]
+        [ax[1].hist(rp.rates[rp.labels == i],
+                    # bins=np.linspace(rp.rates[rp.labels == i].min(),
+                    #                  rp.rates[rp.labels == i].max(), 15),
+                    label=f'{i}', alpha=0.5, color=cmap(i))
+              for i in comps]
+        [ax[2].hist(1/rp.rates[rp.labels == i],
+                    # bins=np.linspace(rp.rates[rp.labels == i].min(),
+                    #                  rp.rates[rp.labels == i].max(), 15),
+                    label=f'{i}', alpha=0.5, color=cmap(i))
+              for i in comps]
+        ax[0].set_xlabel(r'weight')
+        ax[1].set_xlabel(r'rate [$ns^{-1}$]')
+        ax[2].set_xlabel(r'$\tau$ [$ns$]')
+        ax[0].set_ylabel('count')
+        if component is None:
+            ax[0].set_xlim(1e-4, 1)
+            ax[1].set_xlim(1e-3, 10)
+            ax[0].legend(title='component')
+            ax[1].legend(title='component')
+            ax[0].set_xscale('log')
+            ax[1].set_xscale('log')
+        else:
+            rmin = rp.rates[rp.labels == component[0]].min()
+            rmax = rp.rates[rp.labels == component[0]].max()
+            wmin = rp.weights[rp.labels == component[0]].min()
+            wmax = rp.weights[rp.labels == component[0]].max()
+            ax[0].set_xlim(wmin, wmax)
+            ax[1].set_xlim(rmin, rmax)
+            ax[0].xaxis.set_major_locator(MaxNLocator(3))
+            ax[0].xaxis.set_minor_locator(MaxNLocator(12))
+            ax[0].yaxis.set_major_locator(MaxNLocator(3))
+            ax[0].yaxis.set_minor_locator(MaxNLocator(12))
+            ax[1].xaxis.set_major_locator(MaxNLocator(3))
+            ax[1].xaxis.set_minor_locator(MaxNLocator(12))
+            ax[2].xaxis.set_major_locator(MaxNLocator(3))
+            ax[2].xaxis.set_minor_locator(MaxNLocator(12))
+            ax[0].ticklabel_format(style='sci', axis='x', scilimits=(0, 0),
+                                   useMathText=True)
+            ax[1].ticklabel_format(style='sci', axis='x', scilimits=(0, 0),
+                                   useMathText=True)
+        plt.tight_layout()
+        # ax[0].xaxis.set_major_locator(MultipleLocator(wmin+(wmax-wmin)/3))
+        # ax[1].xaxis.set_major_locator(MultipleLocator(rmin+(rmax-rmin)/3))
+        if save:
+            if component is not None:
+                plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'
+                            f'hist_results_{component[0]}.png',
+                            bbox_inches='tight')
+                plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'
+                            f'hist_results_{component[0]}.pdf',
+                            bbox_inches='tight')
+            else:
+                plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'
+                            'hist_results.png', bbox_inches='tight')
+                plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'
+                            'hist_results.pdf', bbox_inches='tight')
+        plt.show()
+
+    def plot_gibbs(self, scale=1.5, sparse=1, save=False):
             cmap = mpl.colormaps['tab10']
             rp = self.processed_results
 
@@ -439,8 +540,8 @@ class Gibbs(object):
     def _estimate_params(self):
         rp = self.processed_results
 
-        rs = [rp.rates[rp.labels == i] for i in range(rp.ncomp)]
         ws = [rp.weights[rp.labels == i] for i in range(rp.ncomp)]
+        rs = [rp.rates[rp.labels == i] for i in range(rp.ncomp)]
         wbins = [np.exp(np.linspace(np.log(rp.weights[rp.labels == i].min()),
                                     np.log(rp.weights[rp.labels == i].max()),
                                     20))
@@ -448,7 +549,9 @@ class Gibbs(object):
         rbins = [np.exp(np.linspace(np.log(rp.rates[rp.labels == i].min()),
                                     np.log(rp.rates[rp.labels == i].max()), 20))
                  for i in range(rp.ncomp)]
-        bounds = np.array([confidence_interval(d) for d in rs])
+        wbounds = np.array([confidence_interval(d) for d in ws])
+        rbounds = np.array([confidence_interval(d) for d in rs])
+
         whists = [np.histogram(w, bins=bins) for w, bins in zip(ws, wbins)]
         rhists = [np.histogram(r, bins=bins) for r, bins in zip(rs, rbins)]
 
@@ -456,11 +559,16 @@ class Gibbs(object):
                            for wh, rh in zip(whists, rhists)])
 
         setattr(rp, 'parameters', params)
-        setattr(rp, 'intervals', bounds)
+        setattr(rp, 'intervals', np.array([wbounds, rbounds]))
 
     def estimate_tau(self):
         rp = self.processed_results
-        index = np.argmin(rp.parameters[:, 1])
+
+        imaxs = self.processed_results.indicator.max(axis=0)
+        noise_inds = np.where(imaxs < self._noise_cutoff)[0]
+        inds = np.delete(np.unique(rp.labels), noise_inds)
+        index = rp.parameters[inds, 1].argmin()
+
         taus = 1 / rp.rates[rp.labels == index]
         ci = confidence_interval(taus)
         citaus = taus[(taus > ci[0]) & (taus < ci[1])]
@@ -471,12 +579,14 @@ class Gibbs(object):
         val = 0.5 * (h[1][:-1][indmax] + h[1][1:][indmax])[0]
         return [ci[0], val, ci[1]]
 
-    def plot_surv(self, scale=1.5, remove_noise=False, save=False,
-                  noise_cutoff=1.5):
+    def plot_surv(self, scale=1, remove_noise=False, save=False,
+                  ylim=(1e-6, 5)):
         cmap = mpl.colormaps['tab10']
         rp = self.processed_results
-        lns = np.log(rp.intervals[:, 1] / rp.intervals[:, 0])
-        noise_inds = np.where(lns > noise_cutoff)[0]
+        # lns = np.log(rp.intervals[:, 1] / rp.intervals[:, 0])
+        # noise_inds = np.where(lns > noise_cutoff)[0]
+        imaxs = self.processed_results.indicator.max(axis=0)
+        noise_inds = np.where(imaxs < self._noise_cutoff)[0]
         uniq_labels = np.unique(rp.labels)
         if remove_noise:
             uniq_labels = np.delete(uniq_labels, noise_inds)
@@ -486,11 +596,12 @@ class Gibbs(object):
         ax.plot(self.t, self.s, '.')
         [ax.plot(self.t, ws[i]*np.exp(-rs[i]*self.t), label=f'{i}',
                  color=cmap(i)) for i in np.unique(uniq_labels)]
-        ax.set_ylim(1e-6, 5)
+        ax.set_ylim(ylim)
         ax.set_yscale('log')
-        ax.set_ylabel('s').set_rotation(0)
-        ax.set_xlabel(r't ($ns$)')
-        ax.legend(title='component')
+        ax.set_ylabel('s')
+        ax.set_xlabel(r't [$ns$]')
+        ax.set_yticks([1, 1e-2, 1e-4])
+        ax.legend(title='cluster')
         plt.tight_layout()
         if save:
             plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'

@@ -650,16 +650,39 @@ def get_bins(x, ts):
     return np.arange(1, int(x.max() // ts) + 3) * ts
 
 
-def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
-                     noise_cutoff=1.5, **kwargs):
-    from sklearn import mixture
-    from scipy import stats
-    from basicrta.util import confidence_interval
+def extract_data(gibbs):
+    burnin_ind = gibbs.burnin // gibbs.g
+    data_len = len(gibbs.times)
+    wcutoff = 10 / data_len
 
-    clu = getattr(mixture, method)
-    keyvalpairs = [f'{key}_{val}' for key, val in zip(kwargs.keys(),
-                                                      kwargs.values())]
-    kwarg_str = '_'.join(keyvalpairs)
+    weights, rates = gibbs.mcweights[burnin_ind:], gibbs.mcrates[burnin_ind:]
+    lens = np.array([len(row[row > wcutoff]) for row in weights])
+    lmin, lmode, lmax = lens.min(), stats.mode(lens).mode, lens.max()
+    train_param = lmode
+
+    train_inds = np.where(lens == train_param)[0]
+    train_weights = (weights[train_inds][weights[train_inds] > wcutoff].
+                     reshape(-1, train_param))
+    train_rates = (rates[train_inds][weights[train_inds] > wcutoff].
+                   reshape(-1, train_param))
+
+    inds = np.where(weights > wcutoff)
+    aweights, arates = weights[inds], rates[inds]
+    rcutoff = arates.min()
+    data = np.stack((aweights, arates), axis=1)
+
+    tweights, trates = train_weights.flatten(), train_rates.flatten()
+    train_data = np.stack((tweights, trates), axis=1)
+
+    tmpw, tmpr = np.delete(weights, train_inds), np.delete(rates, train_inds)
+    pweights, prates = tmpw[tmpw > wcutoff], tmpr[tmpw > wcutoff]
+    predict_data = np.stack((pweights, prates), axis=1)
+    return data, train_inds
+
+
+def mixture_and_plot(gibbs, scale=2, sparse=1, remove_noise=False,
+                     noise_cutoff=0.5, **kwargs):
+    from scipy import stats
 
     burnin_ind = gibbs.burnin // gibbs.g
     data_len = len(gibbs.times)
@@ -688,28 +711,29 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
     pweights, prates = tmpw[tmpw > wcutoff], tmpr[tmpw > wcutoff]
     predict_data = np.stack((pweights, prates), axis=1)
 
-    r = clu(**kwargs)
-    labels = r.fit_predict(np.log(train_data))
-    uniq_labels = np.unique(labels)
-    leg_labels = np.array([' ' for i in uniq_labels])
-    predict_labels = r.predict(np.log(predict_data))
-    all_labels = r.predict(np.log(data))
+    train_inds = np.array([np.where(data == val)[0] for val in train_data])
+    predict_inds = np.array([np.where(data == val)[0] for val in predict_data])
 
-    ainds = [np.where(all_labels == i)[0] for i in uniq_labels]
-    cis = np.array([confidence_interval(arates[ainds[i]]) for i in uniq_labels])
-    lns = np.log(cis[:, 1] / cis[:, 0])
-    noise_inds = np.where(lns > noise_cutoff)[0]
+    all_labels = gibbs.processed_results.labels
+    uniq_labels = np.unique(all_labels)
+    leg_labels = np.array([' ' for _ in uniq_labels])
+    labels = all_labels[train_inds]
+    predict_labels = all_labels[predict_inds]
 
-    vsorts = r.means_[np.delete(uniq_labels, noise_inds), 0].argsort()[::-1]
-    nsorts = r.means_[noise_inds, 0].argsort()[::-1]
-    sorts = np.concatenate([np.delete(uniq_labels, noise_inds)[vsorts],
-                            noise_inds[nsorts]])
-    sorts = np.array([np.where(sorts == i)[0][0] for i in uniq_labels])
+    imaxs = gibbs.processed_results.indicator.max(axis=0)
+    noise_inds = np.where(imaxs < noise_cutoff)[0]
+
+    means = np.array([arates[all_labels == i].mean() for i in uniq_labels])
+    vsorts = means[np.delete(uniq_labels, noise_inds)].argsort()[::-1]
+    nsorts = means[noise_inds].argsort()[::-1]
+    presorts = np.concatenate([np.delete(uniq_labels, noise_inds)[vsorts],
+                               noise_inds[nsorts]])
+    sorts = np.array([np.where(presorts == i)[0][0] for i in uniq_labels])
 
     labels = sorts[labels]
     predict_labels = sorts[predict_labels]
     all_labels = sorts[all_labels]
-    uniq_vlabels = uniq_labels[:-len(noise_inds)]
+    uniq_vlabels = uniq_labels[:len(vsorts)]
     if remove_noise:
         uniq_labels = uniq_vlabels
 
@@ -760,38 +784,38 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
 
     # for combined plot
     axa[0, 0].set_xscale('log')
-    axa[0, 0].set_xlabel(r'rate ($ns^{-1}$)')
+    axa[0, 0].set_xlabel(r'rate [$ns^{-1}$]')
     axa[0, 0].set_ylabel('count')
     axa[0, 0].set_xlim(rcutoff, 10)
     axa[0, 0].set_ylim(bottom=wcutoff)
 
     axt[0, 0].set_xscale('log')
-    axt[0, 0].set_xlabel(r'rate ($ns^{-1}$)')
+    axt[0, 0].set_xlabel(r'rate [$ns^{-1}$]')
     axt[0, 0].set_ylabel('count')
     axt[0, 0].set_xlim(rcutoff, 10)
     axt[0, 0].set_ylim(bottom=wcutoff)
 
     axp[0, 0].set_xscale('log')
-    axp[0, 0].set_xlabel(r'rate ($ns^{-1}$)')
+    axp[0, 0].set_xlabel(r'rate [$ns^{-1}$]')
     axp[0, 0].set_ylabel('count')
     axp[0, 0].set_xlim(rcutoff, 10)
     axp[0, 0].set_ylim(bottom=wcutoff)
 
     # for individual plot
     ax1a.set_xscale('log')
-    ax1a.set_xlabel(r'rate ($ns^{a-1}$)')
+    ax1a.set_xlabel(r'rate [$ns^{-1}$]')
     ax1a.set_ylabel('count')
     ax1a.set_xlim(rcutoff, 10)
     ax1a.set_ylim(bottom=wcutoff)
 
     ax1t.set_xscale('log')
-    ax1t.set_xlabel(r'rate ($ns^{-1}$)')
+    ax1t.set_xlabel(r'rate [$ns^{-1}$]')
     ax1t.set_ylabel('count')
     ax1t.set_xlim(rcutoff, 10)
     ax1t.set_ylim(bottom=wcutoff)
 
     ax1p.set_xscale('log')
-    ax1p.set_xlabel(r'rate ($ns^{-1}$)')
+    ax1p.set_xlabel(r'rate [$ns^{-1}$]')
     ax1p.set_ylabel('count')
     ax1p.set_xlim(rcutoff, 10)
     ax1p.set_ylim(bottom=wcutoff)
@@ -880,7 +904,7 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
     axa[0, 1].set_yscale('log')
     axa[0, 1].set_ylabel(r'weight')
     axa[1, 1].set_yscale('log')
-    axa[1, 1].set_ylabel(r'rate ($ns^{-1}$)')
+    axa[1, 1].set_ylabel(r'rate [$ns^{-1}$]')
     axa[1, 1].set_xlabel('sample')
     axa[0, 1].set_xlabel('sample')
     axa[0, 1].set_ylim(wcutoff, 2)
@@ -890,7 +914,7 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
     axt[0, 1].set_yscale('log')
     axt[0, 1].set_ylabel(r'weight')
     axt[1, 1].set_yscale('log')
-    axt[1, 1].set_ylabel(r'rate ($ns^{-1}$)')
+    axt[1, 1].set_ylabel(r'rate [$ns^{-1}$]')
     axt[1, 1].set_xlabel('sample')
     axt[0, 1].set_xlabel('sample')
     axt[0, 1].set_ylim(wcutoff, 2)
@@ -900,7 +924,7 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
     axp[0, 1].set_yscale('log')
     axp[0, 1].set_ylabel(r'weight')
     axp[1, 1].set_yscale('log')
-    axp[1, 1].set_ylabel(r'rate ($ns^{-1}$)')
+    axp[1, 1].set_ylabel(r'rate [$ns^{-1}$]')
     axp[1, 1].set_xlabel('sample')
     axp[0, 1].set_xlabel('sample')
     axp[0, 1].set_ylim(wcutoff, 2)
@@ -914,7 +938,7 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
     ax1a.set_xlabel('sample')
 
     ax2a.set_yscale('log')
-    ax2a.set_ylabel(r'rate ($ns^{-1}$)')
+    ax2a.set_ylabel(r'rate [$ns^{-1}$]')
     ax2a.set_ylim(rcutoff, 10)
     ax2a.set_xlabel('sample')
 
@@ -924,7 +948,7 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
     ax1t.set_xlabel('sample')
 
     ax2t.set_yscale('log')
-    ax2t.set_ylabel(r'rate ($ns^{-1}$)')
+    ax2t.set_ylabel(r'rate [$ns^{-1}$]')
     ax2t.set_ylim(rcutoff, 10)
     ax2t.set_xlabel('sample')
 
@@ -934,7 +958,7 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
     ax1p.set_xlabel('sample')
 
     ax2p.set_yscale('log')
-    ax2p.set_ylabel(r'rate ($ns^{-1}$)')
+    ax2p.set_ylabel(r'rate [$ns^{-1}$]')
     ax2p.set_ylim(rcutoff, 10)
     ax2p.set_xlabel('sample')
 
@@ -1006,21 +1030,21 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
     axa[1, 0].set_yscale('log')
     axa[1, 0].set_xscale('log')
     axa[1, 0].set_ylabel('weight')
-    axa[1, 0].set_xlabel(r'rate ($ns^{-1}$)')
+    axa[1, 0].set_xlabel(r'rate [$ns^{-1}$]')
     axa[1, 0].set_xlim(rcutoff, 10)
     axa[1, 0].set_ylim(wcutoff, 2)
 
     axt[1, 0].set_yscale('log')
     axt[1, 0].set_xscale('log')
     axt[1, 0].set_ylabel('weight')
-    axt[1, 0].set_xlabel(r'rate ($ns^{-1}$)')
+    axt[1, 0].set_xlabel(r'rate [$ns^{-1}$]')
     axt[1, 0].set_xlim(rcutoff, 10)
     axt[1, 0].set_ylim(wcutoff, 2)
 
     axp[1, 0].set_yscale('log')
     axp[1, 0].set_xscale('log')
     axp[1, 0].set_ylabel('weight')
-    axp[1, 0].set_xlabel(r'rate ($ns^{-1}$)')
+    axp[1, 0].set_xlabel(r'rate [$ns^{-1}$]')
     axp[1, 0].set_xlim(rcutoff, 10)
     axp[1, 0].set_ylim(wcutoff, 2)
 
@@ -1028,21 +1052,21 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
     ax1a.set_yscale('log')
     ax1a.set_xscale('log')
     ax1a.set_ylabel('weight')
-    ax1a.set_xlabel(r'rate ($ns^{-1}$)')
+    ax1a.set_xlabel(r'rate [$ns^{-1}$]')
     ax1a.set_xlim(rcutoff, 10)
     ax1a.set_ylim(wcutoff, 2)
 
     ax1t.set_yscale('log')
     ax1t.set_xscale('log')
     ax1t.set_ylabel('weight')
-    ax1t.set_xlabel(r'rate ($ns^{-1}$)')
+    ax1t.set_xlabel(r'rate [$ns^{-1}$]')
     ax1t.set_xlim(rcutoff, 10)
     ax1t.set_ylim(wcutoff, 2)
 
     ax1p.set_yscale('log')
     ax1p.set_xscale('log')
     ax1p.set_ylabel('weight')
-    ax1p.set_xlabel(r'rate ($ns^{-1}$)')
+    ax1p.set_xlabel(r'rate [$ns^{-1}$]')
     ax1p.set_xlim(rcutoff, 10)
     ax1p.set_ylim(wcutoff, 2)
 
@@ -1091,7 +1115,7 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
     ahandles = phs * 3 + pha[::-1]
     thandles = phs * 2 + pht[::-1]
     phandles = phs * 2 + php[::-1]
-    aplot_labels = (['Cluster', 'Validation', 'Training'] + pa[::-1])
+    aplot_labels = (['Cluster', 'Training', 'Validation'] + pa[::-1])
     tplot_labels = (['Cluster', 'Training'] + pt[::-1])
     pplot_labels = (['Cluster', 'Validation'] + pp[::-1])
 
@@ -1139,4 +1163,4 @@ def mixture_and_plot(gibbs, method, scale=2, sparse=1, remove_noise=False,
     figa.show()
     figt.show()
     figp.show()
-    return all_labels
+    return all_labels, presorts
