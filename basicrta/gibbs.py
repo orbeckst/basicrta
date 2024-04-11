@@ -195,7 +195,7 @@ class Gibbs(object):
         self.burnin = 10000
         self.cutoff = cutoff
         self.processed_results = Results()
-        self._noise_cutoff = 0.5
+        self._noise_cutoff = 0.4
 
         if times is not None:
             diff = (np.sort(times)[1:]-np.sort(times)[:-1])

@@ -680,8 +680,7 @@ def extract_data(gibbs):
     return data, train_inds
 
 
-def mixture_and_plot(gibbs, scale=2, sparse=1, remove_noise=False,
-                     noise_cutoff=0.5, **kwargs):
+def mixture_and_plot(gibbs, scale=2, sparse=1, remove_noise=False, **kwargs):
     from scipy import stats
 
     burnin_ind = gibbs.burnin // gibbs.g
@@ -721,7 +720,7 @@ def mixture_and_plot(gibbs, scale=2, sparse=1, remove_noise=False,
     predict_labels = all_labels[predict_inds]
 
     imaxs = gibbs.processed_results.indicator.max(axis=0)
-    noise_inds = np.where(imaxs < noise_cutoff)[0]
+    noise_inds = np.where(imaxs < gibbs._noise_cutoff)[0]
 
     means = np.array([arates[all_labels == i].mean() for i in uniq_labels])
     vsorts = means[np.delete(uniq_labels, noise_inds)].argsort()[::-1]
@@ -836,7 +835,7 @@ def mixture_and_plot(gibbs, scale=2, sparse=1, remove_noise=False,
             fig1p.savefig(f"{basename}_validate.{suffix}",
                           bbox_inches='tight')
     for fig in [fig1a, fig1t, fig1p]:
-        plt.close(fig)
+        plt.close(fig=fig)
 
     # create weight, rate vs sample plots
     fig1a, ax1a = plt.subplots(1, figsize=(4, 3))
@@ -993,7 +992,7 @@ def mixture_and_plot(gibbs, scale=2, sparse=1, remove_noise=False,
                           bbox_inches='tight')
 
     for fig in [fig1a, fig1t, fig1p, fig2a, fig2t, fig2p]:
-        plt.close(fig)
+        plt.close(fig=fig)
 
     # create weight vs rate plot
     fig1a, ax1a = plt.subplots(1, figsize=(4, 3))
@@ -1089,7 +1088,7 @@ def mixture_and_plot(gibbs, scale=2, sparse=1, remove_noise=False,
                           bbox_inches='tight')
 
     for fig in [fig1a, fig1t, fig1p]:
-        plt.close(fig)
+        plt.close(fig=fig)
 
     # finish legend for combined plots
     ahandles, aplot_labels = axa[0, 0].get_legend_handles_labels()
