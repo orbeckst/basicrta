@@ -361,6 +361,7 @@ class Gibbs(object):
             # sample indicator
             s = np.argmax(rng.multinomial(1, z), axis=1)
             indicator[i] = s
+        self.indicator = indicator
         return indicator[burnin_ind:]
 
     def save(self):
