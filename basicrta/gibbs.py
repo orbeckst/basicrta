@@ -299,7 +299,7 @@ class Gibbs(object):
         r.fit(np.log(train_data))
         all_labels = r.predict(np.log(data))
 
-        if self.indicator:
+        if self.indicator is not None:
             indicator = self.indicator[burnin_ind:]
         else:
             indicator = self._sample_indicator()
