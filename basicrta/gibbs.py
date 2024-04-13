@@ -72,7 +72,8 @@ class ProcessProtein(object):
         try:
             for adir in tqdm(dirs, desc='collecting results'):
                 result = self._single_residue(adir)
-                self.residues[adir] = result
+                residue = adir.split('/')[-1]
+                self.residues[residue] = result
         except KeyboardInterrupt:
             pass
 
