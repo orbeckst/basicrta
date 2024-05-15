@@ -1163,3 +1163,100 @@ def mixture_and_plot(gibbs, scale=2, sparse=1, remove_noise=False, **kwargs):
     figt.show()
     figp.show()
     return all_labels, presorts
+
+
+def get_code(resname):
+    if resname == '-':
+        result = '-'
+    elif resname == 'X':
+        result = 'HSD'
+    else:
+        result = mda.lib.util.convert_aa_code(resname)
+    return result
+
+
+def get_diffcode(sel, index):
+    resid = sel.residues.resids[index]
+    resname = sel.residues.resnames[index]
+    resletter = mda.lib.util.convert_aa_code(resname)
+    return resletter+str(resid)
+
+
+def get_indices(resnames, sequence):
+    indices = []
+    inames = 0
+    iseq = 0
+    while len(indices) < len(sequence):
+        if resnames[inames] == sequence[iseq]:
+            indices.append(inames)
+            iseq += 1
+        inames += 1
+    return np.asarray(indices)
+
+
+def get_fa_sel(aln, protA, protB):
+    with open(aln) as F:
+        names = []
+        resids = []
+        seqs = []
+        tmpseqs = []
+        seq = 0
+        for line in F:
+            if line[0] == '>':
+                names.append(line.split('|')[0][1:])
+                ress = line.split('/')[1].split('-')
+                resids.append([int(i) for i in ress])
+                seq += 1
+            else:
+                tmpseqs.append([seq, line.split('\n')[0]])
+
+    tmpseqs = np.asarray(tmpseqs)
+    [seqs.append(''.join(tmpseqs[tmpseqs[:, 0] == k][:, 1])) for k in
+     np.unique(tmpseqs[:, 0])]
+    seqs = np.asarray(seqs)
+
+    seqA = np.array([i for i in seqs[0]])
+    seqB = np.array([i for i in seqs[1]])
+
+    match_inds = np.where(seqA == seqB)[0]
+
+    # results = []
+    # [results.append(list(map(get_code, (seqs[i])))) for i in range(2)]
+    # results = np.asarray(results)
+    #
+    # start_inds = np.arange(len(results[0]))
+    # void_inds = np.where(results == '-')
+    # fin_inds = np.delete(start_inds, void_inds[1])
+    #
+    # results = results[:, fin_inds]
+    # resnamesA = protA.residues.resnames
+    # resnamesB = protB.residues.resnames
+    #
+    # indsA = get_indices(resnamesA, results[0])
+    # indsB = get_indices(resnamesB, results[1])
+    #
+    # matching_indsA = indsA[resnamesA[indsA] == resnamesB[indsB]]
+    # matching_indsB = indsB[resnamesA[indsA] == resnamesB[indsB]]
+
+    selA_mat = protA[match_inds]
+    selB_mat = protB[match_inds]
+    return selA_mat, selB_mat
+
+
+def align_homologues(pdbA, pdbB, aln):
+    from MDAnalysis.analysis import align
+    uA = mda.Universe(pdbA)
+    uB = mda.Universe(pdbB)
+
+    protA = uA.select_atoms('protein and name CA BB')
+    protB = uB.select_atoms('protein and name CA BB')
+
+    selA_mat, selB_mat = get_fa_sel(aln, protA, protB)
+    align.alignto(selA_mat, selB_mat)
+
+    with mda.Writer('Aaligned.pdb', len(uA.atoms)) as W:
+        W.write(uA.atoms)
+
+    with mda.Writer('Baligned.pdb', len(uB.atoms)) as W:
+        W.write(uB.atoms)
+
