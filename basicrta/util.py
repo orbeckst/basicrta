@@ -680,12 +680,18 @@ def extract_data(gibbs):
     return data, train_inds
 
 
-def mixture_and_plot(gibbs, scale=2, sparse=1, remove_noise=False, **kwargs):
+def mixture_and_plot(gibbs, scale=2, sparse=1, remove_noise=False, wlim=None,
+                     rlim=None, **kwargs):
     from scipy import stats
+    from matplotlib.ticker import MaxNLocator
 
     burnin_ind = gibbs.burnin // gibbs.g
     data_len = len(gibbs.times)
     wcutoff = 10 / data_len
+    if wlim is not None:
+        wmin, wmax = wlim[0], wlim[1]
+    else:
+        wmin, wmax = wcutoff, 2
 
     weights, rates = gibbs.mcweights[burnin_ind:], gibbs.mcrates[burnin_ind:]
     lens = np.array([len(row[row > wcutoff]) for row in weights])
@@ -700,8 +706,13 @@ def mixture_and_plot(gibbs, scale=2, sparse=1, remove_noise=False, **kwargs):
 
     inds = np.where(weights > wcutoff)
     aweights, arates = weights[inds], rates[inds]
-    rcutoff = arates.min()
     data = np.stack((aweights, arates), axis=1)
+
+    rcutoff = arates.min()
+    if rlim is not None:
+        rmin, rmax = rlim[0], rlim[1]
+    else:
+        rmin, rmax = rcutoff, 10
 
     tweights, trates = train_weights.flatten(), train_rates.flatten()
     train_data = np.stack((tweights, trates), axis=1)
@@ -782,42 +793,53 @@ def mixture_and_plot(gibbs, scale=2, sparse=1, remove_noise=False, **kwargs):
                   edgecolor='k')
 
     # for combined plot
+    locatora = MaxNLocator(prune='both', nbins=5, min_n_ticks=3)
+    locatort = MaxNLocator(prune='both', nbins=5, min_n_ticks=3)
+    locatorp = MaxNLocator(prune='both', nbins=5, min_n_ticks=3)
+
     axa[0, 0].set_xscale('log')
-    axa[0, 0].set_xlabel(r'rate [$ns^{-1}$]')
+    axa[0, 0].set_xlabel(r'$\lambda_k$ [ns$^{-1}$]')
     axa[0, 0].set_ylabel('count')
-    axa[0, 0].set_xlim(rcutoff, 10)
-    axa[0, 0].set_ylim(bottom=wcutoff)
+    axa[0, 0].set_xlim(rmin, rmax)
+    axa[0, 0].set_ylim(bottom=wmin)
+    axa[0, 0].yaxis.set_major_locator(locatora)
 
     axt[0, 0].set_xscale('log')
-    axt[0, 0].set_xlabel(r'rate [$ns^{-1}$]')
+    axt[0, 0].set_xlabel(r'$\lambda_k$ [ns$^{-1}$]')
     axt[0, 0].set_ylabel('count')
-    axt[0, 0].set_xlim(rcutoff, 10)
-    axt[0, 0].set_ylim(bottom=wcutoff)
+    axt[0, 0].set_xlim(rmin, rmax)
+    axt[0, 0].set_ylim(bottom=wmin)
+    axt[0, 0].yaxis.set_major_locator(locatort)
 
     axp[0, 0].set_xscale('log')
-    axp[0, 0].set_xlabel(r'rate [$ns^{-1}$]')
+    axp[0, 0].set_xlabel(r'$\lambda_k$ [ns$^{-1}$]')
     axp[0, 0].set_ylabel('count')
-    axp[0, 0].set_xlim(rcutoff, 10)
-    axp[0, 0].set_ylim(bottom=wcutoff)
+    axp[0, 0].set_xlim(rmin, rmax)
+    axp[0, 0].set_ylim(bottom=wmin)
+    axp[0, 0].yaxis.set_major_locator(locatorp)
 
     # for individual plot
     ax1a.set_xscale('log')
-    ax1a.set_xlabel(r'rate [$ns^{-1}$]')
+    ax1a.set_xlabel(r'$\lambda_k$ [ns$^{-1}$]')
     ax1a.set_ylabel('count')
-    ax1a.set_xlim(rcutoff, 10)
-    ax1a.set_ylim(bottom=wcutoff)
+    ax1a.set_xlim(rmin, rmax)
+    ax1a.set_ylim(bottom=wmin)
+    ax1a.yaxis.set_major_locator(locatora)
 
     ax1t.set_xscale('log')
-    ax1t.set_xlabel(r'rate [$ns^{-1}$]')
+    ax1t.set_xlabel(r'$\lambda_k$ [ns$^{-1}$]')
     ax1t.set_ylabel('count')
-    ax1t.set_xlim(rcutoff, 10)
-    ax1t.set_ylim(bottom=wcutoff)
+    ax1t.set_xlim(rmin, rmax)
+    ax1t.set_ylim(bottom=wmin)
+    ax1t.yaxis.set_major_locator(locatort)
 
     ax1p.set_xscale('log')
-    ax1p.set_xlabel(r'rate [$ns^{-1}$]')
+    ax1p.set_xlabel(r'$\lambda_k$ [ns$^{-1}$]')
     ax1p.set_ylabel('count')
-    ax1p.set_xlim(rcutoff, 10)
-    ax1p.set_ylim(bottom=wcutoff)
+    ax1p.set_xlim(rmin, rmax)
+    ax1p.set_ylim(bottom=wmin)
+    ax1p.yaxis.set_major_locator(locatorp)
+
     for suffix in ['png', 'pdf']:
         basename = f"basicrta-{gibbs.cutoff}/{gibbs.residue}/result_hist"
         if remove_noise:
@@ -901,64 +923,64 @@ def mixture_and_plot(gibbs, scale=2, sparse=1, remove_noise=False, **kwargs):
 
     # for combined plots
     axa[0, 1].set_yscale('log')
-    axa[0, 1].set_ylabel(r'weight')
+    axa[0, 1].set_ylabel(r'$\pi_k$')
     axa[1, 1].set_yscale('log')
-    axa[1, 1].set_ylabel(r'rate [$ns^{-1}$]')
+    axa[1, 1].set_ylabel(r'$\lambda_k$ [ns$^{-1}$]')
     axa[1, 1].set_xlabel('sample')
     axa[0, 1].set_xlabel('sample')
-    axa[0, 1].set_ylim(wcutoff, 2)
+    axa[0, 1].set_ylim(wmin, wmax)
     axa[1, 1].set_xlabel('sample')
-    axa[1, 1].set_ylim(rcutoff, 10)
+    axa[1, 1].set_ylim(rmin, rmax)
 
     axt[0, 1].set_yscale('log')
-    axt[0, 1].set_ylabel(r'weight')
+    axt[0, 1].set_ylabel(r'$\pi_k$')
     axt[1, 1].set_yscale('log')
-    axt[1, 1].set_ylabel(r'rate [$ns^{-1}$]')
+    axt[1, 1].set_ylabel(r'$\lambda_k$ [ns$^{-1}$]')
     axt[1, 1].set_xlabel('sample')
     axt[0, 1].set_xlabel('sample')
-    axt[0, 1].set_ylim(wcutoff, 2)
+    axt[0, 1].set_ylim(wmin, wmax)
     axt[1, 1].set_xlabel('sample')
-    axt[1, 1].set_ylim(rcutoff, 10)
+    axt[1, 1].set_ylim(rmin, rmax)
 
     axp[0, 1].set_yscale('log')
-    axp[0, 1].set_ylabel(r'weight')
+    axp[0, 1].set_ylabel(r'$\pi_k$')
     axp[1, 1].set_yscale('log')
-    axp[1, 1].set_ylabel(r'rate [$ns^{-1}$]')
+    axp[1, 1].set_ylabel(r'$\lambda_k$ [ns$^{-1}$]')
     axp[1, 1].set_xlabel('sample')
     axp[0, 1].set_xlabel('sample')
-    axp[0, 1].set_ylim(wcutoff, 2)
+    axp[0, 1].set_ylim(wmin, wmax)
     axp[1, 1].set_xlabel('sample')
-    axp[1, 1].set_ylim(rcutoff, 10)
+    axp[1, 1].set_ylim(rmin, rmax)
 
     # for individual plots
     ax1a.set_yscale('log')
-    ax1a.set_ylabel(r'weight')
-    ax1a.set_ylim(wcutoff, 2)
+    ax1a.set_ylabel(r'$\pi_k$')
+    ax1a.set_ylim(wmin, wmax)
     ax1a.set_xlabel('sample')
 
     ax2a.set_yscale('log')
-    ax2a.set_ylabel(r'rate [$ns^{-1}$]')
-    ax2a.set_ylim(rcutoff, 10)
+    ax2a.set_ylabel(r'$\lambda_k$ [ns$^{-1}$]')
+    ax2a.set_ylim(rmin, rmax)
     ax2a.set_xlabel('sample')
 
     ax1t.set_yscale('log')
-    ax1t.set_ylabel(r'weight')
-    ax1t.set_ylim(wcutoff, 2)
+    ax1t.set_ylabel(r'$\pi_k$')
+    ax1t.set_ylim(wmin, wmax)
     ax1t.set_xlabel('sample')
 
     ax2t.set_yscale('log')
-    ax2t.set_ylabel(r'rate [$ns^{-1}$]')
-    ax2t.set_ylim(rcutoff, 10)
+    ax2t.set_ylabel(r'$\lambda_k$ [ns$^{-1}$]')
+    ax2t.set_ylim(rmin, rmax)
     ax2t.set_xlabel('sample')
 
     ax1p.set_yscale('log')
-    ax1p.set_ylabel(r'weight')
-    ax1p.set_ylim(wcutoff, 2)
+    ax1p.set_ylabel(r'$\pi_k$')
+    ax1p.set_ylim(wmin, wmax)
     ax1p.set_xlabel('sample')
 
     ax2p.set_yscale('log')
-    ax2p.set_ylabel(r'rate [$ns^{-1}$]')
-    ax2p.set_ylim(rcutoff, 10)
+    ax2p.set_ylabel(r'$\lambda_k$ [ns$^{-1}$]')
+    ax2p.set_ylim(rmin, rmax)
     ax2p.set_xlabel('sample')
 
     for suffix in ['png', 'pdf']:
@@ -1028,46 +1050,46 @@ def mixture_and_plot(gibbs, scale=2, sparse=1, remove_noise=False, **kwargs):
     # for combined plots
     axa[1, 0].set_yscale('log')
     axa[1, 0].set_xscale('log')
-    axa[1, 0].set_ylabel('weight')
-    axa[1, 0].set_xlabel(r'rate [$ns^{-1}$]')
-    axa[1, 0].set_xlim(rcutoff, 10)
-    axa[1, 0].set_ylim(wcutoff, 2)
+    axa[1, 0].set_ylabel('$\pi_k$')
+    axa[1, 0].set_xlabel(r'$\lambda_k$ [ns$^{-1}$]')
+    axa[1, 0].set_xlim(rmin, rmax)
+    axa[1, 0].set_ylim(wmin, wmax)
 
     axt[1, 0].set_yscale('log')
     axt[1, 0].set_xscale('log')
-    axt[1, 0].set_ylabel('weight')
-    axt[1, 0].set_xlabel(r'rate [$ns^{-1}$]')
-    axt[1, 0].set_xlim(rcutoff, 10)
-    axt[1, 0].set_ylim(wcutoff, 2)
+    axt[1, 0].set_ylabel('$\pi_k$')
+    axt[1, 0].set_xlabel(r'$\lambda_k$ [ns$^{-1}$]')
+    axt[1, 0].set_xlim(rmin, rmax)
+    axt[1, 0].set_ylim(wmin, wmax)
 
     axp[1, 0].set_yscale('log')
     axp[1, 0].set_xscale('log')
-    axp[1, 0].set_ylabel('weight')
-    axp[1, 0].set_xlabel(r'rate [$ns^{-1}$]')
-    axp[1, 0].set_xlim(rcutoff, 10)
-    axp[1, 0].set_ylim(wcutoff, 2)
+    axp[1, 0].set_ylabel('$\pi_k$')
+    axp[1, 0].set_xlabel(r'$\lambda_k$ [ns$^{-1}$]')
+    axp[1, 0].set_xlim(rmin, rmax)
+    axp[1, 0].set_ylim(wmin, wmax)
 
     # for individual plots
     ax1a.set_yscale('log')
     ax1a.set_xscale('log')
-    ax1a.set_ylabel('weight')
-    ax1a.set_xlabel(r'rate [$ns^{-1}$]')
-    ax1a.set_xlim(rcutoff, 10)
-    ax1a.set_ylim(wcutoff, 2)
+    ax1a.set_ylabel('$\pi_k$')
+    ax1a.set_xlabel(r'$\lambda_k$ [ns$^{-1}$]')
+    ax1a.set_xlim(rmin, rmax)
+    ax1a.set_ylim(wmin, wmax)
 
     ax1t.set_yscale('log')
     ax1t.set_xscale('log')
-    ax1t.set_ylabel('weight')
-    ax1t.set_xlabel(r'rate [$ns^{-1}$]')
-    ax1t.set_xlim(rcutoff, 10)
-    ax1t.set_ylim(wcutoff, 2)
+    ax1t.set_ylabel('$\pi_k$')
+    ax1t.set_xlabel(r'$\lambda_k$ [ns$^{-1}$]')
+    ax1t.set_xlim(rmin, rmax)
+    ax1t.set_ylim(wmin, wmax)
 
     ax1p.set_yscale('log')
     ax1p.set_xscale('log')
-    ax1p.set_ylabel('weight')
-    ax1p.set_xlabel(r'rate [$ns^{-1}$]')
-    ax1p.set_xlim(rcutoff, 10)
-    ax1p.set_ylim(wcutoff, 2)
+    ax1p.set_ylabel('$\pi_k$')
+    ax1p.set_xlabel(r'$\lambda_k$ [ns$^{-1}$]')
+    ax1p.set_xlim(rmin, rmax)
+    ax1p.set_ylim(wmin, wmax)
 
     for suffix in ['pdf', 'png']:
         basename = (f'basicrta-{gibbs.cutoff}/{gibbs.residue}/weight_vs_rate_'
@@ -1243,10 +1265,10 @@ def get_fa_sel(aln, protA, protB):
     return selA_mat, selB_mat
 
 
-def align_homologues(pdbA, pdbB, aln):
+def align_homologues(Areduced, Breduced, aln):
     from MDAnalysis.analysis import align
-    uA = mda.Universe(pdbA)
-    uB = mda.Universe(pdbB)
+    uA = mda.Universe(Areduced)
+    uB = mda.Universe(Breduced)
 
     protA = uA.select_atoms('protein and name CA BB')
     protB = uB.select_atoms('protein and name CA BB')
@@ -1254,9 +1276,6 @@ def align_homologues(pdbA, pdbB, aln):
     selA_mat, selB_mat = get_fa_sel(aln, protA, protB)
     align.alignto(selA_mat, selB_mat)
 
-    with mda.Writer('Aaligned.pdb', len(uA.atoms)) as W:
-        W.write(uA.atoms)
-
-    with mda.Writer('Baligned.pdb', len(uB.atoms)) as W:
-        W.write(uB.atoms)
+    uA.atoms.write('Aaligned.pdb')
+    uB.atoms.write('Baligned.pdb')
 

@@ -218,8 +218,8 @@ class Gibbs(object):
         from basicrta.util import get_s
         self.t, self.s = get_s(self.times, self.ts)
 
-        if not os.path.exists(f'{self.residue}'):
-            os.mkdir(f'{self.residue}')
+        if not os.path.exists(f'basicrta-{self.cutoff}/{self.residue}'):
+            os.mkdir(f'basicrta-{self.cutoff}/{self.residue}')
 
         # initialize arrays
         self.indicator = np.zeros(((self.niter + 1) // self.g,
@@ -382,7 +382,7 @@ class Gibbs(object):
         from basicrta.util import get_s
         keys = ['times', 'residue', 'loc', 'ncomp', 'niter', 'g', 'burnin',
                 'processed_results', 'ts', 'mcweights', 'mcrates', 't',
-                's', 'cutoff', 'indicator']
+                's', 'cutoff', 'indicator', 'whypers', 'rhypers']
         with open(file, 'r+b') as f:
             r = pickle.load(f)
 
@@ -416,13 +416,13 @@ class Gibbs(object):
         fig, ax = plt.subplots(1, figsize=(4*scale, 3*scale))
         ax.hist(1/rp.rates[rp.labels == i], label=f'{i}', alpha=0.5,
                    color=cmap(i))
-        ax.set_xlabel(r'$\tau$ [$ns$]')
+        ax.set_xlabel(r'$\tau$ [ns]')
         ax.set_ylabel('count')
 
         tmin = (1/rp.rates[rp.labels == i]).min()
         tmax = (1/rp.rates[rp.labels == i]).max()
         ax.set_xlim(tmin, tmax)
-        ax.xaxis.set_major_locator(MaxNLocator(3))
+        ax.xaxis.set_major_locator(MaxNLocator(4))
         ax.xaxis.set_minor_locator(MaxNLocator(12))
         ax.yaxis.set_major_locator(MaxNLocator(3))
         ax.yaxis.set_minor_locator(MaxNLocator(12))
@@ -438,72 +438,258 @@ class Gibbs(object):
                         bbox_inches='tight')
         plt.show()
 
-    def plot_hist(self, scale=1, save=False, component=None):
+    def plot_hist(self, scale=1, save=False, component=None, bins=15):
         from matplotlib.ticker import MaxNLocator
+        from scipy import stats
+        from matplotlib.gridspec import GridSpec
+        from basicrta.util import set_shared_xlabel
+
         cmap = mpl.colormaps['tab10']
         rp = self.processed_results
 
         if component is None:
             comps = np.arange(rp.ncomp)
-        else:
+        elif isinstance(component, int):
             comps = [component]
+        else:
+            comps = component
 
-        fig, ax = plt.subplots(1, 3, figsize=(9*scale, 3*scale), sharey=True)
-        [ax[0].hist(rp.weights[rp.labels == i],
-                    # bins=np.linspace(rp.weights[rp.labels == i].min(),
-                    #                  rp.weights[rp.labels == i].max(), 15),
-                    label=f'{i}', alpha=0.5, color=cmap(i))
-              for i in comps]
-        [ax[1].hist(rp.rates[rp.labels == i],
-                    # bins=np.linspace(rp.rates[rp.labels == i].min(),
-                    #                  rp.rates[rp.labels == i].max(), 15),
-                    label=f'{i}', alpha=0.5, color=cmap(i))
-              for i in comps]
-        [ax[2].hist(1/rp.rates[rp.labels == i],
-                    # bins=np.linspace(rp.rates[rp.labels == i].min(),
-                    #                  rp.rates[rp.labels == i].max(), 15),
-                    label=f'{i}', alpha=0.5, color=cmap(i))
-              for i in comps]
-        ax[0].set_xlabel(r'weight')
-        ax[1].set_xlabel(r'rate [$ns^{-1}$]')
-        ax[2].set_xlabel(r'$\tau$ [$ns$]')
-        ax[0].set_ylabel('count')
+        if self.whypers is None:
+            self._prepare()
+
+        i = comps[0]
+        fig = plt.figure(figsize=(9*scale, 3*scale))
+        gs = GridSpec(4, 12, figure=fig, hspace=0.2, wspace=0.2, bottom=0.28,
+                      left=0.05, right=0.98, top=0.93)
+        ax0 = fig.add_subplot(gs[:, :4])
+        ax1 = np.array([[fig.add_subplot(gs[:-1, 4:7]),
+                         fig.add_subplot(gs[:-1, 7])],
+                        [fig.add_subplot(gs[-1, 4:7]),
+                         fig.add_subplot(gs[-1, 7])]])
+        ax2 = fig.add_subplot(gs[0, 8:]), fig.add_subplot(gs[1:, 8:])
+
+        # plot posteriors
+        [ax0.hist(rp.weights[rp.labels == i], label=f'posterior', alpha=0.5,
+                    color=cmap(i), density=True, bins=bins) for i in comps]
+        # [ax1[0].hist(rp.rates[rp.labels == i], label=f'{i}', alpha=0.5,
+        #              color=cmap(i), density=True, bins=bins) for i in comps]
+        [ax1[0, 0].hist(rp.rates[rp.labels == i], label=f'{i}', alpha=0.5,
+                        color=cmap(i), density=True, bins=bins) for i in comps]
+        [ax1[1, 0].hist(rp.rates[rp.labels == i], label=f'{i}', alpha=0.5,
+                        color=cmap(i), density=True, bins=bins) for i in comps]
+        # [ax2[0].hist(1/rp.rates[rp.labels == i], label=f'{i}', alpha=0.5,
+        #              color=cmap(i), density=True, bins=bins) for i in comps]
+        [ax2[1].hist(1/rp.rates[rp.labels == i], label=f'{i}', alpha=0.5,
+                     color=cmap(i), density=True, bins=bins) for i in comps]
+
+        # create bounds and plot priors
+        wbounds = np.array([[rp.weights[rp.labels == i].min(),
+                            rp.weights[rp.labels == i].max()] for i in comps])
+        rbounds = np.array([[rp.rates[rp.labels == i].min(),
+                            rp.rates[rp.labels == i].max()] for i in comps])
+        tbounds = np.array([[(1/rp.rates[rp.labels == i]).min(),
+                            (1/rp.rates[rp.labels == i]).max()] for i in comps])
+        rx = np.linspace(0, 10, 10000)
+        tx = np.linspace(0, 500, 10000)
+        # rx = np.array([np.linspace(rb[0], rb[1], 10000) for rb in rbounds])
+        # tx = np.array([np.linspace(tb[0], tb[1], 10000) for tb in tbounds])
+
+        # [ax[0].hist(rng.dirichlet(self.whypers, size=len(rp.labels))[:, 0]
+        #             bins=np.linspace(wbounds[i, 0], wbounds[i, 1], 10),
+        #             density=True)
+        #  for i in range(len(comps))]
+        ax0.hist(rng.dirichlet(self.whypers, size=1000000).flatten(),
+                   density=True, bins=20000, label='prior', alpha=0.5)
+        rys = (stats.gamma(self.rhypers[0, 0], scale=1/self.rhypers[0, 1]).
+               pdf(rx))
+        tys = (stats.invgamma(self.rhypers[0, 0], scale=1/self.rhypers[0, 1]).
+               pdf(tx))
+
+
+        # ax1[0].plot(rx, rys, label=f'{i}', alpha=0.5)
+        # ax1[0].fill_between(rx, rys, alpha=0.5)
+        # ax1[0, 0].plot(rx, rys, label=f'{i}', alpha=0.5)
+        # ax1[0, 0].fill_between(rx, rys, alpha=0.5)
+        ax1[1, 0].plot(rx, rys, label=f'{i}', alpha=0.5)
+        ax1[1, 0].fill_between(rx, rys, alpha=0.5)
+        ax1[1, 1].plot(rx, rys, label=f'{i}', alpha=0.5)
+        ax1[1, 1].fill_between(rx, rys, alpha=0.5)
+
+        ax2[0].plot(tx, tys, label=f'{i}', alpha=0.5)
+        ax2[0].fill_between(tx, tys, alpha=0.5)
+        ax2[1].plot(tx, tys, label=f'{i}', alpha=0.5)
+        ax2[1].fill_between(tx, tys, alpha=0.5)
+
+        ax1[0, 0].spines['bottom'].set_visible(False)
+        ax1[0, 1].spines['bottom'].set_visible(False)
+        ax1[1, 0].spines['top'].set_visible(False)
+        ax1[1, 1].spines['top'].set_visible(False)
+        ax1[0, 0].spines['right'].set_visible(False)
+        ax1[1, 0].spines['right'].set_visible(False)
+        ax1[0, 1].spines['left'].set_visible(False)
+        ax1[1, 1].spines['left'].set_visible(False)
+        ax1[0, 0].tick_params(axis='x', labelbottom=False)
+        ax1[0, 1].tick_params(axis='x', labelbottom=False)
+        ax1[0, 1].tick_params(axis='y', labelleft=False)
+        ax1[1, 1].tick_params(axis='y', labelleft=False)
+
+        ax2[0].spines['bottom'].set_visible(False)
+        ax2[1].spines['top'].set_visible(False)
+        ax2[0].tick_params(axis='x', labelbottom=False)
+        ax2[0].set_xticks([])
+
+        d = 0.15
+        kwargs = dict(marker=[(-1, -d), (1, d)], markersize=12,
+                      linestyle="none", color='k', mec='k', mew=1,
+                      clip_on=False)
+        kwargs2 = dict(marker=[(1+d, 0), (0, 1+d)], markersize=12,
+                       linestyle="none", color='k', mec='k', mew=1,
+                       clip_on=False)
+        ax1[0, 0].plot([0], transform=ax1[0, 0].transAxes, **kwargs)
+        ax1[1, 0].plot([1], transform=ax1[1, 0].transAxes, **kwargs)
+        ax1[0, 1].plot([1], [0], transform=ax1[0, 1].transAxes, **kwargs)
+        ax1[1, 1].plot([1], [1], transform=ax1[1, 1].transAxes, **kwargs)
+        ax1[0, 0].plot([1], [1], transform=ax1[0, 0].transAxes, **kwargs2)
+        # ax1[1, 0].plot([1], transform=ax1[1, 0].transAxes, **kwargs)
+        # ax1[0, 1].plot([0], [1], transform=ax1[0, 1].transAxes, **kwargs2)
+        # ax1[1, 1].plot([1], [0], transform=ax1[1, 1].transAxes, **kwargs2)
+
+        # ax1[0, 0].plot([1], transform=ax1[0, 0].transAxes, **kwargs2)
+        # ax1[1, 0].plot([0, 1], [1, 1], transform=ax1[1, 0].transAxes, **kwargs2)
+        # ax1[0, 1].plot([0, 1], [0, 0], transform=ax1[0, 1].transAxes, **kwargs2)
+        # ax1[1, 1].plot([0, 1], [1, 1], transform=ax1[1, 1].transAxes, **kwargs2)
+        # ax1[0 1].plot([0, 1], [1, 1], transform=ax1[0, 1].transAxes, **kwargs)
+        # ax1[1, 1].plot([0, 1], [1, 1], transform=ax1[1, 1].transAxes, **kwargs)
+
+        ax2[0].plot([0, 1], [0, 0], transform=ax2[0].transAxes, **kwargs)
+        ax2[1].plot([0, 1], [1, 1], transform=ax2[1].transAxes, **kwargs)
+
+
+        ax0.set_xlabel(r'$\pi_k$')
+        ax1[1, 0].set_xlabel(r'$\lambda_k$ [ns$^{-1}$]')
+        # set_shared_xlabel(ax1[1, :], label=r'$\lambda_k$ [ns$^{-1}$]')
+        ax2[1].set_xlabel(r'$\tau$ [ns]')
+        ax0.set_ylabel('p')
         if component is None:
-            ax[0].set_xlim(1e-4, 1)
+            ax1[0].set_xlim(1e-4, 1)
             ax[1].set_xlim(1e-3, 10)
             ax[0].legend(title='component')
             ax[1].legend(title='component')
             ax[0].set_xscale('log')
             ax[1].set_xscale('log')
         else:
-            rmin = rp.rates[rp.labels == component[0]].min()
-            rmax = rp.rates[rp.labels == component[0]].max()
-            wmin = rp.weights[rp.labels == component[0]].min()
-            wmax = rp.weights[rp.labels == component[0]].max()
-            ax[0].set_xlim(wmin, wmax)
-            ax[1].set_xlim(rmin, rmax)
-            ax[0].xaxis.set_major_locator(MaxNLocator(3))
-            ax[0].xaxis.set_minor_locator(MaxNLocator(12))
-            ax[0].yaxis.set_major_locator(MaxNLocator(3))
-            ax[0].yaxis.set_minor_locator(MaxNLocator(12))
-            ax[1].xaxis.set_major_locator(MaxNLocator(3))
-            ax[1].xaxis.set_minor_locator(MaxNLocator(12))
-            ax[2].xaxis.set_major_locator(MaxNLocator(3))
-            ax[2].xaxis.set_minor_locator(MaxNLocator(12))
-            ax[0].ticklabel_format(style='sci', axis='x', scilimits=(0, 0),
+            rmin = rbounds.min()
+            rmax = rbounds.max()
+            wmin = wbounds.min()
+            wmax = wbounds.max()
+            ax0.set_xlim(1e-5, 1e-3)
+
+            ax1[0, 0].set_xlim(1e-4, 1e-2)
+            ax1[1, 0].set_xlim(1e-4, 1e-2)
+            ax1[0, 1].set_xlim(1e-2, 10)
+            ax1[1, 1].set_xlim(1e-2, 10)
+            ax1[0, 0].set_ylim(5, 1200)
+            ax1[0, 1].set_ylim(5, 1200)
+            ax1[1, 0].set_ylim(0, 5)
+            ax1[1, 1].set_ylim(0, 5)
+
+            ax2[0].set_xlim(-5, 500)
+            ax2[1].set_xlim(-5, 500)
+            ax2[0].set_ylim(0.05, 0.6)
+            ax2[1].set_ylim(0, 0.015)
+
+            ax0.xaxis.set_major_locator(MaxNLocator(3, min_n_ticks=3,
+                                                      prune='both'))
+            ax0.xaxis.set_minor_locator(MaxNLocator(12, min_n_ticks=9,
+                                                      prune='both'))
+            ax0.yaxis.set_major_locator(MaxNLocator(3, min_n_ticks=3,
+                                                      prune='both'))
+            ax0.yaxis.set_minor_locator(MaxNLocator(12, min_n_ticks=9,
+                                                      prune='both'))
+            ax0.ticklabel_format(style='sci', axis='both', scilimits=(0, 0),
                                    useMathText=True)
-            ax[1].ticklabel_format(style='sci', axis='x', scilimits=(0, 0),
-                                   useMathText=True)
-        plt.tight_layout()
+
+            ax1[1, 0].xaxis.set_major_locator(MaxNLocator(3, min_n_ticks=3,
+                                                      prune='both'))
+            ax1[1, 0].xaxis.set_minor_locator(MaxNLocator(12, min_n_ticks=9,
+                                                      prune='both'))
+            ax1[1, 1].xaxis.set_major_locator(MaxNLocator(3, min_n_ticks=3,
+                                                      prune='both'))
+            ax1[1, 1].xaxis.set_minor_locator(MaxNLocator(12, min_n_ticks=9,
+                                                      prune='both'))
+            ax1[0, 0].yaxis.set_major_locator(MaxNLocator(3, min_n_ticks=3,
+                                                      prune='both'))
+            ax1[0, 0].yaxis.set_minor_locator(MaxNLocator(12, min_n_ticks=9,
+                                                      prune='both'))
+            ax1[1, 0].yaxis.set_major_locator(MaxNLocator(3, min_n_ticks=3,
+                                                      prune='both'))
+            ax1[1, 0].yaxis.set_minor_locator(MaxNLocator(12, min_n_ticks=9,
+                                                      prune='both'))
+            # ax1[0, 1].yaxis.set_major_locator(MaxNLocator(3, min_n_ticks=3,
+            #                                           prune='both'))
+            # ax1[0, 1].yaxis.set_minor_locator(MaxNLocator(12, min_n_ticks=9,
+            #                                           prune='both'))
+            # ax1[1, 1].yaxis.set_major_locator(MaxNLocator(3, min_n_ticks=3,
+            #                                           prune='both'))
+            # ax1[1, 1].yaxis.set_minor_locator(MaxNLocator(12, min_n_ticks=9,
+            #                                           prune='both'))
+            # ax1[0, 0].ticklabel_format(style='sci', axis='x', scilimits=(0, 0),
+            #                         useMathText=True)
+            ax1[0, 0].ticklabel_format(style='sci', axis='y', scilimits=(1, 1),
+                                    useMathText=True)
+            ax1[1, 0].ticklabel_format(style='sci', axis='y', scilimits=(1, 1),
+                                    useMathText=True)
+            ax1[1, 0].ticklabel_format(style='sci', axis='x', scilimits=(-3, -3),
+                                    useMathText=True)
+            ax1[0, 1].ticklabel_format(style='sci', axis='x', scilimits=(0, 0),
+                                    useMathText=True)
+            ax1[0, 1].ticklabel_format(style='sci', axis='y', scilimits=(1, 1),
+                                    useMathText=True)
+            # ax1[1, 1].ticklabel_format(style='sci', axis='y', scilimits=(1, 1),
+            #                         useMathText=True)
+            # ax1[1, 1].ticklabel_format(style='sci', axis='x', scilimits=(0, -3),
+            #                         useMathText=True)
+
+            ax2[0].yaxis.set_major_locator(MaxNLocator(3, min_n_ticks=2,
+                                                      prune='both'))
+            ax2[0].yaxis.set_minor_locator(MaxNLocator(12, min_n_ticks=9,
+                                                      prune='both'))
+            ax2[1].yaxis.set_major_locator(MaxNLocator(3, min_n_ticks=3,
+                                                      prune='both'))
+            ax2[1].yaxis.set_minor_locator(MaxNLocator(15, min_n_ticks=9,
+                                                      prune='both'))
+            ax2[1].xaxis.set_major_locator(MaxNLocator(3, min_n_ticks=3,
+                                                      prune='both'))
+            ax2[1].xaxis.set_minor_locator(MaxNLocator(12, min_n_ticks=9,
+                                                      prune='both'))
+            ax2[0].ticklabel_format(style='sci', axis='x', scilimits=(0, 0),
+                                    useMathText=True)
+            ax2[0].ticklabel_format(style='sci', axis='y', scilimits=(-1, -1),
+                                    useMathText=True)
+            ax2[1].ticklabel_format(style='sci', axis='y', scilimits=(-1, -1),
+                                    useMathText=True)
+            ax2[1].ticklabel_format(style='sci', axis='x', scilimits=(2, 2),
+                                    useMathText=True)
+
+            ax1[0, 0].set_xticks([])
+            ax1[0, 1].set_xticks([])
+            ax1[0, 1].set_yticks([])
+            ax1[1, 1].set_yticks([])
+            handles, labels = ax0.get_legend_handles_labels()
+            l = fig.legend(handles, labels, loc='lower center', ncols=2)
+            # for vpack in l._legend_handle_box.get_children():
+            #     for hpack in vpack.get_children():
+            #         hpack.get_children()[0].set_width(0)
+        # fig.tight_layout(rect=(0, 0.1, 1, 1))
         # ax[0].xaxis.set_major_locator(MultipleLocator(wmin+(wmax-wmin)/3))
         # ax[1].xaxis.set_major_locator(MultipleLocator(rmin+(rmax-rmin)/3))
         if save:
             if component is not None:
                 plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'
-                            f'hist_results_{component[0]}.png',
+                            f'hist_results_{component}.png',
                             bbox_inches='tight')
                 plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'
-                            f'hist_results_{component[0]}.pdf',
+                            f'hist_results_{component}.pdf',
                             bbox_inches='tight')
             else:
                 plt.savefig(f'basicrta-{self.cutoff}/{self.residue}/'
@@ -522,12 +708,12 @@ class Gibbs(object):
                         label=f'{i}', color=cmap(i))
              for i in np.unique(rp.labels)]
             ax[0].set_yscale('log')
-            ax[0].set_ylabel(r'weight')
+            ax[0].set_ylabel(r'$\pi_k$')
             [ax[1].plot(rp.iteration[rp.labels == i][::sparse],
                         rp.rates[rp.labels == i][::sparse], '.', label=f'{i}',
                         color=cmap(i)) for i in np.unique(rp.labels)]
             ax[1].set_yscale('log')
-            ax[1].set_ylabel(r'rate ($ns^{-1}$)')
+            ax[1].set_ylabel(r'\lambda_k (ns$^{-1}$)')
             ax[1].set_xlabel('sample')
             ax[0].legend(title='component')
             ax[1].legend(title='component')
@@ -581,12 +767,22 @@ class Gibbs(object):
         val = 0.5 * (h[1][:-1][indmax] + h[1][1:][indmax])[0]
         return [ci[0], val, ci[1]]
 
-    def plot_surv(self, scale=1, remove_noise=False, save=False,
-                  ylim=(1e-6, 5)):
+    def plot_surv(self, scale=1, remove_noise=False, save=False, xlim=None,
+                  ylim=(1e-6, 5), xmajor=None, xminor=None):
+        from matplotlib.ticker import MultipleLocator, MaxNLocator
+
+        if xmajor is None:
+            maj_loc = MaxNLocator(nbins=3)
+        else:
+            maj_loc = MultipleLocator(xmajor)
+
+        if xminor is None:
+            min_loc = MaxNLocator(nbins=12)
+        else:
+            min_loc = MultipleLocator(xminor)
+
         cmap = mpl.colormaps['tab10']
         rp = self.processed_results
-        # lns = np.log(rp.intervals[:, 1] / rp.intervals[:, 0])
-        # noise_inds = np.where(lns > noise_cutoff)[0]
         imaxs = self.processed_results.indicator.max(axis=0)
         noise_inds = np.where(imaxs < self._noise_cutoff)[0]
         uniq_labels = np.unique(rp.labels)
@@ -599,10 +795,13 @@ class Gibbs(object):
         [ax.plot(self.t, ws[i]*np.exp(-rs[i]*self.t), label=f'{i}',
                  color=cmap(i)) for i in np.unique(uniq_labels)]
         ax.set_ylim(ylim)
+        ax.set_xlim(xlim)
         ax.set_yscale('log')
-        ax.set_ylabel('s')
-        ax.set_xlabel(r't [$ns$]')
+        ax.set_ylabel('survival function $s$')
+        ax.set_xlabel(r'$t$ [ns]')
         ax.set_yticks([1, 1e-2, 1e-4])
+        ax.xaxis.set_major_locator(maj_loc)
+        ax.xaxis.set_minor_locator(min_loc)
         ax.legend(title='cluster')
         plt.tight_layout()
         if save:
