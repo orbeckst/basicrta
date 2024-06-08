@@ -180,12 +180,22 @@ class ParallelGibbs(object):
 
 class Gibbs(object):
     """Gibbs sampler to estimate parameters of an exponential mixture for a set
-    of data. Results are stored in gibbs.results, which uses /home/ricky
+    of data. Results are stored in gibbs.results, which uses
     MDAnalysis.analysis.base.Results(). If 'results=None' the gibbs sampler has
     not been executed, which requires calling '.run()'
+
+    EXAMPLE
+    -------
+    >>> from basicrta.gibbs import Gibbs
+    >>> from basicrta.tests.data import times
+    >>> g = Gibbs(times=times, residue='W313', cutoff=7.0)
+    >>> g.run()
+    >>> g.process_gibbs()
+    >>> g.estimate_tau()
+    [1, 2, 3]
     """
 
-    def __init__(self, times=None, residue=None, loc=0, ncomp=15, niter=50000,
+    def __init__(self, times=None, residue=None, loc=0, ncomp=15, niter=110000,
                  cutoff=None):
         self.times = times
         self.residue = residue
@@ -442,7 +452,6 @@ class Gibbs(object):
         from matplotlib.ticker import MaxNLocator
         from scipy import stats
         from matplotlib.gridspec import GridSpec
-        from basicrta.util import set_shared_xlabel
 
         cmap = mpl.colormaps['tab10']
         rp = self.processed_results
@@ -502,7 +511,7 @@ class Gibbs(object):
                    density=True, bins=20000, label='prior', alpha=0.5)
         rys = (stats.gamma(self.rhypers[0, 0], scale=1/self.rhypers[0, 1]).
                pdf(rx))
-        tys = (stats.invgamma(self.rhypers[0, 0], scale=1/self.rhypers[0, 1]).
+        tys = (stats.invgamma(self.rhypers[0, 0], scale=self.rhypers[0, 1]).
                pdf(tx))
 
 
@@ -595,7 +604,7 @@ class Gibbs(object):
 
             ax2[0].set_xlim(-5, 500)
             ax2[1].set_xlim(-5, 500)
-            ax2[0].set_ylim(0.05, 0.6)
+            ax2[0].set_ylim(0.02, 0.2)
             ax2[1].set_ylim(0, 0.015)
 
             ax0.xaxis.set_major_locator(MaxNLocator(3, min_n_ticks=3,
@@ -763,7 +772,7 @@ class Gibbs(object):
         bins = np.exp(np.linspace(np.log(citaus.min()), np.log(citaus.max()),
                                   20))
         h = np.histogram(taus, bins=bins)
-        indmax = np.where(h[0] == h[0].max())[0]
+        indmax = h[0].argmax()
         val = 0.5 * (h[1][:-1][indmax] + h[1][1:][indmax])[0]
         return [ci[0], val, ci[1]]
 

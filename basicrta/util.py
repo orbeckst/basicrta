@@ -1260,8 +1260,8 @@ def get_fa_sel(aln, protA, protB):
     # matching_indsA = indsA[resnamesA[indsA] == resnamesB[indsB]]
     # matching_indsB = indsB[resnamesA[indsA] == resnamesB[indsB]]
 
-    selA_mat = protA[match_inds]
-    selB_mat = protB[match_inds]
+    selA_mat = protA.residues[match_inds]
+    selB_mat = protB.residues[match_inds]
     return selA_mat, selB_mat
 
 
