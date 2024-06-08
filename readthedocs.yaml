@@ -14,3 +14,8 @@ python:
 
 conda:
   environment: docs/requirements.yaml
+
+# Configuration for Sphinx documentation
+sphinx:
+   configuration: docs/conf.py
+   fail_on_warning: true
