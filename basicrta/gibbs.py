@@ -179,10 +179,25 @@ class ParallelGibbs(object):
 
 
 class Gibbs(object):
-    """Gibbs sampler to estimate parameters of an exponential mixture for a set
-    of data. Results are stored in gibbs.results, which uses
-    MDAnalysis.analysis.base.Results(). If 'results=None' the gibbs sampler has
-    not been executed, which requires calling '.run()'
+    r"""Gibbs sampler to estimate parameters of an exponential mixture for a set
+    of data. Results are stored in :class:`gibbs.results`, which uses
+    :class:`MDAnalysis.analysis.base.Results()`. If 'results=None' the gibbs
+    sampler has not been executed, which requires calling :meth:`run`
+
+    :param times: Set of residence times to analyze
+    :type times: array, optional
+    :param residue: Residue name associated with the set of residence times
+    :type residue: str
+    :param loc: Used for progress bar in parallel applications
+    :type loc: int
+    :param ncomp: Number of exponential components to use in the mixture model
+    :type ncomp: int
+    :param niter: Number of iterations to run the Gibbs sampler
+    :type niter: int
+    :param cutoff: Cutoff calue used in contact analysis, used to determine
+                   directory to load/save results. Allows for multiple cutoffs
+                   to be tested in directory containing contacts.
+    :type cutoff: float
 
     EXAMPLE
     -------
@@ -193,6 +208,16 @@ class Gibbs(object):
     >>> g.process_gibbs()
     >>> g.estimate_tau()
     [1, 2, 3]
+
+    To load a Gibbs sampler that has already been executed use the :meth:`load`
+    method
+
+    >>> g = Gibbs().load('results.pkl')
+
+    The Gibbs sampler can be executed using the :meth:`run` method without
+    processing the resulting data. Once the :meth:`process_gibbs` method is
+    called, the :attr:`Gibbs.results.processed_results` attribute will be
+    populated.
     """
 
     def __init__(self, times=None, residue=None, loc=0, ncomp=15, niter=110000,
@@ -242,6 +267,9 @@ class Gibbs(object):
         self.rhypers = np.ones((self.ncomp, 2)) * [1, 3]
 
     def run(self):
+        r"""
+        Execute the Gibbs sampler and save the results to :attr:`Gibbs.results`
+        """
         # initialize weights and rates
         self._prepare()
         inrates = 0.5 * 10 ** np.arange(-self.ncomp + 2, 2, dtype=float)
@@ -280,6 +308,10 @@ class Gibbs(object):
         self.save()
 
     def cluster(self, method, **kwargs):
+        r"""
+        Cluster the processed results using the methods available in
+        :class:`sklearn.mixture`
+        """
         from sklearn import mixture
         from scipy import stats
 

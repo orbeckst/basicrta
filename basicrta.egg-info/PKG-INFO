@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: basicrta
-Version: 0.0.2+109.g54f2c77.dirty
+Version: 0.0.2+156.g9f93687.dirty
 Summary: A package to extract binding kinetics from molecular dynamics simulations
 Author-email: Ricky Sexton <risexto878@gmail.com>
 Maintainer-email: Ricky Sexton <risexto878@gmail.com>

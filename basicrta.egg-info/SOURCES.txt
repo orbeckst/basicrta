@@ -9,6 +9,7 @@ basicrta/__init__.py
 basicrta/contacts.py
 basicrta/gibbs.py
 basicrta/istarmap.py
+basicrta/pwdensity.py
 basicrta/util.py
 basicrta/wdensity.py
 basicrta/weighted_density.py

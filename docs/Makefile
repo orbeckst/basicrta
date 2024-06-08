@@ -5,11 +5,7 @@
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 SPHINXPROJ    = basicrta
-<<<<<<< HEAD
-SOURCEDIR     = .
-=======
 SOURCEDIR     = source
->>>>>>> basicrta-kit/master
 BUILDDIR      = _build
 
 # Put it first so that "make" without argument is like "make help".
