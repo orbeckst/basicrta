@@ -108,7 +108,7 @@ html_theme = "mdanalysis_sphinx_theme"
 # html_theme_options = {}
 html_theme_options = {
 
-    "mda_official": True,
+    "mda_official": False,
 
 }
 # Set your logo and favicon here -- replace the placeholders!
