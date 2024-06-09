@@ -1,5 +1,5 @@
-from basicrta.functions import simulate_hn
-from basicrta.functions import newgibbs
+from basicrta.util import simulate_hn
+from basicrta.util import newgibbs
 import numpy as np
 from scipy.optimize import linear_sum_assignment as lsa
 
