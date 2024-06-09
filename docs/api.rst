@@ -3,5 +3,6 @@ API Documentation
 
 .. autosummary::
    :toctree: autosummary
+   :recursive:
 
-   basicrta.gibbs
+   basicrta.gibbs.Gibbs

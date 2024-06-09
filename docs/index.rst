@@ -5,14 +5,22 @@
 
 Welcome to basicrta's documentation!
 =========================================================
+``basicrtakit`` is a package to analyze binding kinetics in molecular dynamics 
+simulations. The analysis uses an exponential mixture model and Bayesian 
+nonparametric inference to determine time-scales of the underlying binding 
+processes. The output is processed to give frames belonging to a given process 
+with an associated time-scale, which can be further analyzed.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
    getting_started
    api
 
+.. automodule:: basicrta
+   :imported-members:
+   :members:
 
 
 Indices and tables
