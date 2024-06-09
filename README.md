@@ -1,4 +1,4 @@
-basicrta
+Bayesian Single-Cutoff Residence Time Analysis (basicrta)
 ==============================
 [//]: # (Badges)
 
