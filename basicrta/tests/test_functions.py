@@ -7,7 +7,7 @@ def test_gibbs():
     wts = np.array([0.901, 0.09, 0.009])
     rts = [10, 0.1, 0.001]
     x = simulate_hn(1e5, wts, rts)
-    g = Gibbs(times=x, residue='X1', ncomp=3, niter=1000)
+    g = Gibbs(times=x, residue='X1', ncomp=3, niter=101)
     g.run()
 
     #for i in range(len(G.results.mcrates)):
