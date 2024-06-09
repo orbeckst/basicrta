@@ -15,7 +15,7 @@
 # In case the project was not installed
 import os
 import sys
-sys.path.insert(0, os.path.abspath("../basicrta"))
+sys.path.insert(0, os.path.abspath("../"))
 from basicrta import * # noqa
 
 
