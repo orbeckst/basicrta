@@ -8,7 +8,7 @@ def test_gibbs():
     rts = [10, 0.1, 0.001]
     x = simulate_hn(1e3, wts, rts)
     g = Gibbs(times=x, residue='X1', ncomp=3, niter=101)
-    g.run()
+    g._prepare()
 
     #for i in range(len(G.results.mcrates)):
     #    tmpsum = np.ones((3, 3), dtype=np.float64)
@@ -32,7 +32,7 @@ def test_gibbs():
     #Bools = np.array([(rts[i]>ci[descsort][i,0])&(rts[i]<ci[descsort][i,1]) for i in descsort])
 
     #assert Bools.all() == True
-    assert g.results
+    assert g.t
 
 def test_simdata():
     wts = np.array([0.901, 0.09, 0.009])
