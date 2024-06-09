@@ -88,7 +88,7 @@ pip install ".[test,doc]"
 ### Copyright
 
 The basicrta source code is hosted at https://github.com/becksteinlab/basicrta
-and is available under the GNU General Public License, version 2 (see the file [LICENSE](https://github.com/becksteinlab/basicrta/blob/main/LICENSE)).
+and is available under the GNU General Public License, version 3 (see the file [LICENSE](https://github.com/becksteinlab/basicrta/blob/main/LICENSE)).
 
 Copyright (c) 2024, Ricky Sexton
 
