@@ -32,7 +32,7 @@ def test_gibbs():
     #Bools = np.array([(rts[i]>ci[descsort][i,0])&(rts[i]<ci[descsort][i,1]) for i in descsort])
 
     #assert Bools.all() == True
-    assert g.t
+    assert len(g.t>0)
 
 def test_simdata():
     wts = np.array([0.901, 0.09, 0.009])
