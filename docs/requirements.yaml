@@ -6,6 +6,7 @@ channels:
 dependencies:
     # Base depends
   - python
+  - seaborn
   - mdanalysis-sphinx-theme >=1.0.1
     # Pip-only installs
   #- pip:

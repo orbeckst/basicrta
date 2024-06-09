@@ -1,4 +1,4 @@
-name: basic-rta
+name: basicrta
 channels:
   - clawpack
   - anaconda
@@ -158,4 +158,4 @@ dependencies:
     - pathos==0.2.8
     - pox==0.3.0
     - ppft==1.6.6.4
-prefix: /path/to/conda/envs/basic-rta
+prefix: /path/to/conda/envs/basicrta
