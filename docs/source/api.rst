@@ -5,4 +5,4 @@ API Documentation
    :toctree: autosummary
    :recursive:
 
-   basicrta.gibbs
+   basicrta.gibbs.Gibbs

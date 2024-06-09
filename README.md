@@ -16,7 +16,7 @@ basicrta
 [badge_release]: https://img.shields.io/github/release-pre/rsexton2/basicrta-kit.svg
 [url_actions]: https://github.com/rsexton2/basicrta-kit/actions?query=branch%3Amain+workflow%3Agh-ci
 [url_codecov]: https://codecov.io/gh/rsexton2/basicrta-kit/branch/main
-[url_docs]: https://basicrta-kit.readthedocs.io/en/latest/?badge=latest
+[url_docs]: https://basicrtakit.readthedocs.io/en/latest/?badge=latest
 [url_latest_release]: https://github.com/rsexton2/basicrta-kit/releases
 [url_license]: https://www.gnu.org/licenses/gpl-2.0
 [url_mda]: https://www.mdanalysis.org
