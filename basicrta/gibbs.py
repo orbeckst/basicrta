@@ -253,9 +253,6 @@ class Gibbs(object):
         from basicrta.util import get_s
         self.t, self.s = get_s(self.times, self.ts)
 
-        if not os.path.exists(f'basicrta-{self.cutoff}/{self.residue}'):
-            os.mkdir(f'basicrta-{self.cutoff}/{self.residue}')
-
         # initialize arrays
         self.indicator = np.zeros(((self.niter + 1) // self.g,
                                   self.times.shape[0]), dtype=np.uint8)
@@ -272,6 +269,9 @@ class Gibbs(object):
         """
         # initialize weights and rates
         self._prepare()
+        if not os.path.exists(f'basicrta-{self.cutoff}/{self.residue}'):
+            os.mkdir(f'basicrta-{self.cutoff}/{self.residue}')
+
         inrates = 0.5 * 10 ** np.arange(-self.ncomp + 2, 2, dtype=float)
         tmpw = 9 * 10 ** (-np.arange(1, self.ncomp + 1, dtype=float))
         weights, rates = tmpw / tmpw.sum(), inrates[::-1]
