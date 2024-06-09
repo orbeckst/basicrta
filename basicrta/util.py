@@ -13,6 +13,7 @@ from glob import glob
 import seaborn as sns
 from tqdm import tqdm
 import MDAnalysis as mda
+import MDAnalysis
 from scipy.optimize import linear_sum_assignment as lsa
 
 mpl.rcParams['pdf.fonttype'] = 42
@@ -33,37 +34,37 @@ def slice_trajectory(u, nslices):
     sliced_frames = np.array_split(frames, nslices)
     return sliced_frames
 
-
-def KL_resort(r):
-    mcweights, mcrates = r.mcweights.copy(), r.mcrates.copy()
-    indicator[:] = indicator_bak
-    Ls, niter = [L], 0
-    for j in tqdm(range(r.niter)):
-        sorts = mcweights[j].argsort()[::-1]
-        mcweights[j] = mcweights[j][sorts]
-        mcrates[j] = mcrates[j][sorts]
-
-    while niter < 10:
-        Z = np.zeros_like(z)
-        for j in tqdm(range(2000, 3000), desc='recomputing Q'):
-            tmp = mcweights[j] * mcrates[j] * np.exp(np.outer(-mcrates[j], x)).T
-            z = (tmp.T / tmp.sum(axis=1)).T
-            Z += z
-        Z = Z / 1000
-
-        for j in tqdm(range(2000, 3000), desc='resorting'):
-            tmp = mcweights[j] * mcrates[j] * np.exp(np.outer(-mcrates[j], x)).T
-            z = (tmp.T / tmp.sum(axis=1)).T
-
-            tmpsum = np.ones((ncomp, ncomp), dtype=np.float64)
-            for k in range(ncomp):
-                tmpsum[k] = np.sum(z[:, k] * np.log(z[:, k] / Z.T), axis=1)
-
-            tmpsum[tmpsum != tmpsum] = 1e20
-            sorts = lsa(tmpsum)[1]
-            mcweights[j] = mcweights[j][sorts]
-            mcrates[j] = mcrates[j][sorts]
-        niter += 1
+# CURRENTLY UNUSED
+# def KL_resort(r):
+#     mcweights, mcrates = r.mcweights.copy(), r.mcrates.copy()
+#     indicator[:] = indicator_bak
+#     Ls, niter = [L], 0
+#     for j in tqdm(range(r.niter)):
+#         sorts = mcweights[j].argsort()[::-1]
+#         mcweights[j] = mcweights[j][sorts]
+#         mcrates[j] = mcrates[j][sorts]
+#
+#     while niter < 10:
+#         Z = np.zeros_like(z)
+#         for j in tqdm(range(2000, 3000), desc='recomputing Q'):
+#             tmp = mcweights[j] * mcrates[j] * np.exp(np.outer(-mcrates[j], x)).T
+#             z = (tmp.T / tmp.sum(axis=1)).T
+#             Z += z
+#         Z = Z / 1000
+#
+#         for j in tqdm(range(2000, 3000), desc='resorting'):
+#             tmp = mcweights[j] * mcrates[j] * np.exp(np.outer(-mcrates[j], x)).T
+#             z = (tmp.T / tmp.sum(axis=1)).T
+#
+#             tmpsum = np.ones((ncomp, ncomp), dtype=np.float64)
+#             for k in range(ncomp):
+#                 tmpsum[k] = np.sum(z[:, k] * np.log(z[:, k] / Z.T), axis=1)
+#
+#             tmpsum[tmpsum != tmpsum] = 1e20
+#             sorts = lsa(tmpsum)[1]
+#             mcweights[j] = mcweights[j][sorts]
+#             mcrates[j] = mcrates[j][sorts]
+#         niter += 1
 
 
 def tm(Prot, i):
@@ -316,46 +317,46 @@ def plot_trace(results, attr, comp=None, xrange=None, yrange=None, save=False,
         plt.show()
     plt.close('all')
 
-
-def collect_results(ncomp=None):
-    """returns (residues, tslow, stds)
-    """
-    dirs = np.array(glob('?[0-9]*'))
-    sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
-    dirs = dirs[sorted_inds]
-    t_slow = np.zeros(len(dirs))
-    sd = np.zeros((len(dirs), 2))
-    residues = np.empty((len(dirs)), dtype=object)
-    indicators = []
-    for i, adir in enumerate(tqdm(dirs, desc='Collecting results')):
-        residues[i] = adir
-        try:
-            tmp_res = pickle.load(
-                bz2.BZ2File(f'{adir}/results_20000.pkl.bz2', 'rb'))
-            tmp_res, rpinds = process_gibbs(tmp_res)
-        #    with open(f'{adir}/processed_results_10000.pkl', 'rb') as f:
-        #        tmp_res = pickle.load(f)
-        #    results = glob(f'{adir}/*results.pkl')
-        #    results.sort()
-        #    if ncomp and ncomp-1<=len(results):
-        #        max_comp_res = results[ncomp-2]
-        #    else:
-        #        max_comp_res = results[-1]
-        except FileNotFoundError:
-            t_slow[i] = 0
-            continue
-        # with open(max_comp_res, 'rb') as W:
-        #    tmp_res = pickle.load(W)
-
-        means = np.array([(1 / post).mean() for post in tmp_res.rates.T])
-        if len(means) == 0:
-            continue
-        ind = np.where(means == means.max())[0][0]
-        t_slow[i] = means[ind]
-        sd[i] = get_bars(1 / tmp_res.rates.T[ind])
-        indicators.append(
-            (tmp_res.indicator.T / tmp_res.indicator.sum(axis=1)).T)
-    return residues, t_slow, sd.T, indicators
+# CURRENTLY UNUSED
+# def collect_results(ncomp=None):
+#     """returns (residues, tslow, stds)
+#     """
+#     dirs = np.array(glob('?[0-9]*'))
+#     sorted_inds = np.array([int(adir[1:]) for adir in dirs]).argsort()
+#     dirs = dirs[sorted_inds]
+#     t_slow = np.zeros(len(dirs))
+#     sd = np.zeros((len(dirs), 2))
+#     residues = np.empty((len(dirs)), dtype=object)
+#     indicators = []
+#     for i, adir in enumerate(tqdm(dirs, desc='Collecting results')):
+#         residues[i] = adir
+#         try:
+#             tmp_res = pickle.load(
+#                 bz2.BZ2File(f'{adir}/results_20000.pkl.bz2', 'rb'))
+#             tmp_res, rpinds = process_gibbs(tmp_res)
+#         #    with open(f'{adir}/processed_results_10000.pkl', 'rb') as f:
+#         #        tmp_res = pickle.load(f)
+#         #    results = glob(f'{adir}/*results.pkl')
+#         #    results.sort()
+#         #    if ncomp and ncomp-1<=len(results):
+#         #        max_comp_res = results[ncomp-2]
+#         #    else:
+#         #        max_comp_res = results[-1]
+#         except FileNotFoundError:
+#             t_slow[i] = 0
+#             continue
+#         # with open(max_comp_res, 'rb') as W:
+#         #    tmp_res = pickle.load(W)
+#
+#         means = np.array([(1 / post).mean() for post in tmp_res.rates.T])
+#         if len(means) == 0:
+#             continue
+#         ind = np.where(means == means.max())[0][0]
+#         t_slow[i] = means[ind]
+#         sd[i] = get_bars(1 / tmp_res.rates.T[ind])
+#         indicators.append(
+#             (tmp_res.indicator.T / tmp_res.indicator.sum(axis=1)).T)
+#     return residues, t_slow, sd.T, indicators
 
 
 def collect_n_plot(resids, comps):
@@ -651,6 +652,8 @@ def get_bins(x, ts):
 
 
 def extract_data(gibbs):
+    from scipy import stats
+
     burnin_ind = gibbs.burnin // gibbs.g
     data_len = len(gibbs.times)
     wcutoff = 10 / data_len

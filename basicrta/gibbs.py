@@ -613,11 +613,11 @@ class Gibbs(object):
         ax0.set_ylabel('p')
         if component is None:
             ax1[0].set_xlim(1e-4, 1)
-            ax[1].set_xlim(1e-3, 10)
-            ax[0].legend(title='component')
-            ax[1].legend(title='component')
-            ax[0].set_xscale('log')
-            ax[1].set_xscale('log')
+            ax1[1].set_xlim(1e-3, 10)
+            ax1[0].legend(title='component')
+            ax1[1].legend(title='component')
+            ax1[0].set_xscale('log')
+            ax1[1].set_xscale('log')
         else:
             rmin = rbounds.min()
             rmax = rbounds.max()
