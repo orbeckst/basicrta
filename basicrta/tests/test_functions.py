@@ -1,5 +1,5 @@
 from basicrta.util import simulate_hn
-from basicrta.util import newgibbs
+from basicrta.gibbs import Gibbs
 import numpy as np
 from scipy.optimize import linear_sum_assignment as lsa
 
@@ -7,8 +7,8 @@ def test_gibbs():
     wts = np.array([0.901, 0.09, 0.009])
     rts = [10, 0.1, 0.001]
     x = simulate_hn(1e5, wts, rts)
-    G = newgibbs(x, 'X1', 0, 0.1, ncomp=3, niter=1000, sort=False)
-    G.run()
+    g = Gibbs(times=x, residue='X1', ncomp=3, niter=1000)
+    g.run()
 
     #for i in range(len(G.results.mcrates)):
     #    tmpsum = np.ones((3, 3), dtype=np.float64)
@@ -32,7 +32,7 @@ def test_gibbs():
     #Bools = np.array([(rts[i]>ci[descsort][i,0])&(rts[i]<ci[descsort][i,1]) for i in descsort])
 
     #assert Bools.all() == True
-    assert G.results
+    assert g.results
 
 def test_simdata():
     wts = np.array([0.901, 0.09, 0.009])
