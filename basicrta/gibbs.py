@@ -307,10 +307,13 @@ class Gibbs(object):
 
         self.save()
 
-    def cluster(self, method, **kwargs):
+    def cluster(self, method="GaussianMixture", **kwargs):
         r"""
         Cluster the processed results using the methods available in
         :class:`sklearn.mixture`
+
+        :param method: Mixture method to use
+        :type method: str
         """
         from sklearn import mixture
         from scipy import stats
@@ -359,6 +362,9 @@ class Gibbs(object):
         setattr(self.processed_results, 'labels', all_labels)
 
     def process_gibbs(self):
+        r"""
+        Process the data collected from the Gibbs sampler
+        """
         from basicrta.util import mixture_and_plot
         from scipy import stats
 
@@ -374,7 +380,7 @@ class Gibbs(object):
         lens = [len(row[row > wcutoff]) for row in self.mcweights[burnin_ind:]]
         lmin, lmode, lmax = np.min(lens), stats.mode(lens).mode, np.max(lens)
 
-        self.cluster('GaussianMixture', n_init=117, n_components=lmode)
+        self.cluster(n_init=117, n_components=lmode)
         labels, presorts = mixture_and_plot(self)
         setattr(self.processed_results, 'labels', labels)
         setattr(self.processed_results, 'indicator',
@@ -389,6 +395,13 @@ class Gibbs(object):
         self.save()
 
     def result_plot(self, remove_noise=False, **kwargs):
+        """
+        Generate the combined result plot with option to change kwargs without
+        re-clustering.
+
+        :param remove_noise: Whether to remove noise
+        :type remove_noise: bool
+        """
         from basicrta.util import mixture_and_plot
         mixture_and_plot(self, remove_noise=remove_noise, **kwargs)
 
@@ -408,6 +421,9 @@ class Gibbs(object):
         return indicator[burnin_ind:]
 
     def save(self):
+        """
+        Save current state of the Gibbs
+        """
         savedir = f'basicrta-{self.cutoff}/{self.residue}/'
         filename = f'gibbs_{self.niter}.pkl'
         if os.path.exists(savedir):
@@ -421,6 +437,12 @@ class Gibbs(object):
 
     @staticmethod
     def load(file):
+        """
+        Load Gibbs
+
+        :param file: Filename of Gibbs to load
+        :type file: str
+        """
         from basicrta.util import get_s
         keys = ['times', 'residue', 'loc', 'ncomp', 'niter', 'g', 'burnin',
                 'processed_results', 'ts', 'mcweights', 'mcrates', 't',
@@ -446,6 +468,14 @@ class Gibbs(object):
         return g
 
     def plot_tau_hist(self, scale=1, save=False):
+        r"""
+        Plot histogram of tau values
+
+        :param scale: Increase plot size by this factor
+        :type scale: float
+        :param save: Save plot to file
+        :type save: bool
+        """
         from matplotlib.ticker import MaxNLocator
         cmap = mpl.colormaps['tab10']
         rp = self.processed_results
@@ -791,6 +821,12 @@ class Gibbs(object):
         setattr(rp, 'intervals', np.array([wbounds, rbounds]))
 
     def estimate_tau(self):
+        """
+        Estimate the posterior maximum for the tau distribution
+
+        :return: An array containing the posterior maximum and bounds of the
+                 95% confidence interval in the format [LB, max, UB].
+        """
         rp = self.processed_results
 
         imaxs = self.processed_results.indicator.max(axis=0)
@@ -810,6 +846,25 @@ class Gibbs(object):
 
     def plot_surv(self, scale=1, remove_noise=False, save=False, xlim=None,
                   ylim=(1e-6, 5), xmajor=None, xminor=None):
+        """
+        Plot the survival function with the exponential mixture components where
+        parameters are determined from the clustering results.
+
+        :param scale: Modify the size of the figure by this factor
+        :type scale: float
+        :param remove_noise: Whether to remove noise clusters
+        :type remove_noise: bool
+        :param save: Whether to save the figure
+        :type save: bool
+        :param xlim: X-axis limits
+        :type xlim: tuple
+        :param ylim: Y-axis limits
+        :type ylim: tuple
+        :param xmajor: X-axis major tick
+        :type xmajor: int
+        :param xminor: X-axis minor tick
+        :type xminor: int
+        """
         from matplotlib.ticker import MultipleLocator, MaxNLocator
 
         if xmajor is None:
