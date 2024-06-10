@@ -1,4 +1,4 @@
-basicrta.util
+﻿basicrta.util
 =============
 
 .. automodule:: basicrta.util
@@ -13,12 +13,10 @@ basicrta.util
 
    .. autosummary::
    
-      KL_resort
       align_homologues
       all_post_hist
       check_results
       collect_n_plot
-      collect_results
       confidence_interval
       expand_times
       extract_data
