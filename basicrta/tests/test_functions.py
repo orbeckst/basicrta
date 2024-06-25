@@ -4,11 +4,15 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment as lsa
 
 def test_gibbs():
-    wts = np.array([0.901, 0.09, 0.009])
-    rts = [10, 0.1, 0.001]
+    wts = np.array([0.90, 0.09, 0.01])
+    rts = [5, 0.05, 0.001]
     x = simulate_hn(1e3, wts, rts)
-    g = Gibbs(times=x, residue='X1', ncomp=3, niter=101)
-    g._prepare()
+    g = Gibbs(times=x, residue='X1', ncomp=3, niter=200)
+    g.g = 1
+    g.burnin = 100
+    
+    #g._prepare()
+    g.run()
 
     #for i in range(len(G.results.mcrates)):
     #    tmpsum = np.ones((3, 3), dtype=np.float64)
@@ -33,13 +37,16 @@ def test_gibbs():
 
     #assert Bools.all() == True
     assert len(g.t>0)
+    assert len(g.results) > 0 
 
 def test_simdata():
-    wts = np.array([0.901, 0.09, 0.009])
-    rts = [10, 0.1, 0.001]
+    wts = np.array([0.90, 0.09, 0.01])
+    rts = [5, 0.05, 0.001]
     x = simulate_hn(1e5, wts, rts)
     assert len(np.unique(x))==len(x)
 
+def test_get_dec():
+    pass
 
 if __name__=="__main__":
     test_simdata()

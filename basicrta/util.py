@@ -24,9 +24,9 @@ def siground(x, dec):
 
 
 def slice_trajectory(u, nslices):
-    if type(u) == MDAnalysis.coordinates.base.FrameIteratorSliced:
+    if isinstance(u, MDAnalysis.coordinates.base.FrameIteratorSliced):
         frames = np.arange(u.start, u.stop, u.step)
-    elif type(u) == MDAnalysis.coordinates.base.FrameIteratorIndices:
+    elif isinstance(u, MDAnalysis.coordinates.base.FrameIteratorIndices):
         frames = u.frames
     else:
         frames = np.arange(len(u.trajectory))
@@ -136,24 +136,25 @@ def plot_r_vs_w(r, rrange=None, wrange=None):
     plt.savefig(f'{r.name}/figs/k{r.ncomp}_r_vs_w.pdf')
 
 
-def plot_r_vs_w(weights, rates, labels, rrange=None, wrange=None):
-    plt.close()
-    plt.figure(figsize=(4, 3))
-    ncomp = len(np.unique(labels))
-    for k in range(ncomp):
-        inds = np.where(labels == k)[0]
-        plt.plot(rates[inds], weights[inds], '.', label=f'{k}')
-    plt.yscale('log')
-    plt.xscale('log')
-    if rrange:
-        plt.xlim(*rrange)
-    if wrange:
-        plt.ylim(*wrange)
-    plt.ylabel('weight')
-    plt.xlabel('rate')
-    plt.legend(loc='upper left')
-    plt.tight_layout()
-    plt.show()
+# CURRENTLY UNUSED
+# def plot_r_vs_w(weights, rates, labels, rrange=None, wrange=None):
+#     plt.close()
+#     plt.figure(figsize=(4, 3))
+#     ncomp = len(np.unique(labels))
+#     for k in range(ncomp):
+#         inds = np.where(labels == k)[0]
+#         plt.plot(rates[inds], weights[inds], '.', label=f'{k}')
+#     plt.yscale('log')
+#     plt.xscale('log')
+#     if rrange:
+#         plt.xlim(*rrange)
+#     if wrange:
+#         plt.ylim(*wrange)
+#     plt.ylabel('weight')
+#     plt.xlabel('rate')
+#     plt.legend(loc='upper left')
+#     plt.tight_layout()
+#     plt.show()
 
 
 def get_color(i):

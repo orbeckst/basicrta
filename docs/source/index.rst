@@ -12,7 +12,7 @@ processes. The output is processed to give frames belonging to a given process
 with an associated time-scale, which can be further analyzed.
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
    :caption: Contents:
 
    getting_started
