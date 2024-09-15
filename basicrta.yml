@@ -1,4 +1,4 @@
-name: basicrta
+#name: basicrta
 channels:
   - clawpack
   - anaconda

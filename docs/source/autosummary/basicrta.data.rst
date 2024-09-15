@@ -4,28 +4,10 @@ basicrta.data
 .. automodule:: basicrta.data
 
    
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-
 .. rubric:: Modules
 
 .. autosummary::
    :toctree:
    :recursive:
 
-   basicrta.data.files
-
+   files

@@ -4,15 +4,6 @@ basicrta.contacts
 .. automodule:: basicrta.contacts
 
    
-   
-   
-
-   
-   
-   
-
-   
-   
    .. rubric:: Classes
 
    .. autosummary::
@@ -20,11 +11,3 @@ basicrta.contacts
       MapContacts
       ProcessContacts
    
-   
-
-   
-   
-   
-
-
-

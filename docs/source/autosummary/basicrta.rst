@@ -4,35 +4,17 @@
 .. automodule:: basicrta
 
    
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-
 .. rubric:: Modules
 
 .. autosummary::
    :toctree:
    :recursive:
 
-   basicrta.contacts
-   basicrta.data
-   basicrta.gibbs
-   basicrta.istarmap
-   basicrta.pwdensity
-   basicrta.util
-   basicrta.wdensity
-   basicrta.weighted_density
-
+   contacts
+   data
+   gibbs
+   istarmap
+   pwdensity
+   util
+   wdensity
+   weighted_density

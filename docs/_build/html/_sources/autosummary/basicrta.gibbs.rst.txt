@@ -1,17 +1,8 @@
-﻿basicrta.gibbs
+basicrta.gibbs
 ==============
 
 .. automodule:: basicrta.gibbs
 
-   
-   
-   
-
-   
-   
-   
-
-   
    
    .. rubric:: Classes
 
@@ -21,11 +12,3 @@
       ParallelGibbs
       ProcessProtein
    
-   
-
-   
-   
-   
-
-
-

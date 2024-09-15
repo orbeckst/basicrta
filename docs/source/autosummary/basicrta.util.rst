@@ -1,13 +1,8 @@
-﻿basicrta.util
+basicrta.util
 =============
 
 .. automodule:: basicrta.util
 
-   
-   
-   
-
-   
    
    .. rubric:: Functions
 
@@ -49,15 +44,3 @@
       unique_rates
       write_trajs
    
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-

@@ -4,15 +4,6 @@ basicrta.pwdensity
 .. automodule:: basicrta.pwdensity
 
    
-   
-   
-
-   
-   
-   
-
-   
-   
    .. rubric:: Classes
 
    .. autosummary::
@@ -20,11 +11,3 @@ basicrta.pwdensity
       Density
       WDensityAnalysis
    
-   
-
-   
-   
-   
-
-
-
