@@ -844,8 +844,9 @@ class Gibbs(object):
         taus = 1 / rp.rates[rp.labels == index]
         ci = confidence_interval(taus)
         citaus = taus[(taus > ci[0]) & (taus < ci[1])]
-        bins = np.exp(np.linspace(np.log(citaus.min()), np.log(citaus.max()),
-                                  20))
+        #bins = np.exp(np.linspace(np.log(citaus.min()), np.log(citaus.max()),
+        #                          20))
+        bins = 15
         h = np.histogram(taus, bins=bins)
         indmax = h[0].argmax()
         val = 0.5 * (h[1][:-1][indmax] + h[1][1:][indmax])[0]
