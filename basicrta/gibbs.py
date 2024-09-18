@@ -77,7 +77,7 @@ class ProcessProtein(object):
         except KeyboardInterrupt:
             pass
 
-    def _get_taus(self):
+    def get_taus(self):
         from basicrta.util import get_bars
 
         taus = []
@@ -95,18 +95,25 @@ class ProcessProtein(object):
         bars = get_bars(taus)
         return taus[:, 1], bars
 
+    def write_data(self, fname='tausout'):
+        taus, bars = self.get_taus()
+        keys = self.residues.keys()
+        residues = np.array([int(res[1:]) for res in keys])
+        data = np.stack((residues, taus, bars[0], bars[1]))
+        np.save(fname, data.T)
+
     def plot_protein(self, **kwargs):
         from basicrta.util import plot_protein
         if len(self.residues) == 0:
             print('run `collect_residues` then rerun')
 
-        taus, bars = self._get_taus()
+        taus, bars = self.get_taus()
         residues = list(self.residues.keys())
         residues = [res.split('/')[-1] for res in residues]
         plot_protein(residues, taus, bars, self.prot, **kwargs)
 
     def b_color_structure(self, structure):
-        taus, bars = self._get_taus()
+        taus, bars = self.get_taus()
         cis = bars[1]+bars[0]
         errs = taus/cis
         errs[errs != errs] = 0
