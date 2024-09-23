@@ -849,7 +849,7 @@ class Gibbs(object):
         bins = 15
         h = np.histogram(taus, bins=bins)
         indmax = h[0].argmax()
-        val = 0.5 * (h[1][:-1][indmax] + h[1][1:][indmax])[0]
+        val = 0.5 * (h[1][:-1][indmax] + h[1][1:][indmax])
         return [ci[0], val, ci[1]]
 
     def plot_surv(self, scale=1, remove_noise=False, save=False, xlim=None,
