@@ -1244,6 +1244,36 @@ def get_fa_sel(aln, protA, protB):
     seqA = np.array([i for i in seqs[0]])
     seqB = np.array([i for i in seqs[1]])
 
+    inds = np.where((seqA != '-') & (seqB != '-'))
+    selA_mat = protA.residues[inds]
+    selB_mat = protB.residues[inds]
+    return selA_mat, selB_mat
+
+
+def get_fa_sel_match(aln, protA, protB):
+    with open(aln) as F:
+        names = []
+        resids = []
+        seqs = []
+        tmpseqs = []
+        seq = 0
+        for line in F:
+            if line[0] == '>':
+                names.append(line.split('|')[0][1:])
+                ress = line.split('/')[1].split('-')
+                resids.append([int(i) for i in ress])
+                seq += 1
+            else:
+                tmpseqs.append([seq, line.split('\n')[0]])
+
+    tmpseqs = np.asarray(tmpseqs)
+    [seqs.append(''.join(tmpseqs[tmpseqs[:, 0] == k][:, 1])) for k in
+     np.unique(tmpseqs[:, 0])]
+    seqs = np.asarray(seqs)
+
+    seqA = np.array([i for i in seqs[0]])
+    seqB = np.array([i for i in seqs[1]])
+
     match_inds = np.where(seqA == seqB)[0]
 
     # results = []
@@ -1273,7 +1303,7 @@ def align_homologues(Areduced, Breduced, aln):
     from MDAnalysis.analysis import align
     uA = mda.Universe(Areduced)
     uB = mda.Universe(Breduced)
-
+                                          
     protA = uA.select_atoms('protein and name CA BB')
     protB = uB.select_atoms('protein and name CA BB')
 
@@ -1282,4 +1312,57 @@ def align_homologues(Areduced, Breduced, aln):
 
     uA.atoms.write('Aaligned.pdb')
     uB.atoms.write('Baligned.pdb')
+
+def get_delta_tau(aln, protA, protB, tausA, tausB):
+    from MDAnalysis.analysis import align
+
+    residsA = protA.residues.resids
+    residsB = protB.residues.resids
+    aln_sel = align.fasta2select(aln, is_aligned=True, target_resids=residsB, 
+                                 ref_resids=residsA)
+    
+    selA = protA.select_atoms(aln_sel['reference'])
+    selB = protB.select_atoms(aln_sel['mobile'])
+    residsA = selA.residues.resids
+    residsB = selB.residues.resids
+
+    matchids = np.stack((residsA, residsB)).T
+    match_vals = np.array([[tausA[:, 1][tausA[:, 0]==iA][0], 
+                            tausB[:, 1][tausB[:, 0]==iB][0], iA, iB] 
+                           for iA, iB in matchids if iA in tausA[:, 0] 
+                           if iB in tausB[:, 0]])
+
+    delta_tau = -np.diff(match_vals[:, :2]).reshape(len(match_vals),)
+    return match_vals[:,2].astype(int), match_vals[:, 3].astype(int), delta_tau
+
+
+def plot_delta_tau(A, B, dtau, protA, protB, factor=2):
+	scale = 1
+	rmsd = np.sqrt(np.mean(dtau**2))
+	fig, ax = plt.subplots(1, figsize=(4*scale, 3*scale))
+	ax.plot(A[dtau>0], dtau[dtau>0], '.', color='C0')
+	ax.plot(A[dtau<0], dtau[dtau<0], '.', color='C3')
+	for i, tau in enumerate(dtau):
+		if tau>=factor*rmsd:
+			resname = protA.select_atoms(f'resid {A[i]}').resnames[0]
+			reslet = mda.lib.util.convert_aa_code(resname)
+			ax.text(A[i], tau, f'{reslet}{A[i]}')
+		elif (tau<0) & (abs(tau)>=factor*rmsd):
+			resname = protB.select_atoms(f'resid {B[i]}').resnames[0]
+			reslet = mda.lib.util.convert_aa_code(resname)
+			ax.text(A[i], tau, f'{reslet}{B[i]}')
+		else:
+			continue
+	ax.xaxis.set_ticks([])
+	ax.set_ylabel(r'$\Delta\tau\, [ns]$')
+	#ax.set_xlabel('residue')
+	plt.gca().spines['top'].set_visible(False)
+	plt.gca().spines['bottom'].set_visible(False)
+	plt.gca().spines['right'].set_visible(False)
+	ax.yaxis.set_minor_locator(MultipleLocator(125))
+	ax.yaxis.set_major_locator(MultipleLocator(500))
+	plt.tight_layout()
+	plt.savefig('delta_tau.pdf', bbox_inches='tight')
+	plt.savefig('delta_tau.png', bbox_inches='tight')
+	plt.show()
 
