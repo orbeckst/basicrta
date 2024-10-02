@@ -50,5 +50,5 @@ def test_get_dec():
 
 if __name__=="__main__":
     test_simdata()
-    test_gibbs()
+#    test_gibbs()
 
