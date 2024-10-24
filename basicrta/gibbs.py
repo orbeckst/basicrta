@@ -108,14 +108,14 @@ class ProcessProtein(object):
             print('run `collect_residues` then rerun')
 
         taus, bars = self.get_taus()
-        exclude_inds = np.where(bars<0)[1]
+        #exclude_inds = np.where(bars<0)[1]
 
-        residues = list(self.residues.keys())
-        residues = [res.split('/')[-1] for res in residues]
+        #residues = list(self.residues.keys())
+        #residues = [res.split('/')[-1] for res in residues]
 
-        np.delete(taus, exclude_inds)
-        np.delete(bars, exclude_inds)
-        np.delete(residues, exclude_inds)
+        #np.delete(taus, exclude_inds)
+        #np.delete(bars, exclude_inds)
+        #np.delete(residues, exclude_inds)
 
         plot_protein(residues, taus, bars, self.prot, **kwargs)
 
