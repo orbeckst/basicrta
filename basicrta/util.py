@@ -509,7 +509,7 @@ def get_start_stop_frames(simtime, timelen, ts):
     dec = get_dec(ts)
     framec = (np.round(timelen, dec) / ts).astype(int)
     frame = (np.round(simtime, dec) / ts).astype(int)
-    return frame, frame + framec
+    return frame, frame + framec - 1
 
 
 def get_write_frames(u, time, trajtime, lipind, comp):
