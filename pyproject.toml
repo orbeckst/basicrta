@@ -16,14 +16,15 @@ maintainers = [
     {name = "Ricky Sexton", email = "risexto878@gmail.com"},
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     "MDAnalysis>=2.0.0",
     "numpy",
     "matplotlib",
     "scikit-learn",
     "scipy",
-    "tqdm"
+    "tqdm",
+    "seaborn"
 ]
 keywords = [
     "molecular simulations",
