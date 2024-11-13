@@ -1,4 +1,4 @@
-basicrta.gibbs
+﻿basicrta.gibbs
 ==============
 
 .. automodule:: basicrta.gibbs
@@ -10,5 +10,4 @@ basicrta.gibbs
    
       Gibbs
       ParallelGibbs
-      ProcessProtein
    

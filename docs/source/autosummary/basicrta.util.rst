@@ -1,4 +1,4 @@
-basicrta.util
+﻿basicrta.util
 =============
 
 .. automodule:: basicrta.util
@@ -20,8 +20,10 @@ basicrta.util
       get_code
       get_color
       get_dec
+      get_delta_tau
       get_diffcode
       get_fa_sel
+      get_fa_sel_match
       get_indices
       get_remaining_residue_inds
       get_s
@@ -30,6 +32,7 @@ basicrta.util
       make_residue_plots
       make_surv
       mixture_and_plot
+      plot_delta_tau
       plot_hists
       plot_post
       plot_protein

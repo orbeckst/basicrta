@@ -19,7 +19,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>basicrta.gibbs &mdash; basicrta  documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="../../_static/site.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/site.css?v=88492d63" />
 
   
     <link rel="shortcut icon" href="../../_static/placeholder_favicon.svg"/>
@@ -30,7 +30,7 @@
         <script src="../../_static/jquery.js?v=5d32c60e"></script>
         <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
         <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
-        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
         <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
         <script src="../../_static/js/versions.js"></script>
     <script src="../../_static/js/theme.js"></script>
@@ -78,6 +78,8 @@
         <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html#contacts">Contacts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
 </ul>
 
@@ -127,109 +129,6 @@
 <span class="n">gc</span><span class="o">.</span><span class="n">enable</span><span class="p">()</span>
 <span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;pdf.fonttype&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">42</span>
 <span class="n">rng</span> <span class="o">=</span> <span class="n">default_rng</span><span class="p">()</span>
-
-
-<span class="k">class</span> <span class="nc">ProcessProtein</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">niter</span><span class="p">,</span> <span class="n">prot</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">residues</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">niter</span> <span class="o">=</span> <span class="n">niter</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">prot</span> <span class="o">=</span> <span class="n">prot</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span> <span class="o">=</span> <span class="n">cutoff</span>
-
-    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_single_residue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">adir</span><span class="p">,</span> <span class="n">process</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">adir</span><span class="si">}</span><span class="s1">/gibbs_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">niter</span><span class="si">}</span><span class="s1">.pkl&#39;</span><span class="p">):</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">result</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">adir</span><span class="si">}</span><span class="s1">/gibbs_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">niter</span><span class="si">}</span><span class="s1">.pkl&#39;</span>
-                <span class="n">g</span> <span class="o">=</span> <span class="n">Gibbs</span><span class="p">()</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">process</span><span class="p">:</span>
-                    <span class="n">g</span><span class="o">.</span><span class="n">process_gibbs</span><span class="p">()</span>
-            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-                <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;results for </span><span class="si">{</span><span class="n">adir</span><span class="si">}</span><span class="s1"> do not exist&#39;</span><span class="p">)</span>
-            <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="n">result</span>
-
-    <span class="k">def</span> <span class="nf">reprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nproc</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-        <span class="kn">from</span> <span class="nn">glob</span> <span class="kn">import</span> <span class="n">glob</span>
-
-        <span class="n">dirs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">glob</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;basicrta-</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span><span class="si">}</span><span class="s1">/?[0-9]*&#39;</span><span class="p">))</span>
-        <span class="n">sorted_inds</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">int</span><span class="p">(</span><span class="n">adir</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">:])</span> <span class="k">for</span> <span class="n">adir</span> <span class="ow">in</span> <span class="n">dirs</span><span class="p">])</span>
-                       <span class="o">.</span><span class="n">argsort</span><span class="p">())</span>
-        <span class="n">dirs</span> <span class="o">=</span> <span class="n">dirs</span><span class="p">[</span><span class="n">sorted_inds</span><span class="p">]</span>
-        <span class="n">inarr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">adir</span><span class="p">,</span> <span class="kc">True</span><span class="p">]</span> <span class="k">for</span> <span class="n">adir</span> <span class="ow">in</span> <span class="n">dirs</span><span class="p">])</span>
-        <span class="k">with</span> <span class="p">(</span><span class="n">Pool</span><span class="p">(</span><span class="n">nproc</span><span class="p">,</span> <span class="n">initializer</span><span class="o">=</span><span class="n">tqdm</span><span class="o">.</span><span class="n">set_lock</span><span class="p">,</span>
-                   <span class="n">initargs</span><span class="o">=</span><span class="p">(</span><span class="n">Lock</span><span class="p">(),))</span> <span class="k">as</span> <span class="n">p</span><span class="p">):</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">istarmap</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_single_residue</span><span class="p">,</span> <span class="n">inarr</span><span class="p">),</span>
-                              <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">dirs</span><span class="p">),</span> <span class="n">position</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-                              <span class="n">desc</span><span class="o">=</span><span class="s1">&#39;overall progress&#39;</span><span class="p">):</span>
-                    <span class="k">pass</span>
-            <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
-                <span class="k">pass</span>
-
-    <span class="k">def</span> <span class="nf">collect_results</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="kn">from</span> <span class="nn">glob</span> <span class="kn">import</span> <span class="n">glob</span>
-
-        <span class="n">dirs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">glob</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;basicrta-</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span><span class="si">}</span><span class="s1">/?[0-9]*&#39;</span><span class="p">))</span>
-        <span class="n">sorted_inds</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">int</span><span class="p">(</span><span class="n">adir</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">:])</span> <span class="k">for</span> <span class="n">adir</span> <span class="ow">in</span> <span class="n">dirs</span><span class="p">])</span>
-                       <span class="o">.</span><span class="n">argsort</span><span class="p">())</span>
-        <span class="n">dirs</span> <span class="o">=</span> <span class="n">dirs</span><span class="p">[</span><span class="n">sorted_inds</span><span class="p">]</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">adir</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">dirs</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="s1">&#39;collecting results&#39;</span><span class="p">):</span>
-                <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_single_residue</span><span class="p">(</span><span class="n">adir</span><span class="p">)</span>
-                <span class="n">residue</span> <span class="o">=</span> <span class="n">adir</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">residues</span><span class="p">[</span><span class="n">residue</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
-        <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
-            <span class="k">pass</span>
-
-    <span class="k">def</span> <span class="nf">_get_taus</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="kn">from</span> <span class="nn">basicrta.util</span> <span class="kn">import</span> <span class="n">get_bars</span>
-
-        <span class="n">taus</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">res</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">residues</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">residues</span><span class="p">)):</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">residues</span><span class="p">[</span><span class="n">res</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">result</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">gib</span> <span class="o">=</span> <span class="n">Gibbs</span><span class="p">()</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">residues</span><span class="p">[</span><span class="n">res</span><span class="p">])</span>
-                    <span class="n">result</span> <span class="o">=</span> <span class="n">gib</span><span class="o">.</span><span class="n">estimate_tau</span><span class="p">()</span>
-                <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
-                    <span class="n">result</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
-            <span class="n">taus</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-        <span class="n">taus</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">taus</span><span class="p">)</span>
-        <span class="n">bars</span> <span class="o">=</span> <span class="n">get_bars</span><span class="p">(</span><span class="n">taus</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">taus</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">bars</span>
-
-    <span class="k">def</span> <span class="nf">plot_protein</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="kn">from</span> <span class="nn">basicrta.util</span> <span class="kn">import</span> <span class="n">plot_protein</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">residues</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;run `collect_residues` then rerun&#39;</span><span class="p">)</span>
-
-        <span class="n">taus</span><span class="p">,</span> <span class="n">bars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_taus</span><span class="p">()</span>
-        <span class="n">residues</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">residues</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
-        <span class="n">residues</span> <span class="o">=</span> <span class="p">[</span><span class="n">res</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">res</span> <span class="ow">in</span> <span class="n">residues</span><span class="p">]</span>
-        <span class="n">plot_protein</span><span class="p">(</span><span class="n">residues</span><span class="p">,</span> <span class="n">taus</span><span class="p">,</span> <span class="n">bars</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prot</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">b_color_structure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">structure</span><span class="p">):</span>
-        <span class="n">taus</span><span class="p">,</span> <span class="n">bars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_taus</span><span class="p">()</span>
-        <span class="n">cis</span> <span class="o">=</span> <span class="n">bars</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">bars</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">errs</span> <span class="o">=</span> <span class="n">taus</span><span class="o">/</span><span class="n">cis</span>
-        <span class="n">errs</span><span class="p">[</span><span class="n">errs</span> <span class="o">!=</span> <span class="n">errs</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">residues</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">residues</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
-        <span class="n">u</span> <span class="o">=</span> <span class="n">mda</span><span class="o">.</span><span class="n">Universe</span><span class="p">(</span><span class="n">structure</span><span class="p">)</span>
-
-        <span class="n">u</span><span class="o">.</span><span class="n">add_TopologyAttr</span><span class="p">(</span><span class="s1">&#39;tempfactors&#39;</span><span class="p">)</span>
-        <span class="n">u</span><span class="o">.</span><span class="n">add_TopologyAttr</span><span class="p">(</span><span class="s1">&#39;occupancies&#39;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">tau</span><span class="p">,</span> <span class="n">err</span><span class="p">,</span> <span class="n">residue</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">taus</span><span class="p">,</span> <span class="n">errs</span><span class="p">,</span> <span class="n">residues</span><span class="p">)):</span>
-            <span class="n">res</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">select_atoms</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;protein and resid </span><span class="si">{</span><span class="n">residue</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-            <span class="n">res</span><span class="o">.</span><span class="n">tempfactors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
-            <span class="n">res</span><span class="o">.</span><span class="n">occupancies</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
-
-        <span class="n">u</span><span class="o">.</span><span class="n">select_atoms</span><span class="p">(</span><span class="s1">&#39;protein&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;tau_bcolored.pdb&#39;</span><span class="p">)</span>
 
 
 <span class="k">class</span> <span class="nc">ParallelGibbs</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -951,11 +850,12 @@
         <span class="n">taus</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">rp</span><span class="o">.</span><span class="n">rates</span><span class="p">[</span><span class="n">rp</span><span class="o">.</span><span class="n">labels</span> <span class="o">==</span> <span class="n">index</span><span class="p">]</span>
         <span class="n">ci</span> <span class="o">=</span> <span class="n">confidence_interval</span><span class="p">(</span><span class="n">taus</span><span class="p">)</span>
         <span class="n">citaus</span> <span class="o">=</span> <span class="n">taus</span><span class="p">[(</span><span class="n">taus</span> <span class="o">&gt;</span> <span class="n">ci</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">taus</span> <span class="o">&lt;</span> <span class="n">ci</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
-        <span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">citaus</span><span class="o">.</span><span class="n">min</span><span class="p">()),</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">citaus</span><span class="o">.</span><span class="n">max</span><span class="p">()),</span>
-                                  <span class="mi">20</span><span class="p">))</span>
+        <span class="c1">#bins = np.exp(np.linspace(np.log(citaus.min()), np.log(citaus.max()),</span>
+        <span class="c1">#                          20))</span>
+        <span class="n">bins</span> <span class="o">=</span> <span class="mi">15</span>
         <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">taus</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">)</span>
         <span class="n">indmax</span> <span class="o">=</span> <span class="n">h</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">argmax</span><span class="p">()</span>
-        <span class="n">val</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">h</span><span class="p">[</span><span class="mi">1</span><span class="p">][:</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">indmax</span><span class="p">]</span> <span class="o">+</span> <span class="n">h</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">:][</span><span class="n">indmax</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">h</span><span class="p">[</span><span class="mi">1</span><span class="p">][:</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">indmax</span><span class="p">]</span> <span class="o">+</span> <span class="n">h</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">:][</span><span class="n">indmax</span><span class="p">])</span>
         <span class="k">return</span> <span class="p">[</span><span class="n">ci</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">val</span><span class="p">,</span> <span class="n">ci</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
 
     <span class="k">def</span> <span class="nf">plot_surv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">remove_noise</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">save</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">xlim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>

@@ -16,6 +16,7 @@ with an associated time-scale, which can be further analyzed.
    :caption: Contents:
 
    getting_started
+   tutorial
    api
 
 .. automodule:: basicrta
