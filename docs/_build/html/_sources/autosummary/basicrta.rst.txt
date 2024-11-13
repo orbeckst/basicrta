@@ -10,6 +10,7 @@
    :toctree:
    :recursive:
 
+   cluster
    contacts
    data
    gibbs
