@@ -28,7 +28,9 @@ Next the samples obtained from the Gibbs sampler are processed and clustered. ::
   python -m basicrta.cluster --niter 110000 --nproc 3 --cutoff 7.0 --prot b2ar
 
 The ``prot`` argument is used to create rectangles in the :math:`tau` vs resid
-plot that correspond to the TM segments of the protein. 
+plot that correspond to the TM segments of the protein. Your protein can be
+added to ``basicrta/basicrta/data/tm_dict.txt`` in the same format as the
+existing proteins. 
 
 
 Contacts
