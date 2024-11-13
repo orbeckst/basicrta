@@ -24,17 +24,20 @@ or if ``resid`` is left out, a Gibbs sampler will be executed for all ``sel1``
 residues in the contact map. ::
   python -m basicrta.gibbs --contacts contacts_7.0.pkl --nproc 5
 
-Next the samples obtained from the Gibbs sampler are processed and clustered. ::
+Next the samples obtained from the Gibbs sampler are processed and clustered. 
+::
   python -m basicrta.cluster --niter 110000 --nproc 3 --cutoff 7.0 --prot b2ar
 
-The ``prot`` argument is used to create rectangles in the :math:`tau` vs resid
-plot that correspond to the TM segments of the protein. Your protein can be
-added to ``basicrta/basicrta/data/tm_dict.txt`` in the same format as the
-existing proteins. 
+The ``prot`` argument is used to create rectangles in the :math:`\tau` vs resid
+plot that correspond to the TM segments of the protein (figures 7-10). Your
+protein can be added to ``basicrta/basicrta/data/tm_dict.txt`` in the same
+format as the existing proteins. ``basicrta.cluster`` will process the Gibbs
+samplers, compute :math:`\tau` for each residue, plot :math:`\tau` vs resid, and
+write the data to `tausout.npy`, which contains [protein resid, tau, CI lower
+bound, CI upper bound]. If a structure is passed to the script, the b-factors of
+the residues will be populated with the appropriate :math:`\tau`.
+
+Work on making `weighted_density.py` an executable script is currently in
+progress. 
 
 
-Contacts
-========
-.. toctree:
-   :maxdepth: 1
-   basicrta/contacts
