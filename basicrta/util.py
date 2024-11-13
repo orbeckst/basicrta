@@ -94,6 +94,8 @@ def confidence_interval(data, percentage=95):
 def get_bars(tau):
     maxs = tau[:, 1]
     lb, ub = tau[:, 0], tau[:, 2]
+#    if lb > maxs or ub < maxs:
+#        raise ValueError('bounds not valid')
     return np.array([maxs - lb, ub - maxs])
 
 
