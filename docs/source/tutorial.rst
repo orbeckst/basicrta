@@ -25,7 +25,11 @@ residues in the contact map. ::
   python -m basicrta.gibbs --contacts contacts_7.0.pkl --nproc 5
 
 Next the samples obtained from the Gibbs sampler are processed and clustered. ::
-  python -m basicrta.cluster --contacts contacts_7.0.pkl --nproc 3 
+  python -m basicrta.cluster --niter 110000 --nproc 3 --cutoff 7.0 --prot b2ar
+
+The ``prot`` argument is used to create rectangles in the :math:`tau` vs resid
+plot that correspond to the TM segments of the protein. 
+
 
 Contacts
 ========
