@@ -1,0 +1,11 @@
+#!/bin/bash
+
+#SBATCH -J RESIDUE
+#SBATCH -N 1
+#SBATCH -n 1
+#SBATCH --mem=20G
+#SBATCH basicrta-7.0/RESIDUE/slurm_${SLURM_JOB_ID}.log
+
+python -m basicrta.gibbs --resid RESID 
+
+
