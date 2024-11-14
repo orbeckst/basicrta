@@ -15,7 +15,7 @@
    data
    gibbs
    istarmap
+   kinetics
    pwdensity
    util
    wdensity
-   weighted_density

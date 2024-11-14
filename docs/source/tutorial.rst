@@ -37,7 +37,25 @@ write the data to `tausout.npy`, which contains [protein resid, tau, CI lower
 bound, CI upper bound]. If a structure is passed to the script, the b-factors of
 the residues will be populated with the appropriate :math:`\tau`.
 
-Work on making `weighted_density.py` an executable script is currently in
-progress. 
+The kinetically mapped trajectory and weighted densities can be created using 
+``kinetics.py``. ::
+  python -m basicrta.kinetics --gibbs basicrta_7.0/W313/gibbs_110000.pkl
+  --contacts contacts_7.0.pkl --wdensity
+
+To create only the mapped trajectory, leave out the ``wdensity`` flag.  
+::
+  python -m basicrta.kinetics --gibbs basicrta_7.0/W313/gibbs_110000.pkl
+  --contacts contacts_7.0.pkl
+
+This can also be done using the ``top_n`` most likely frames belonging to each
+component of the exponential mixture model. ::
+  python -m basicrta.kinetics --gibbs basicrta_7.0/W313/gibbs_110000.pkl
+  --contacts contacts_7.0.pkl --top_n 500
+
+Weighted densities can be computed over the ``top_n`` frames, over the whole
+trajectory, or by using the ``step`` argument in combination with ``top_n`` or
+the whole trajectory. ::
+  python -m basicrta.kinetics --gibbs basicrta_7.0/W313/gibbs_110000.pkl
+  --contacts contacts_7.0.pkl --step 100
 
 
