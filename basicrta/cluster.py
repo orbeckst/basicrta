@@ -102,9 +102,11 @@ class ProcessProtein(object):
         residues = list(self.residues.keys())
         residues = [res.split('/')[-1] for res in residues]
 
-        #np.delete(taus, exclude_inds)
-        #np.delete(bars, exclude_inds)
-        #np.delete(residues, exclude_inds)
+        exclude_inds = np.where(bars<0)[1]          
+                                                    
+        taus = np.delete(taus, exclude_inds)
+        bars = np.delete(bars, exclude_inds, axis=1)
+        residues = np.delete(residues, exclude_inds)
 
         plot_protein(residues, taus, bars, self.prot, **kwargs)
 
@@ -132,7 +134,11 @@ if __name__ == "__main__":
     parser.add_argument('--cutoff', type=float)
     parser.add_argument('--niter', type=int, default=110000)
     parser.add_argument('--prot', type=str)
+    parser.add_argument('--structure', type=str, nargs='?')
     args = parser.parse_args()
 
     pp = ProcessProtein(args.niter, args.prot, args.cutoff)
     pp.reprocess(nproc = args.nproc)
+    pp.collect_results()
+    pp.write_data()
+    pp.plot_protein()

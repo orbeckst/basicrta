@@ -168,5 +168,18 @@ class MapKinetics(object):
 
 
 if __name__ == "__main__":
-    print('not implemented')
-
+    from basicrta.gibbs import Gibbs
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--gibbs", type=str)
+    parser.add_argument("--contacts", type=str)
+    parser.add_argument("--top_n", type=int, nargs='?', default=None)
+    parser.add_argument("--step", type=int, nargs='?', default=1)
+    parser.add_argument("--wdensity", action='store_true')
+    args = parser.parse_args()
+    
+    g = Gibbs().load(args.gibbs)
+    mk = MapKinetics(g, args.contacts)
+    mk.create_traj(top_n=args.top_n)
+    if args.wdensity:
+        mk.weighted_densities(step=args.step, top_n=args.top_n)
