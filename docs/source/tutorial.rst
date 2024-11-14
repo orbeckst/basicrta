@@ -58,4 +58,7 @@ the whole trajectory. ::
   python -m basicrta.kinetics --gibbs basicrta_7.0/W313/gibbs_110000.pkl
   --contacts contacts_7.0.pkl --step 100
 
-
+Slurm scripts for submitting Gibbs sampler jobs to distributed systems are
+located in the ``basicrta/scripts`` directory. Note that some of these were
+rewritten and may contain slight errors, testing still needs to be done (but
+can be used with some slight modifications).
