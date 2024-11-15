@@ -25,7 +25,13 @@ Bayesian Single-Cutoff Residence Time Analysis (basicrta)
 [url_zenodo]: https://doi.org/10.5281/zenodo.13877225
 
 
-A package to extract binding kinetics from molecular dynamics simulations
+A package to extract binding kinetics from molecular dynamics simulations based
+on [Sexton_2024]. 
+
+.. [Sexton_2024] Sexton, R.; Fazel, M.; Schweiger, M.; Pressé, S.; 
+   Beckstein, O. Bayesian Nonparametric Analysis of Residence Times for 
+   Protein-Lipid Interactions in Molecular Dynamics Simulations. November 9, 
+   2024. https://doi.org/10.1101/2024.11.07.622502.
 
 basicrta is bound by a [Code of Conduct](https://github.com/becksteinlab/basicrta/blob/main/CODE_OF_CONDUCT.md).
 
