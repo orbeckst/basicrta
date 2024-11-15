@@ -11,7 +11,7 @@ nonparametric inference to determine time-scales of the underlying binding
 processes. The output is processed to give frames belonging to a given process 
 with an associated time-scale, which can be further analyzed.
 
-This package was written to perform the analyses in [Sexton_2024]. 
+This package was written to perform the analyses in [Sexton_2024]_. 
 
 
 .. toctree::
@@ -36,6 +36,6 @@ Indices and tables
 
 .. [Sexton_2024] Sexton, R.; Fazel, M.; Schweiger, M.; Pressé, S.; 
    Beckstein, O. Bayesian Nonparametric Analysis of Residence Times for 
-   Protein-Lipid Interactions in Molecular Dynamics Simulations. November 9, 
+   Protein-Lipid Interactions in Molecular Dynamics Simulations. bioRxiv. November 9, 
    2024. https://doi.org/10.1101/2024.11.07.622502.
 
