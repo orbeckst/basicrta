@@ -1,11 +1,9 @@
-from basicrta.wdensity import WDensityAnalysis
+from tqdm import tqdm
+from basicrta.util import get_start_stop_frames
 import numpy as np
 import MDAnalysis as mda
 import os
-from tqdm import tqdm
-from basicrta.util import get_start_stop_frames
 import pickle
-# from MDAnalysis.lib.util import realpath
 
 
 class MapKinetics(object):
@@ -177,7 +175,7 @@ if __name__ == "__main__":
     parser.add_argument("--step", type=int, nargs='?', default=1)
     parser.add_argument("--wdensity", action='store_true')
     args = parser.parse_args()
-    
+
     g = Gibbs().load(args.gibbs)
     mk = MapKinetics(g, args.contacts)
     mk.create_traj(top_n=args.top_n)

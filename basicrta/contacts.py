@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 
-import os
-os.environ['MKL_NUM_THREADS'] = '1'
 from tqdm import tqdm
+from MDAnalysis.lib import distances
+from multiprocessing import Pool, Lock
+from basicrta import istarmap
 import numpy as np
 import multiprocessing
-from MDAnalysis.lib import distances
 import collections
-from multiprocessing import Pool, Lock
 import MDAnalysis as mda
 import pickle
 import glob
-from basicrta import istarmap
+import os
+os.environ['MKL_NUM_THREADS'] = '1'
 
 
 class MapContacts(object):
@@ -42,8 +42,8 @@ class MapContacts(object):
         with (Pool(self.nproc, initializer=tqdm.set_lock, initargs=(Lock(),))
               as p):
             for alen in tqdm(p.istarmap(self._run_contacts, input_list),
-                          total=self.nslices, position=0,
-                          desc='overall progress'):
+                             total=self.nslices, position=0,
+                             desc='overall progress'):
                 lens.append(alen)
         lens = np.array(lens)
         mapsize = sum(lens)
@@ -111,8 +111,6 @@ class ProcessContacts(object):
         self.cutoff = cutoff
 
     def run(self):
-        from basicrta.util import siground
-
         if os.path.exists(self.map_name):
             with open(self.map_name, 'r+b') as f:
                 memmap = pickle.load(f)
@@ -138,7 +136,7 @@ class ProcessContacts(object):
 
         bounds = np.concatenate([[0], np.cumsum(lens)]).astype(int)
         mapsize = sum(lens)
-        contact_map = np.memmap(f'.tmpmap', mode='w+',
+        contact_map = np.memmap('.tmpmap', mode='w+',
                                 shape=(mapsize, 4), dtype=dtype)
 
         for i in range(len(lresids)):
@@ -151,7 +149,6 @@ class ProcessContacts(object):
         # cfiles = glob.glob('.contacts*')
         # [os.remove(f) for f in cfiles]
         print(f'\nSaved contacts to "contacts_{self.cutoff}.npy"')
-
 
     def _lipswap(self, lip, memarr, i):
         from basicrta.util import get_dec
