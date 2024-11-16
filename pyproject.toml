@@ -57,7 +57,7 @@ testpaths = [
     "basicrta/tests",
 ]
 pythonpath = [
-    "../"
+    "basicrta"
 ]
 
 [tool.black]
