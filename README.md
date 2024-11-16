@@ -4,7 +4,7 @@ Bayesian Single-Cutoff Residence Time Analysis (basicrta)
 
 | **Latest release** | [![Last release tag][badge_release]][url_latest_release] ![GitHub commits since latest release (by date) for a branch][badge_commits_since]  [![Documentation Status][badge_docs]][url_docs]|
 | :----------------- | :------- |
-| **Archives** | [![DOI][badge_zenodo]][url_zenodo] |
+| **Archives**       | [![DOI][badge_zenodo]][url_zenodo] |
 | **Status**         | [![GH Actions Status][badge_actions]][url_actions] [![codecov][badge_codecov]][url_codecov] |
 | **Community**      | [![License: GPL v3][badge_license]][url_license]  [![Powered by MDAnalysis][badge_mda]][url_mda]|
 
@@ -23,7 +23,6 @@ Bayesian Single-Cutoff Residence Time Analysis (basicrta)
 [url_license]: https://www.gnu.org/licenses/gpl-2.0
 [url_mda]: https://www.mdanalysis.org
 [url_zenodo]: https://doi.org/10.5281/zenodo.13877225
-
 
 A package to extract binding kinetics from molecular dynamics simulations based
 on Sexton (2024) [^1]. 
