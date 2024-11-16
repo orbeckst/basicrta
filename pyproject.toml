@@ -50,8 +50,6 @@ doc = [
 
 [tool.setuptools]
 py-modules = []
-packages = ["basicrta"]
-package_dir = {"" = "src"}
 
 [tool.pytest.ini_options]
 minversion = "8.0"
