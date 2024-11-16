@@ -21,7 +21,7 @@ if len(running) > 0:
 
 rerundirs = []
 for adir in dirs:
-    if os.path.exists(f'{adir}/gibbs_110000.pkl') or 
+    if os.path.exists(f'{adir}/gibbs_110000.pkl') or \
     os.path.exists(f'{adir}/.dataset_too_small'):
         pass
     else:
