@@ -54,7 +54,7 @@ py-modules = []
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = [
-    "basicrta/tests",
+    "tests",
 ]
 pythonpath = [
     "."
