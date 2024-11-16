@@ -56,7 +56,7 @@ minversion = "8.0"
 testpaths = [
     "basicrta/tests",
 ]
-pythonpaths = [
+pythonpath = [
     "basicrta",
     "tests",
     "."
