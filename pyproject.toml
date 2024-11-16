@@ -52,7 +52,7 @@ doc = [
 py-modules = []
 
 [tool.pytest.ini_options]
-minversion = "6.0"
+minversion = "8.0"
 testpaths = [
     "tests",
 ]
