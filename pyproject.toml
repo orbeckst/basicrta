@@ -56,9 +56,12 @@ minversion = "8.0"
 testpaths = [
     "basicrta/tests",
 ]
-pythonpath = [
-    "basicrta"
+pythonpaths = [
+    "basicrta",
+    "tests",
+    "."
 ]
+
 
 [tool.black]
 line-length = 80
