@@ -23,31 +23,31 @@ defaults:
     shell: bash  -l {0} 
 
 jobs:
-#  environment-config:
-#    runs-on: ubuntu-latest
-#    outputs:
-#      stable-python-version: ${{ steps.get-compatible-python.outputs.stable-python }}
-#      python-matrix: ${{ steps.get-compatible-python.outputs.python-versions }}
-#    steps:
-#      - uses: actions/setup-python@v5.3.0
-#        with:
-#          python-version: "3.13"
-#
-#      - id: get-compatible-python
-#        uses: MDAnalysis/mdanalysis-compatible-python@main
-#        with:
-#          release: "latest"
-#
+  environment-config:
+    runs-on: ubuntu-latest
+    outputs:
+      stable-python-version: ${{ steps.get-compatible-python.outputs.stable-python }}
+      python-matrix: ${{ steps.get-compatible-python.outputs.python-versions }}
+    steps:
+      - uses: actions/setup-python@v5.3.0
+        with:
+          python-version: "3.12"
+
+      - id: get-compatible-python
+        uses: MDAnalysis/mdanalysis-compatible-python@main
+        with:
+          release: "latest"
+
   main-tests:
     if: "github.repository == 'becksteinlab/basicrta'"
-#    needs: environment-config
+    needs: environment-config
     runs-on: ${{ matrix.os }}
     strategy:
         fail-fast: false
         matrix:
           os: [macOS-latest, ubuntu-latest, windows-latest]
-#          python-version: ${{ fromJSON(needs.environment-config.outputs.python-matrix) }}
-          python-version: ["3.10", "3.11", "3.12"]
+          python-version: ${{ fromJSON(needs.environment-config.outputs.python-matrix) }}
+#          python-version: ["3.10", "3.11", "3.12"]
           mdanalysis-version: ["latest", "develop"]
           exclude:
             - python-version: "3.9"
@@ -119,7 +119,7 @@ jobs:
 
   pylint_check:
     if: "github.repository == 'becksteinlab/basicrta'"
-#    needs: environment-config
+    needs: environment-config
     runs-on: ubuntu-latest
 
     steps:
@@ -128,8 +128,8 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        #python-version: ${{ needs.environment-config.outputs.stable-python-version }}
-        python-version: "3.12"
+        python-version: ${{ needs.environment-config.outputs.stable-python-version }}
+        #python-version: "3.12"
     - name: Install Pylint
       run: |
         which pip
@@ -145,18 +145,18 @@ jobs:
 
   pypi_check:
     if: "github.repository == 'becksteinlab/basicrta'"
-#    needs: environment-config
+    needs: environment-config
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
 
-    #- name: Set up Python ${{ needs.environment-config.outputs.stable-python-version }}
-    - name: Set up Python 
+    - name: Set up Python ${{ needs.environment-config.outputs.stable-python-version }}
+#    - name: Set up Python 
       uses: actions/setup-python@v4
       with:
-        #python-version: ${{ needs.environment-config.outputs.stable-python-version }}
-        python-version: "3.12"
+        python-version: ${{ needs.environment-config.outputs.stable-python-version }}
+        #python-version: "3.12"
 
     - name: Install dependencies
       run: |
