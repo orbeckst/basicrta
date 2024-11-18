@@ -167,7 +167,7 @@ class Gibbs(object):
         # initialize weights and rates
         self._prepare()
         if not os.path.exists(f'basicrta-{self.cutoff}/{self.residue}'):
-            os.mkdir(f'basicrta-{self.cutoff}/{self.residue}')
+            os.makedirs(f'basicrta-{self.cutoff}/{self.residue}')
 
         inrates = 0.5 * 10 ** np.arange(-self.ncomp + 2, 2, dtype=float)
         tmpw = 9 * 10 ** (-np.arange(1, self.ncomp + 1, dtype=float))
