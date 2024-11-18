@@ -44,9 +44,9 @@ doc = [
     "sphinx_rtd_theme",
 ]
 
-# [project.urls]
-# source = "https://github.com/rsexton2/basicrta"
-# documentation = "https://basicrta.readthedocs.io"
+[project.urls]
+source = "https://github.com/becksteinlab/basicrta"
+documentation = "https://basicrta.readthedocs.io"
 
 [tool.setuptools]
 py-modules = []
