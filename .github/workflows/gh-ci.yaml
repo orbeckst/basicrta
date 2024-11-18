@@ -50,7 +50,7 @@ jobs:
           mdanalysis-version: ["latest", "develop"]
           exclude:
             - python-version: "3.9"
-              -mdanalysis-version: "develop"
+            - mdanalysis-version: "develop"
 
     steps:
     - uses: actions/checkout@v4
