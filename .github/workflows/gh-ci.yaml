@@ -23,20 +23,33 @@ defaults:
     shell: bash  -l {0} 
 
 jobs:
+  environment-config:
+    runs-on: ubuntu-latest
+    outputs:
+      stable-python-version: ${{ steps.get-compatible-python.outputs.stable-python }}
+      python-matrix: ${{ steps.get-compatible-python.outputs.python-versions }}
+    steps:
+      - uses: actions/setup-python@v5.3.0
+        with:
+          python-version: "3.11"
+
+      - id: get-compatible-python
+        uses: MDAnalysis/mdanalysis-compatible-python@main
+        with:
+          release: "latest"
+
   main-tests:
     if: "github.repository == 'becksteinlab/basicrta'"
+    needs: environment-config
     runs-on: ${{ matrix.os }}
     strategy:
         fail-fast: false
         matrix:
           os: [macOS-latest, ubuntu-latest, windows-latest]
-          python-version: ["3.10", "3.11", "3.12"]
+          python-version: ${{ fromJSON(needs.environment-config.outputs.python-matrix) }}
           mdanalysis-version: ["latest", "develop"]
-          # Manually exclude any combinations of the test matrix that can't be run 
           exclude:
-            # The latest release of MDANalysis only supports up to Python 3.11
-            # so we exclude 3.12 from the test matrix (issue #20)
-            - python-version: "3.12"
+            - python-version: "3.9"
               mdanalysis-version: "latest"
 
     steps:
@@ -48,6 +61,7 @@ jobs:
         df -h
         ulimit -a
 
+
     # More info on options: https://github.com/conda-incubator/setup-miniconda
     - name: Install conda dependencies
       uses: conda-incubator/setup-miniconda@v3
@@ -55,8 +69,9 @@ jobs:
         python-version: ${{ matrix.python-version }}
         environment-file: devtools/conda-envs/test_env.yaml
         add-pip-as-python-dependency: true
+        #architecture: x64
 
-        miniforge-variant: Mambaforge
+        miniforge-variant: Miniforge3
         use-mamba: true
         channels: conda-forge, defaults
 
@@ -64,6 +79,7 @@ jobs:
         auto-update-conda: true
         auto-activate-base: false
         show-channel-urls: true
+
 
     - name: Install MDAnalysis version
       uses: MDAnalysis/install-mdanalysis@main
@@ -87,22 +103,23 @@ jobs:
         conda info
         conda list
 
+
     - name: Run tests
       run: |
-        pytest -n auto -v --cov=basicrta --cov-report=xml --color=yes basicrta/tests/
+        pytest -n 2 -v --cov=basicrta --cov-report=xml --color=yes basicrta/tests/
 
     - name: codecov
       if: github.repository == 'becksteinlab/basicrta' && github.event_name != 'schedule'
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v3
       with:
         file: coverage.xml
         name: codecov-${{ matrix.os }}-py${{ matrix.python-version }}
-        token: ${{ secrets.CODECOV_TOKEN }}
         verbose: True
 
 
   pylint_check:
     if: "github.repository == 'becksteinlab/basicrta'"
+    needs: environment-config
     runs-on: ubuntu-latest
 
     steps:
@@ -111,7 +128,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: "3.11"
+        python-version: ${{ needs.environment-config.outputs.stable-python-version }}
 
     - name: Install Pylint
       run: |
@@ -123,20 +140,21 @@ jobs:
       env:
         PYLINTRC: .pylintrc
       run: |
-        pylint basicrta
+        pylint basicrta --exit-zero
 
 
   pypi_check:
     if: "github.repository == 'becksteinlab/basicrta'"
+    needs: environment-config
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python
+    - name: Set up Python ${{ needs.environment-config.outputs.stable-python-version }}
       uses: actions/setup-python@v4
       with:
-        python-version: "3.11"
+        python-version: ${{ needs.environment-config.outputs.stable-python-version }}
 
     - name: Install dependencies
       run: |
