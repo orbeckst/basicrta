@@ -49,10 +49,8 @@ jobs:
           python-version: ${{ fromJSON(needs.environment-config.outputs.python-matrix) }}
           mdanalysis-version: ["latest", "develop"]
           exclude:
-            - python-version: "3.9"
-              mdanalysis-version: "latest"
-            - python-version: "<=3.12"
-              mdanalysis-version: "develop" 
+            - python-version: ["3.9", "<=3.12"]
+              mdanalysis-version: ["latest", "develop"]
 
     steps:
     - uses: actions/checkout@v4
