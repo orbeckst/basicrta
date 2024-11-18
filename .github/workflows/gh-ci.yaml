@@ -129,7 +129,7 @@ jobs:
       uses: actions/setup-python@v4
       with:
         #python-version: ${{ needs.environment-config.outputs.stable-python-version }}
-        python-version = "3.12"
+        python-version: "3.12"
     - name: Install Pylint
       run: |
         which pip
@@ -156,7 +156,7 @@ jobs:
       uses: actions/setup-python@v4
       with:
         #python-version: ${{ needs.environment-config.outputs.stable-python-version }}
-        python-version = "3.12"
+        python-version: "3.12"
 
     - name: Install dependencies
       run: |
