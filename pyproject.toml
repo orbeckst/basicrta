@@ -16,7 +16,7 @@ maintainers = [
     {name = "Ricky Sexton", email = "risexto878@gmail.com"},
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 dependencies = [
     "MDAnalysis>=2.0.0",
     "numpy",
