@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/setup-python@v5.3.0
         with:
-          python-version: "3.11"
+          python-version: "3.13"
 
       - id: get-compatible-python
         uses: MDAnalysis/mdanalysis-compatible-python@main
@@ -51,6 +51,8 @@ jobs:
           exclude:
             - python-version: "3.9"
               mdanalysis-version: "latest"
+            - python-version: "<=3.12"
+              mdanalysis-version: "develop" 
 
     steps:
     - uses: actions/checkout@v4
