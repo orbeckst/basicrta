@@ -66,7 +66,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
         environment-file: devtools/conda-envs/test_env.yaml
         add-pip-as-python-dependency: true
-        architecture: x64
+        #architecture: x64
 
         miniforge-variant: Miniforge3
         use-mamba: true
@@ -82,7 +82,7 @@ jobs:
       uses: MDAnalysis/install-mdanalysis@main
       with:
         version: ${{ matrix.mdanalysis-version }}
-        install-tests: false
+        install-tests: true
         installer:  mamba 
         shell: bash  -l {0} 
       
