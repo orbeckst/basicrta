@@ -110,7 +110,7 @@ jobs:
 
     - name: codecov
       if: github.repository == 'becksteinlab/basicrta' && github.event_name != 'schedule'
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       with:
         file: coverage.xml
         name: codecov-${{ matrix.os }}-py${{ matrix.python-version }}
