@@ -8,8 +8,18 @@ from basicrta import istarmap
 from basicrta.gibbs import Gibbs
 gc.enable()
 
+""" This module provides the ProcessProtein class, which collects and processes
+Gibbs sampler data.
+"""
 
 class ProcessProtein(object):
+    r""" ProcessProtein is the class that collects and processes Gibbs sampler
+    data. This class collects results for all residues in the 
+    `basicrta-{cutoff}` directory and can write out a :math:`\tau` vs resid
+    numpy array or plot :math:`\tau` vs resid. If a structure is provided,
+    :math:`\tau` will be written as b-factors for visualization.
+    """
+    
     def __init__(self, niter, prot, cutoff):
         self.residues = {}
         self.niter = niter
@@ -131,7 +141,7 @@ if __name__ == "__main__":
     parser.add_argument('--nproc', type=int, default=1)
     parser.add_argument('--cutoff', type=float)
     parser.add_argument('--niter', type=int, default=110000)
-    parser.add_argument('--prot', type=str)
+    parser.add_argument('--prot', type=str, default=None, nargs='?')
     parser.add_argument('--structure', type=str, nargs='?')
     args = parser.parse_args()
 

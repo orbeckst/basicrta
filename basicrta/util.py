@@ -399,7 +399,7 @@ def make_residue_plots(results, comps=None, show=False):
     plot_trace(r, 'rates', comp=comps, save=True, show=show, yrange=[-0.1, 6])
 
 
-def plot_protein(residues, t_slow, bars, prot, label_cutoff=3, ylim=None,
+def plot_protein(residues, t_slow, bars, prot=None, label_cutoff=3, ylim=None,
                  major_tick=None, minor_tick=None, scale=1):
     with open('tm_dict.txt', 'r') as f:
         contents = f.read()
@@ -412,11 +412,14 @@ def plot_protein(residues, t_slow, bars, prot, label_cutoff=3, ylim=None,
     fig, axs = plt.subplots(2, 1, figsize=(width, height), sharex=True)
     axs[0].tick_params(axis='both', which='major', labelsize=10)
     axs[1].tick_params(axis='both', which='major', labelsize=10)
-    p = [Rectangle((tm(prots[prot]['helices'], i + 1)[0][0], 0),
-                   tm(prots[prot]['helices'], i + 1)[1], 1, fill=True) for i in
-         range(7)]
-    patches = PatchCollection(p)
-    patches.set_color('C0')
+    if prot is not None:
+        p = [Rectangle((tm(prots[prot]['helices'], i + 1)[0][0], 0),
+                       tm(prots[prot]['helices'], i + 1)[1], 1, fill=True) 
+             for i in range(7)]
+        patches = PatchCollection(p)
+        patches.set_color('C0')
+        axs[1].add_collection(patches)
+    
     resids = np.array([int(res[1:]) for res in residues])
     max_inds = np.where(t_slow > label_cutoff * t_slow.mean())
     axs[0].plot(resids, t_slow, '.', color='C0')
@@ -424,22 +427,20 @@ def plot_protein(residues, t_slow, bars, prot, label_cutoff=3, ylim=None,
                     alpha=0.5)
     [axs[0].text(resids[ind], t_slow[ind], residues[ind]) for ind in
      max_inds[0]]
-    axs[1].add_collection(patches)
-    # if (prot=='cck1r') or (prot=='cck2r'):
-    #    axs[0].set_ylim(0, 1300)
-    # else:
-    #    axs[0].set_ylim(0, 500)
     axs[0].set_ylabel(r'$\tau$ [ns]')
     axs[1].set_xlabel(r'residue')
     axs[0].get_xaxis().set_visible(False)
     axs[1].get_yaxis().set_visible(False)
     axs[1].xaxis.set_major_locator(MultipleLocator(100))
-    axs[0].yaxis.set_major_locator(MultipleLocator(major_tick))
+    if major_tick is not None:
+        axs[0].yaxis.set_major_locator(MultipleLocator(major_tick))
+    if minor_tick is not None:
     axs[0].yaxis.set_minor_locator(MultipleLocator(minor_tick))
-    # axs[1].xaxis.set_minor_locator(MultipleLocator(10))
+    if ylim is not None:
+        axs[0].set_ylim(ylim)
     axs[1].set_aspect(7)
     axs[0].margins(x=0)
-    axs[0].set_ylim(ylim)
+
     plt.subplots_adjust(hspace=-0.45, top=0.92)
     sns.despine(offset=10, ax=axs[0], bottom=True)
     sns.despine(ax=axs[1], top=True, bottom=False, left=True)
