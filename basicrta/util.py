@@ -435,7 +435,7 @@ def plot_protein(residues, t_slow, bars, prot=None, label_cutoff=3, ylim=None,
     if major_tick is not None:
         axs[0].yaxis.set_major_locator(MultipleLocator(major_tick))
     if minor_tick is not None:
-    axs[0].yaxis.set_minor_locator(MultipleLocator(minor_tick))
+        axs[0].yaxis.set_minor_locator(MultipleLocator(minor_tick))
     if ylim is not None:
         axs[0].set_ylim(ylim)
     axs[1].set_aspect(7)
