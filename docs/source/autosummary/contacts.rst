@@ -2,4 +2,5 @@
 ========
 
 .. automodule:: contacts
-    :members:
+   :members:
+   :undoc-members:

@@ -2,4 +2,5 @@
 ========
 
 .. automodule:: kinetics
-    :members:
+   :members:
+   :undoc-members:

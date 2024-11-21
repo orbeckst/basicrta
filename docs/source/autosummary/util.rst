@@ -2,4 +2,5 @@
 ====
 
 .. automodule:: util
-    :members:
+   :members:
+   :undoc-members:

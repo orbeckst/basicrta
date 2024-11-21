@@ -2,4 +2,5 @@
 =====
 
 .. automodule:: gibbs
-    :members:
+   :members:
+   :undoc-members:

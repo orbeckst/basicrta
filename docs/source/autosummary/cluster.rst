@@ -2,4 +2,5 @@
 =======
 
 .. automodule:: cluster
-    :members:
+   :members:
+   :undoc-members:
