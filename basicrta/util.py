@@ -401,9 +401,12 @@ def make_residue_plots(results, comps=None, show=False):
 
 def plot_protein(residues, t_slow, bars, prot=None, label_cutoff=3, ylim=None,
                  major_tick=None, minor_tick=None, scale=1):
-    with open('tm_dict.txt', 'r') as f:
-        contents = f.read()
-        prots = ast.literal_eval(contents)
+    try:
+        with open('tm_dict.txt', 'r') as f:
+            contents = f.read()
+            prots = ast.literal_eval(contents)
+    except FileNotFoundError("tm_dict.txt not found"):
+        prot = None
 
     if not os.path.exists('figs'):
         os.mkdir('figs')
