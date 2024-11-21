@@ -1,0 +1,5 @@
+﻿kinetics
+========
+
+.. automodule:: kinetics
+    :members:

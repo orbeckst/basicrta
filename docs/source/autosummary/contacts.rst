@@ -1,0 +1,5 @@
+﻿contacts
+========
+
+.. automodule:: contacts
+    :members:

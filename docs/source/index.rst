@@ -22,10 +22,6 @@ This package was written to perform the analyses in [Sexton_2024]_.
    tutorial
    api
 
-.. automodule:: basicrta
-   :imported-members:
-   :members:
-
 
 Indices and tables
 ==================
