@@ -53,6 +53,8 @@ jobs:
           mdanalysis-version: ["latest", "develop"]
           exclude:
             - python-version: "3.9"
+            # latest MDA requires python <= 3.13
+            - python-version: "3.13"
             - mdanalysis-version: "develop"
 
     steps:
