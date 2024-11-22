@@ -405,7 +405,8 @@ def plot_protein(residues, t_slow, bars, prot=None, label_cutoff=3, ylim=None,
         with open('tm_dict.txt', 'r') as f:
             contents = f.read()
             prots = ast.literal_eval(contents)
-    except FileNotFoundError("tm_dict.txt not found"):
+    except FileNotFoundError:
+        print("tm_dict.txt not found")
         prot = None
 
     if not os.path.exists('figs'):
