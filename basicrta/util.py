@@ -15,6 +15,7 @@ import pickle
 import seaborn as sns
 import MDAnalysis as mda
 import MDAnalysis
+import warnings
 #from scipy.optimize import linear_sum_assignment as lsa
 #import bz2
 
@@ -406,9 +407,9 @@ def plot_protein(residues, t_slow, bars, prot=None, label_cutoff=3, ylim=None,
             contents = f.read()
             prots = ast.literal_eval(contents)
     except FileNotFoundError:
-        print("tm_dict.txt not found")
+        warnings.warn(r"tm_dict.txt not found, TM bars will not be drawn in 
+                      $\tau$ vs resid plot")
         prot = None
-        pass
 
     if not os.path.exists('figs'):
         os.mkdir('figs')
