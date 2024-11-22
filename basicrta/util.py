@@ -407,8 +407,8 @@ def plot_protein(residues, t_slow, bars, prot=None, label_cutoff=3, ylim=None,
             contents = f.read()
             prots = ast.literal_eval(contents)
     except FileNotFoundError:
-        warnings.warn(r"tm_dict.txt not found, TM bars will not be drawn in 
-                      $\tau$ vs resid plot")
+        warnings.warn("tm_dict.txt not found, TM bars will not be drawn in " 
+                      r"$\tau$ vs resid plot")
         prot = None
 
     if not os.path.exists('figs'):
