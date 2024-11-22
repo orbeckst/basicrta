@@ -1,6 +1,3 @@
-"""Analysis functions
-"""
-
 import os
 import gc
 import pickle
@@ -22,7 +19,16 @@ rng = default_rng()
 
 class ParallelGibbs(object):
     """
-    A module to take a contact map and run Gibbs samplers for each residue
+    A module to take a contact map and run Gibbs samplers for each residue.
+
+    :param contacts: Contact pickle file (`contacts-{cutoff}.pkl`).
+    :type contacts: str
+    :param nproc: Number of processes to use in running Gibbs samplers.
+    :type nproc: int
+    :param ncomp: Number of mixture components to use in the Gibbs sampler.
+    :type ncomp: int
+    :param niter: Number of iterations of the Gibbs sampler to perform.
+    :type niter: int
     """
 
     def __init__(self, contacts, nproc=1, ncomp=15, niter=110000):
@@ -34,6 +40,13 @@ class ParallelGibbs(object):
         self.contacts = contacts
 
     def run(self, run_resids=None):
+        """
+        The :meth:`run` method executes the Gibbs samplers for all residues of
+        `sel1` present in the contact map, or a list of resids can be provided.
+
+        :param run_resids: Resid(s) for which to run a Gibbs sampler. 
+        :type run_resids: int or list, optional
+        """
         from basicrta.util import run_residue
 
         with open(self.contacts, 'r+b') as f:
@@ -79,7 +92,7 @@ class Gibbs(object):
     r"""Gibbs sampler to estimate parameters of an exponential mixture for a set
     of data. Results are stored in :class:`gibbs.results`, which uses
     :class:`MDAnalysis.analysis.base.Results()`. If 'results=None' the gibbs
-    sampler has not been executed, which requires calling :meth:`run`
+    sampler has not been executed, which requires calling :meth:`run`.
 
     :param times: Set of residence times to analyze
     :type times: array, optional
@@ -91,7 +104,7 @@ class Gibbs(object):
     :type ncomp: int
     :param niter: Number of iterations to run the Gibbs sampler
     :type niter: int
-    :param cutoff: Cutoff calue used in contact analysis, used to determine
+    :param cutoff: Cutoff value used in contact analysis, used to determine
                    directory to load/save results. Allows for multiple cutoffs
                    to be tested in directory containing contacts.
     :type cutoff: float
@@ -162,7 +175,8 @@ class Gibbs(object):
 
     def run(self):
         r"""
-        Execute the Gibbs sampler and save the results to :attr:`Gibbs.results`
+        Execute the Gibbs sampler and save the raw data to the instance of
+        :class:`Gibbs`.
         """
         # initialize weights and rates
         self._prepare()
@@ -260,7 +274,9 @@ class Gibbs(object):
 
     def process_gibbs(self):
         r"""
-        Process the data collected from the Gibbs sampler
+        Process the samples collected from the Gibbs sampler.
+        :meth:`process_gibbs` can be called multiple times to check the
+        robustness of the results.
         """
         from basicrta.util import mixture_and_plot
         from scipy import stats
@@ -296,7 +312,7 @@ class Gibbs(object):
         Generate the combined result plot with option to change kwargs without
         re-clustering.
 
-        :param remove_noise: Whether to remove noise
+        :param remove_noise: Option to remove noise clusters
         :type remove_noise: bool
         """
         from basicrta.util import mixture_and_plot
@@ -319,7 +335,7 @@ class Gibbs(object):
 
     def save(self):
         """
-        Save current state of the Gibbs
+        Save current state of the :class:`Gibbs` instance.
         """
         savedir = f'basicrta-{self.cutoff}/{self.residue}/'
         filename = f'gibbs_{self.niter}.pkl'
@@ -335,9 +351,9 @@ class Gibbs(object):
     @staticmethod
     def load(file):
         """
-        Load Gibbs
+        Load an instance of :class:`Gibbs`.
 
-        :param file: Filename of Gibbs to load
+        :param file: Path to instance of :class:`Gibbs`
         :type file: str
         """
         from basicrta.util import get_s
@@ -366,7 +382,8 @@ class Gibbs(object):
 
     def plot_tau_hist(self, scale=1, save=False):
         r"""
-        Plot histogram of tau values
+        Plot histogram of tau values. The figure aspect ratio is 4:3, and can be
+        made larger/smaller using the `scale` argument. 
 
         :param scale: Increase plot size by this factor
         :type scale: float
@@ -672,11 +689,15 @@ class Gibbs(object):
         setattr(rp, 'intervals', np.array([wbounds, rbounds]))
 
     def estimate_tau(self):
-        """
-        Estimate the posterior maximum for the tau distribution
+        r"""
+        Estimate the posterior maximum and confidence interval (CI) for the
+        :math:`tau` distribution of the slowest process. NOTE: In the future 
+        this will return an array containing :math:`tau` and CI for all
+        clusters.
 
         :return: An array containing the posterior maximum and bounds of the
                  95% confidence interval in the format [LB, max, UB].
+        :rtype: list
         """
         rp = self.processed_results
 
