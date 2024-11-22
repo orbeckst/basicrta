@@ -408,6 +408,7 @@ def plot_protein(residues, t_slow, bars, prot=None, label_cutoff=3, ylim=None,
     except FileNotFoundError:
         print("tm_dict.txt not found")
         prot = None
+        pass
 
     if not os.path.exists('figs'):
         os.mkdir('figs')
