@@ -15,11 +15,37 @@ os.environ['MKL_NUM_THREADS'] = '1'
 
 
 class MapContacts(object):
-    """
-    This class is used to create the map of contacts between two groups of
+    """This class is used to create the map of contacts between two groups of
     atoms. A single cutoff is used to define a contact between the two groups,
     where if any atomic distance between the two groups is less than the cutoff,
     a contact is considered formed.
+    
+    :param u: Universe containing the topology and trajectory for which the
+              contacts will be computed.
+    :type u: `MDAnalysis Universe`
+    :param ag1: Primary AtomGroup for which contacts will be computed, typically a
+                protein.
+    :type ag1: MDAnalysis AtomGroup
+    :param ag2: Secondary AtomGroup which forms contacts with `ag1`, typically
+                lipids, ions, or other small molecules. Each residue of `ag2` 
+                must have the same number of atoms.
+    :type ag2: MDAnalysis AtomGroup
+    :param nproc: Number of processes to use in computing contacts (default is
+                  1).
+    :type nproc: int, optional
+    :param frames: List of frames to use in computing contacts (default is
+                   None, meaning all frames are used).
+    :type frames: list or np.array, optional
+    :param cutoff: Maximum cutoff to use in computing contacts. A primary 
+                   contact map is created upon which multiple cutoffs can be
+                   imposed, i.e. in the case where a proper cutoff is being
+                   determined. This can typically be left at its default value,
+                   unless a greater value is needed (default is 10.0).
+    :type cutoff: float, optional
+    :param nslices: Number of slices to break the trajectory into for
+                    processing. If device memory is limited, try increasing
+                    `nslices` (default is 100).
+    :type nslices: int, optional
     """
 
     def __init__(self, u, ag1, ag2, nproc=1, frames=None, cutoff=10.0,
@@ -29,6 +55,8 @@ class MapContacts(object):
         self.cutoff, self.frames, self.nslices = cutoff, frames, nslices
 
     def run(self):
+        """Run contact analysis and save to `contacts.pkl`
+        """
         if self.frames is not None:
             sliced_frames = np.array_split(self.frames, self.nslices)
         else:
@@ -105,12 +133,28 @@ class MapContacts(object):
 
 
 class ProcessContacts(object):
-    def __init__(self, cutoff, nproc, map_name='contacts.pkl'):
+    """The :class:`ProcessProtein` class takes the primary contact map
+    (default is `contacts.pkl`) and collects contacts based on a prescribed 
+    cutoff. 
+
+    :param cutoff: Collect all contacts between `ag1` and `ag2` within this
+                   value.
+    :type cutoff: float
+    :param nproc: Number of processes to use in collecting contacts (default is
+                  1). 
+    :type nproc: int, optional
+    :param map_name: Name of primary contact map (default is `contacts.pkl`)
+    :type map_name: str, optional
+    """
+    def __init__(self, cutoff, nproc=1, map_name='contacts.pkl'):
         self.nproc = nproc
         self.map_name = map_name
         self.cutoff = cutoff
 
     def run(self):
+        """Process contacts using the prescribed cutoff and write to
+           contacts-{cutoff}.pkl
+        """
         if os.path.exists(self.map_name):
             with open(self.map_name, 'r+b') as f:
                 memmap = pickle.load(f)
