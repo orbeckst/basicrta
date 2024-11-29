@@ -112,7 +112,7 @@ class Gibbs(object):
     EXAMPLE
     -------
     >>> from basicrta.gibbs import Gibbs
-    >>> from basicrta.tests.data import times
+    >>> from basicrta.tests.datafiles import times
     >>> g = Gibbs(times=times, residue='W313', cutoff=7.0)
     >>> g.run()
     >>> g.process_gibbs()
