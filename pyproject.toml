@@ -51,17 +51,8 @@ documentation = "https://basicrta.readthedocs.io"
 [tool.setuptools]
 py-modules = []
 
-[tool.pytest.ini_options]
-minversion = "8.0"
-testpaths = [
-    "basicrta/tests",
-]
-pythonpath = [
-    "basicrta",
-    "tests",
-    "."
-]
-
+[tool.setuptools.packages]
+find = {}
 
 [tool.black]
 line-length = 80
